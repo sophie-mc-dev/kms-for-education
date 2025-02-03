@@ -1,2 +1,1 @@
 # kms-for-education
-:')
