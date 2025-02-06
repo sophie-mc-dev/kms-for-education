@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: ./frontend  
+    container_name: kms-frontend-container
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/frontend
+      - /frontend/node_modules
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+    command: npm run dev
+    restart: always
+
+  backend:
+    build:
+      context: ./backend  
+    container_name: kms-backend-container
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./backend:/backend
+      - /backend/node_modules
+    command: npm start  
+    restart: always
