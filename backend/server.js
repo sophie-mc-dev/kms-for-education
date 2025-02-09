@@ -1,13 +1,19 @@
 const express = require('express');
+const { testConnection } = require('./db');
+
 
 const app = express();
+const port = 8080;
 
-// routing path
 app.get('/', (req, res) => {
-  res.send('Hello World!');
+  res.send('Welcome to the KMS Backend!');
 });
 
-// Start the server
-app.listen(8080, () => {
-  console.log('Server started on http://localhost:8080');
+app.listen(port, async () => {
+  console.log(`Server is listening on port ${port}`);
+  const isConnected = await testConnection();
+  if (!isConnected) {
+    console.error("Database connection failed. Exiting...");
+    process.exit(1); 
+  }
 });
