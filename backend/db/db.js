@@ -1,14 +1,14 @@
+require('dotenv').config();
 const { Pool } = require("pg");
 
 const pool = new Pool({
-  user: process.env.DB_USER || "kms-user",
-  host: process.env.DB_HOST || "localhost",
-  database: process.env.DB_NAME || "kms-db",
-  password: process.env.DB_PASSWORD || "kms-user123",
-  port: process.env.DB_PORT || 5432,
+  user: process.env.DB_USER,
+  host: process.env.DB_HOST, 
+  database: process.env.DB_NAME, 
+  password: process.env.DB_PASSWORD,
+  port: process.env.DB_PORT || 5432, 
 });
 
-// Function to test the database connection
 const testConnection = async () => {
   try {
     const client = await pool.connect();
@@ -21,4 +21,4 @@ const testConnection = async () => {
   }
 };
 
-module.exports = { testConnection };
+module.exports = { pool, testConnection };

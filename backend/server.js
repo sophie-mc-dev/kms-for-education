@@ -1,19 +1,48 @@
-const express = require('express');
-const { testConnection } = require('./db');
+require("dotenv").config();
 
+const express = require("express");
+const session = require("express-session");
+const passport = require("./config/passport");
+const userRoutes = require("./routes/userRoutes");
+const { pool } = require("./db/db");
+const PgStore = require("connect-pg-simple")(session);
 
 const app = express();
-const port = 8080;
+const port = process.env.PORT; 
 
-app.get('/', (req, res) => {
-  res.send('Welcome to the KMS Backend!');
-});
+const { testConnection } = require('./db/db');
 
-app.listen(port, async () => {
-  console.log(`Server is listening on port ${port}`);
+async function startServer() {
   const isConnected = await testConnection();
   if (!isConnected) {
     console.error("Database connection failed. Exiting...");
-    process.exit(1); 
+    process.exit(1);
   }
-});
+
+  app.use(express.json());
+  app.use(express.urlencoded({ extended: true }));
+
+  app.use(
+    session({
+      store: new PgStore({
+        pool: pool,
+        conString: `postgres://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`,
+      }),
+      secret: process.env.SESSION_SECRET,
+      resave: false,
+      saveUninitialized: false,
+      cookie: { maxAge: 30 * 24 * 60 * 60 * 1000 },
+    })
+  );
+
+  app.use(passport.initialize());
+  app.use(passport.session());
+
+  app.use("/api/auth", userRoutes);
+
+  app.listen(port, () => {
+    console.log(`Server is running on port ${port}`);
+  });
+}
+
+startServer(); // Call the startServer function
