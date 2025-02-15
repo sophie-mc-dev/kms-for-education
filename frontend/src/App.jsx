@@ -1,14 +1,14 @@
-import { useState } from "react";
-import reactLogo from "./assets/react.svg";
-import viteLogo from "/vite.svg";
-import "./App.css";
+import { Routes, Route, Navigate } from "react-router-dom";
+import { Dashboard, Auth } from "@/layouts";
 
-const App = () => {
+function App() {
   return (
-    <div>
-      <h2>starting page</h2>
-    </div>
+    <Routes>
+      <Route path="/dashboard/*" element={<Dashboard />} />
+      <Route path="/auth/*" element={<Auth />} />
+      <Route path="*" element={<Navigate to="/dashboard/home" replace />} />
+    </Routes>
   );
-};
+}
 
 export default App;
