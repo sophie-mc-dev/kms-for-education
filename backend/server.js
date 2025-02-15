@@ -6,9 +6,10 @@ const passport = require("./config/passport");
 const userRoutes = require("./routes/userRoutes");
 const { pool } = require("./db/db");
 const PgStore = require("connect-pg-simple")(session);
+const cors = require("cors");
 
 const app = express();
-const port = process.env.PORT; 
+const port = process.env.PORT;
 
 const { testConnection } = require('./db/db');
 
@@ -18,6 +19,11 @@ async function startServer() {
     console.error("Database connection failed. Exiting...");
     process.exit(1);
   }
+
+  app.use(cors({
+    origin: "http://localhost:5173",
+    credentials: true
+  }));  
 
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
@@ -31,7 +37,11 @@ async function startServer() {
       secret: process.env.SESSION_SECRET,
       resave: false,
       saveUninitialized: false,
-      cookie: { maxAge: 30 * 24 * 60 * 60 * 1000 },
+      cookie: { 
+        maxAge: 30 * 24 * 60 * 60 * 1000,
+        secure: false, 
+        httpOnly: true
+      },
     })
   );
 
@@ -40,9 +50,13 @@ async function startServer() {
 
   app.use("/api/auth", userRoutes);
 
+  app.get("/", (req, res) => {
+    res.send("API is running...");
+  });
+
   app.listen(port, () => {
-    console.log(`Server is running on port ${port}`);
+    console.log(`Server is running on http://localhost:${port}`);
   });
 }
 
-startServer(); // Call the startServer function
+startServer();

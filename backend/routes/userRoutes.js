@@ -2,15 +2,25 @@ const express = require('express');
 const router = express.Router();
 const passport = require('passport');
 
-const authController = require('../controllers/userController'); 
+const userController = require('../controllers/userController'); 
 
-// REGISTER
-router.post('/signup', authController.signup);
+// Register user
+router.post('/sign-up', userController.signup);
 
-// LOGIN`
-router.post('/login', passport.authenticate('local', { 
-    failureRedirect: '/login',
+// Login user
+router.post('/sign-in', passport.authenticate('local', { 
+    failureRedirect: '/sign-in',
     failureFlash: true,
-}), authController.login);
+}), userController.login);
+
+// Get all users
+router.get('/users', userController.getAllUsers);
+
+// Get user by ID
+router.get('/users/:id', userController.getUserById);
+
+// Update user
+router.put('/users/:id', userController.updateUser);
+
 
 module.exports = router;
