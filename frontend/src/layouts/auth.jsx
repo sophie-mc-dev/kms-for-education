@@ -6,9 +6,13 @@ import {
   ArrowRightOnRectangleIcon,
 } from "@heroicons/react/24/solid";
 import { Navbar, Footer } from "@/widgets/layout";
-import routes from "@/routes";
+import studentRoutes from "@/routes/studentRoutes";
+import educatorRoutes from "@/routes/educatorRoutes";
 
 export function Auth() {
+  const userRole = JSON.parse(localStorage.getItem("user"))?.role;
+  const allRoutes = userRole === "educator" ? educatorRoutes : studentRoutes;
+
   const navbarRoutes = [
     {
       name: "dashboard",
@@ -35,11 +39,11 @@ export function Auth() {
   return (
     <div className="relative min-h-screen w-full">
       <Routes>
-        {routes.map(
+        {allRoutes.map(
           ({ layout, pages }) =>
             layout === "auth" &&
             pages.map(({ path, element }) => (
-              <Route exact path={path} element={element} />
+              <Route key={path} path={path} element={element} />
             ))
         )}
       </Routes>

@@ -1,3 +1,4 @@
+import React, { useEffect, useState } from "react";
 import { Routes, Route } from "react-router-dom";
 import { Cog6ToothIcon } from "@heroicons/react/24/solid";
 import { IconButton } from "@material-tailwind/react";
@@ -7,12 +8,28 @@ import {
   Configurator,
   Footer,
 } from "@/widgets/layout";
-import routes from "@/routes";
 import { useMaterialTailwindController, setOpenConfigurator } from "@/context";
+import { useUser } from "@/context/UserContext";
 
 export function Dashboard() {
   const [controller, dispatch] = useMaterialTailwindController();
   const { sidenavType } = controller;
+  const { userRole } = useUser(); // Get user role from context
+  const [routes, setRoutes] = useState([]);
+
+  // Dynamically import routes based on user role
+  useEffect(() => {
+    const loadRoutes = async () => {
+      if (userRole === "educator") {
+        const educatorRoutes = await import("@/routes/educatorRoutes");
+        setRoutes(educatorRoutes.default);
+      } else {
+        const studentRoutes = await import("@/routes/studentRoutes");
+        setRoutes(studentRoutes.default);
+      }
+    };
+    loadRoutes();
+  }, [userRole]);
 
   return (
     <div className="min-h-screen bg-blue-gray-50/50">
@@ -39,7 +56,7 @@ export function Dashboard() {
             ({ layout, pages }) =>
               layout === "dashboard" &&
               pages.map(({ path, element }) => (
-                <Route exact path={path} element={element} />
+                <Route key={path} exact path={path} element={element} />
               ))
           )}
         </Routes>

@@ -13,7 +13,7 @@ const icon = {
   className: "w-5 h-5 text-inherit",
 };
 
-export const routes = [
+export const studentRoutes = [
   {
     layout: "dashboard",
     pages: [
@@ -63,4 +63,4 @@ export const routes = [
   },
 ];
 
-export default routes;
+export default studentRoutes;

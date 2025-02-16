@@ -7,12 +7,14 @@ import {
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import axios from "axios";
+import { useUser } from "@/context/userContext";
 
 export function SignIn() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const { setUserRole } = useUser();
 
   // Handle form submission
   const handleSubmit = async (e) => {
@@ -28,7 +30,9 @@ export function SignIn() {
       });
 
       if (response.data.user) {
-        localStorage.setItem("user", JSON.stringify(response.data.user));
+        const userData = response.data.user;
+        localStorage.setItem("user", JSON.stringify(userData));
+        setUserRole(userData.user_role); 
         navigate("/dashboard/home");
       }
     } catch (err) {
