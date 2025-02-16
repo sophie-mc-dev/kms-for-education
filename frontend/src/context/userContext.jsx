@@ -18,7 +18,6 @@ export const UserProvider = ({ children }) => {
       const parsedUser = JSON.parse(storedUser);
       const role = parsedUser.user_role || "student";
       setUserRole(role);
-      console.log(storedUser);
     }
   }, []);
 
