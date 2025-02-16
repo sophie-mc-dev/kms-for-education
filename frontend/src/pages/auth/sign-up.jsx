@@ -6,13 +6,12 @@ import axios from "axios";
 export function SignUp() {
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
-    username: "",
     email: "",
     password: "",
     confirmPassword: "",
     firstName: "",
     lastName: "",
-    role: "student",
+    userRole: "student",
     termsAccepted: false,
   });
 
@@ -32,28 +31,19 @@ export function SignUp() {
       return;
     }
 
-    if (!formData.role) {
-      alert("Please select your role.");
-      return;
-    }
-
     try {
       const response = await axios.post("http://localhost:8080/api/auth/sign-up", {
-        username: formData.username,
         email: formData.email,
         password: formData.password,
         firstName: formData.firstName,
         lastName: formData.lastName,
-        role: formData.role,
+        userRole: formData.userRole,
       });
-  
       console.log("Registration successful:", response.data);
     } catch (error) {
       console.error("Registration failed:", error);
       alert("Registration failed. Please try again.");
     }
-
-
     console.log(formData);
   };
 
@@ -69,14 +59,13 @@ export function SignUp() {
         </div>
         <form onSubmit={handleSubmit} className="mt-8 mb-2 mx-auto w-80 max-w-screen-lg lg:w-1/2">
           <div className="mb-4 flex flex-col gap-4">
-            <Input size="lg" label="Username" name="username" value={formData.username} onChange={handleChange} required />
+            <Input size="lg" label="First Name" name="firstName" value={formData.firstName} onChange={handleChange} />
+            <Input size="lg" label="Last Name" name="lastName" value={formData.lastName} onChange={handleChange} />
             <Input type="email" size="lg" label="Email" name="email" value={formData.email} onChange={handleChange} required />
             <Input type={showPassword ? "text" : "password"} size="lg" label="Password" name="password" value={formData.password} onChange={handleChange} required />
             <Input type={showPassword ? "text" : "password"} size="lg" label="Confirm Password" name="confirmPassword"  value={formData.confirmPassword} onChange={handleChange} required />
             <Checkbox label="Show Password" checked={showPassword} onChange={() => setShowPassword(!showPassword)} />
-            <Input size="lg" label="First Name" name="firstName" value={formData.firstName} onChange={handleChange} />
-            <Input size="lg" label="Last Name" name="lastName" value={formData.lastName} onChange={handleChange} />
-            <Select label="Role" name="role" value={formData.role} onChange={(e) => setFormData({ ...formData, role: e })} required>
+            <Select label="Role" name="userRole" value={formData.userRole} onChange={(value) => setFormData({ ...formData, userRole: value })} required>
               <Option value="" disabled>Select your role</Option>
               <Option value="student">Student</Option>
               <Option value="educator">Educator</Option>

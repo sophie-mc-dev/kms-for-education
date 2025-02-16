@@ -1,26 +1,32 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const passport = require('passport');
+const passport = require("passport");
 
-const userController = require('../controllers/userController'); 
+const userController = require("../controllers/userController");
 
 // Register user
-router.post('/sign-up', userController.signup);
+router.post("/sign-up", userController.signup);
 
 // Login user
-router.post('/sign-in', passport.authenticate('local', { 
-    failureRedirect: '/sign-in',
-    failureFlash: true,
-}), userController.login);
+router.post(
+  "/sign-in",
+  passport.authenticate("local", { failureMessage: true }),
+  userController.signin
+);
 
 // Get all users
-router.get('/users', userController.getAllUsers);
+router.get("/users", userController.getAllUsers);
 
 // Get user by ID
-router.get('/users/:id', userController.getUserById);
+router.get("/users/:id", userController.getUserById);
 
 // Update user
-router.put('/users/:id', userController.updateUser);
+router.put("/users/:id", userController.updateUser);
 
+// Delete all users
+router.delete('/users', userController.deleteAllUsers);
+
+// Delete user by ID
+router.delete('/users/:id', userController.deleteUserById);
 
 module.exports = router;

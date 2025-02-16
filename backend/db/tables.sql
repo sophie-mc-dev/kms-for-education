@@ -6,7 +6,6 @@ BEGIN;
 CREATE TABLE IF NOT EXISTS public.users
 (
     user_id serial,
-    username text NOT NULL,
     email text NOT NULL,
     password_hash text NOT NULL,
     first_name text,
