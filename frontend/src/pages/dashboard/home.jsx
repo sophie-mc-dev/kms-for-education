@@ -27,6 +27,20 @@ import {
 } from "@/data";
 import { CheckCircleIcon, ClockIcon } from "@heroicons/react/24/solid";
 
+/*
+TODO:
+
+STUDENT:
+- Recently accessed resources
+- Enrolled Learning Paths
+- Recommended resources/learning paths
+- Upcoming/Unfinished assignments/deadlines
+
+EDUCATOR:
+- Courses/Learning Paths Overview
+- Recent Activity/Uploads/Creations
+*/
+
 export function Home() {
   return (
     <div className="mt-12">
@@ -75,7 +89,7 @@ export function Home() {
           >
             <div>
               <Typography variant="h6" color="blue-gray" className="mb-1">
-                Projects
+                Learning Paths
               </Typography>
               <Typography
                 variant="small"

@@ -10,11 +10,12 @@ import {
 } from "@/widgets/layout";
 import { useMaterialTailwindController, setOpenConfigurator } from "@/context";
 import { useUser } from "@/context/UserContext";
+import { ResourceDetail } from "@/pages/dashboard";
 
 export function Dashboard() {
   const [controller, dispatch] = useMaterialTailwindController();
   const { sidenavType } = controller;
-  const { userRole } = useUser(); // Get user role from context
+  const { userRole } = useUser();
   const [routes, setRoutes] = useState([]);
 
   // Dynamically import routes based on user role
@@ -59,9 +60,10 @@ export function Dashboard() {
                 <Route key={path} exact path={path} element={element} />
               ))
           )}
+          <Route path="search/resources/:resourceId" element={<ResourceDetail />} />
         </Routes>
         <div className="text-blue-gray-600">
-          <Footer />
+          {/* <Footer /> */}
         </div>
       </div>
     </div>
