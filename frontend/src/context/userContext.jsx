@@ -3,11 +3,16 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 const UserContext = createContext();
 
 export const UserProvider = ({ children }) => {
+  const [user, setUser] = useState(() => {
+    const storedUser = localStorage.getItem("user");
+    return storedUser ? JSON.parse(storedUser) : null;
+  });
+
   const [userRole, setUserRole] = useState(() => {
     const storedUser = localStorage.getItem("user");
     if (storedUser) {
       const parsedUser = JSON.parse(storedUser);
-      return parsedUser.user_role || "student";
+      return parsedUser.user_role || "student"; // Default to student
     }
     return "student";
   });
@@ -16,13 +21,13 @@ export const UserProvider = ({ children }) => {
     const storedUser = localStorage.getItem("user");
     if (storedUser) {
       const parsedUser = JSON.parse(storedUser);
-      const role = parsedUser.user_role || "student";
-      setUserRole(role);
+      setUser(parsedUser);
+      setUserRole(parsedUser.user_role || "student");
     }
   }, []);
 
   return (
-    <UserContext.Provider value={{ userRole, setUserRole }}>
+    <UserContext.Provider value={{ user, setUser, userRole, setUserRole }}>
       {children}
     </UserContext.Provider>
   );

@@ -14,7 +14,7 @@ import {
   Tables,
   Notifications,
   Search,
-  Resources,
+  StudentResources,
 } from "@/pages/dashboard";
 import { SignIn, SignUp } from "@/pages/auth";
 
@@ -40,9 +40,9 @@ export const studentRoutes = [
       },
       {
         icon: <BookOpenIcon {...icon} />,
-        name: "resources",
+        name: "my resources",
         path: "/resources",
-        element: <Resources />,
+        element: <StudentResources />,
       },
       {
         icon: <UserCircleIcon {...icon} />,

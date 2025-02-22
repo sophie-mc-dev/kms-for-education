@@ -10,7 +10,8 @@ import {
 } from "@/widgets/layout";
 import { useMaterialTailwindController, setOpenConfigurator } from "@/context";
 import { useUser } from "@/context/UserContext";
-import { ResourceDetail } from "@/pages/dashboard";
+import { ResourceDetail, UploadResource } from "@/pages/dashboard";
+
 
 export function Dashboard() {
   const [controller, dispatch] = useMaterialTailwindController();
@@ -61,6 +62,7 @@ export function Dashboard() {
               ))
           )}
           <Route path="search/resources/:resourceId" element={<ResourceDetail />} />
+          <Route path="resources/upload" element={<UploadResource />} />
         </Routes>
         <div className="text-blue-gray-600">
           {/* <Footer /> */}

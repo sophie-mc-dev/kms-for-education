@@ -4,8 +4,7 @@ const express = require("express");
 const session = require("express-session");
 const passport = require("./config/passport");
 const userRoutes = require("./routes/userRoutes");
-const { pool } = require("./db/db");
-const PgStore = require("connect-pg-simple")(session);
+const resourceRoutes = require("./routes/resourceRoutes");
 const cors = require("cors");
 
 const app = express();
@@ -50,6 +49,7 @@ async function startServer() {
 
   // Routes
   app.use("/api/auth", userRoutes);
+  app.use("/api/resources", resourceRoutes);
 
   app.get("/", (req, res) => {
     res.send("API is running...");

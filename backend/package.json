@@ -52,6 +52,7 @@
     "mime-db": "^1.52.0",
     "mime-types": "^2.1.35",
     "ms": "^2.0.0",
+    "multer": "^1.4.5-lts.1",
     "negotiator": "^0.6.3",
     "object-inspect": "^1.13.3",
     "on-finished": "^2.4.1",
@@ -82,7 +83,8 @@
   },
   "scripts": {
     "test": "jest",
-    "start": "node server.js"
+    "start": "node server.js",
+    "dev": "nodemon server.js"
   },
   "jest": {
     "testEnvironment": "node",
@@ -94,6 +96,7 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "jest": "^29.7.0"
+    "jest": "^29.7.0",
+    "nodemon": "^3.1.9"
   }
 }

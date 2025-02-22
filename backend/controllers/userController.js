@@ -72,20 +72,26 @@ const userController = {
   // Update user info
   updateUser: async (req, res) => {
     const userId = req.params.id;
-    const { email, firstName, lastName, userRole, password } = req.body;
+    const { email, first_name, last_name, user_role, password } = req.body;
+
+    if (!user_role) {
+      return res.status(400).json({ message: "user_role is required" });
+    }
 
     try {
-      let updateQuery =
-        "UPDATE users SET email = $2, first_name = $3, last_name = $4, user_role = $5";
-      let values = [email, firstName, lastName, userRole, userId];
+      let updateQuery = `
+        UPDATE users 
+        SET email = $1, first_name = $2, last_name = $3, user_role = $4, updated_at = NOW()`;
+      let values = [email, first_name, last_name, user_role];
 
       if (password) {
         const passwordHash = await hashPassword(password);
-        updateQuery += ", password_hash = $6";
-        values = [email, firstName, lastName, userRole, passwordHash, userId];
+        updateQuery += ", password_hash = $5";
+        values.push(passwordHash);
       }
 
-      updateQuery += " WHERE user_id = $" + values.length + " RETURNING *";
+      values.push(userId); // Append userId at the end
+      updateQuery += ` WHERE user_id = $${values.length} RETURNING *`;
 
       const result = await pool.query(updateQuery, values);
       const updatedUser = result.rows[0];

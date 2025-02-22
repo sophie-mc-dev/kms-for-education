@@ -43,95 +43,102 @@ export function ResourceDetail() {
     .slice(0, 3);
 
   return (
-    <div className="p-4">
-      <div className="flex flex-col md:flex-row gap-4">
-        <div className="md:w-3/4">
-          <Card className="border border-gray-200 shadow-md p-4 flex flex-col min-h-screen">
-            <CardBody className="flex-grow">
+    <div className="p-4 flex gap-4 h-full">
+      <div className="w-3/4 flex flex-col gap-4">
+        <Card className="border border-gray-200 shadow-md p-4 flex-1">
+          <CardBody>
             <div className="flex items-center mb-6">
-    {getIcon(resource.type)}
-    <Typography variant="h4" color="blue-gray" className="font-semibold ml-2">
-      {resource.title}
-    </Typography>
-  </div>
+              {getIcon(resource.type)}
+              <Typography variant="h4" color="blue-gray" className="font-semibold ml-2">
+                {resource.title}
+              </Typography>
+            </div>
 
-  <Typography variant="paragraph" color="blue-gray" className="mb-6 leading-relaxed">
-    {resource.description}
-  </Typography>
+            <Typography variant="paragraph" color="blue-gray" className="mb-6 leading-relaxed">
+              {resource.description}
+            </Typography>
 
-  <div className="mb-6">
-    <div className="flex flex-wrap gap-4">
-      <div className="flex items-center">
-        <Typography variant="small" color="blue-gray" className="font-semibold mr-1">
-          Category:
-        </Typography>
-        <Typography variant="small" color="blue-gray">
-          {resource.category}
-        </Typography>
-      </div>
-      <div className="flex items-center">
-        <Typography variant="small" color="blue-gray" className="font-semibold mr-1">
-          Type:
-        </Typography>
-        <Typography variant="small" color="blue-gray">
-          {resource.type}
-        </Typography>
-      </div>
-      <div className="flex items-center">
-        <Typography variant="small" color="blue-gray" className="font-semibold mr-1">
-          Author:
-        </Typography>
-        <Typography variant="small" color="blue-gray">
-          {resource.author}
-        </Typography>
-      </div>
-    </div>
-  </div>
+            <div className="mb-6 flex flex-wrap gap-4">
+              <div className="flex items-center">
+                <Typography variant="small" color="blue-gray" className="font-semibold mr-1">
+                  Category:
+                </Typography>
+                <Typography variant="small" color="blue-gray">
+                  {resource.category}
+                </Typography>
+              </div>
+              <div className="flex items-center">
+                <Typography variant="small" color="blue-gray" className="font-semibold mr-1">
+                  Type:
+                </Typography>
+                <Typography variant="small" color="blue-gray">
+                  {resource.type}
+                </Typography>
+              </div>
+              <div className="flex items-center">
+                <Typography variant="small" color="blue-gray" className="font-semibold mr-1">
+                  Author:
+                </Typography>
+                <Typography variant="small" color="blue-gray">
+                  {resource.author}
+                </Typography>
+              </div>
+            </div>
 
-  <div className="mb-6">
-    <Typography variant="small" color="blue-gray" className="font-semibold mb-2">
-      Tags:
-    </Typography>
-    <div className="flex flex-wrap gap-2">
-      {resource.tags.map((tag) => (
-        <Chip
-          key={tag}
-          value={tag}
-          className="bg-blue-gray-100 text-blue-gray-700 font-medium"
-        />
-      ))}
-    </div>
-  </div>
-              {resource.type === 'link' && (
-                <Button color="blue-gray" onClick={() => window.open(resource.url, '_blank', 'noopener, noreferrer')} className="mt-4">
-                  Visit Resource
-                </Button>
-              )}
-              {resource.type === 'video' && (
-                <iframe title={resource.title} width="100%" height="315" src={resource.url} allowFullScreen></iframe>
-              )}
-              {resource.type === 'document' && (
-                <iframe title={resource.title} src={resource.url} width="100%" height="600px"></iframe>
-              )}
-              {resource.type === 'exercise' && (
-                <Typography variant="paragraph">Exercise content and submission form will be here...</Typography>
-              )}
-            </CardBody>
-          </Card>
-        </div>
-        <div className="md:w-1/4">
-          <Card className="border border-gray-200 shadow-md p-4 flex flex-col min-h-screen">
-            <CardBody className="flex-grow">
-              <Typography variant="h6" className="font-semibold mb-2">Related Resources</Typography>
-              {relatedResources.map((related) => (
-                <div key={related.id} className="mb-2">
-                  <Typography variant="body2" className="font-semibold">{related.title}</Typography>
-                  <Typography variant="small" className="text-gray-600">{related.description.substring(0, 50)}...</Typography>
-                </div>
-              ))}
-            </CardBody>
-          </Card>
-        </div>
+            <div className="mb-6">
+              <Typography variant="small" color="blue-gray" className="font-semibold mb-2">
+                Tags:
+              </Typography>
+              <div className="flex flex-wrap gap-2">
+                {resource.tags.map((tag) => (
+                  <Chip
+                    key={tag}
+                    value={tag}
+                    className="bg-blue-gray-100 text-blue-gray-700 font-medium"
+                  />
+                ))}
+              </div>
+            </div>
+
+            {resource.type === 'link' && (
+              <Button color="blue-gray" onClick={() => window.open(resource.url, '_blank', 'noopener, noreferrer')} className="mt-4">
+                Visit Resource
+              </Button>
+            )}
+            {resource.type === 'video' && (
+              <iframe title={resource.title} width="100%" src={resource.url} allowFullScreen></iframe>
+            )}
+            {resource.type === 'document' && (
+              <iframe title={resource.title} src={resource.url} width="100%"></iframe>
+            )}
+            {resource.type === 'exercise' && (
+              <Typography variant="paragraph">Exercise content and submission form will be here...</Typography>
+            )}
+          </CardBody>
+        </Card>
+
+        {/* Related Resources */}
+        <Card className="border border-gray-200 shadow-md p-4">
+          <CardBody>
+            <Typography variant="h6" className="font-semibold mb-2">Related Resources</Typography>
+            <Typography variant="small" className="text-gray-600 italic">
+              {/* Placeholder for future implementation */}
+              Related resources not available yet.
+            </Typography>
+          </CardBody>
+        </Card>
+      </div>
+
+      <div className="w-1/4">
+        <Card className="border border-gray-200 shadow-md p-4 h-full">
+          <CardBody>
+            <Typography variant="h6" className="font-semibold mb-2">Related Learning Paths</Typography>
+            <Typography variant="small" className="text-gray-600 italic">
+              {/* Placeholder for future implementation */}
+              Learning paths that include this resource will be displayed here.
+            </Typography>
+          </CardBody>
+        </Card>
       </div>
     </div>
   );

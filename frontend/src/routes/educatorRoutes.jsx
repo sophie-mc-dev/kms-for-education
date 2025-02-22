@@ -1,12 +1,11 @@
 import {
     HomeIcon,
     UserCircleIcon,
-    TableCellsIcon,
-    InformationCircleIcon,
     ServerStackIcon,
     RectangleStackIcon,
+    BookOpenIcon
   } from "@heroicons/react/24/solid";
-  import { Home, Profile, Tables, Notifications } from "@/pages/dashboard";
+  import { Home, Profile, EducatorResources } from "@/pages/dashboard";
   import { SignIn, SignUp } from "@/pages/auth";
   
   const icon = {
@@ -22,6 +21,12 @@ import {
           name: "dashboard",
           path: "/home",
           element: <Home />,
+        },
+        {
+          icon: <BookOpenIcon {...icon} />,
+          name: "my resources",
+          path: "/resources",
+          element: <EducatorResources />,
         },
         {
           icon: <UserCircleIcon {...icon} />,
