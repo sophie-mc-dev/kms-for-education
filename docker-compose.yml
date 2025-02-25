@@ -1,28 +1,60 @@
 version: '3.8'
 
 services:
-  frontend:
-    build:
-      context: ./frontend  
-    container_name: kms-frontend-container
-    ports:
-      - "5174:5174"
-    volumes:
-      - ./frontend:/frontend
-      - /frontend/node_modules
-    environment:
-      - CHOKIDAR_USEPOLLING=true
-    command: npm run dev
+  postgres:
+    image: postgres:latest
+    container_name: kms-db-container
     restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: kms-user
+      POSTGRES_PASSWORD: kms-user123
+      POSTGRES_DB: kms-db
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kms-user -d kms-db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   backend:
     build:
       context: ./backend  
     container_name: kms-backend-container
+    depends_on:
+      postgres:
+        condition: service_healthy  # Ensures PostgreSQL is ready before starting
     ports:
       - "8080:8080"
     volumes:
       - ./backend:/backend
       - /backend/node_modules
-    command: npm start  
+    environment:
+      - DB_HOST=postgres  # Matches PostgreSQL service name
+      - DB_USER=kms-user
+      - DB_PASSWORD=kms-user123
+      - DB_NAME=kms-db
+      - DB_PORT=5432
+    command: npm run dev  
     restart: always
+
+  frontend:
+    build:
+      context: ./frontend  
+    container_name: kms-frontend-container
+    depends_on:
+      - backend  # Ensures backend starts first
+    ports:
+      - "5173:5173"  # Use default Vite port
+    volumes:
+      - ./frontend:/frontend
+      - /frontend/node_modules  # Keep isolated node_modules
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+    command: npm run dev
+    restart: always
+
+volumes:
+  pgdata:

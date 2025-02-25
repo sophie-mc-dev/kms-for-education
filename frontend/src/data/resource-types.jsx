@@ -1,0 +1,42 @@
+import {
+  NewspaperIcon,
+  BookOpenIcon,
+  ClipboardDocumentIcon,
+  DocumentTextIcon,
+  TableCellsIcon,
+  DeviceTabletIcon,
+  AcademicCapIcon,
+  ChartBarIcon,
+  PuzzlePieceIcon,
+  VideoCameraIcon,
+  PlayCircleIcon,
+  PresentationChartBarIcon,
+  BeakerIcon,
+  ArchiveBoxIcon,
+  FilmIcon,
+  LinkIcon,
+} from "@heroicons/react/24/outline";
+
+export const resourceTypes = [
+  { id: 1, name: "Articles", color: "orange", icon: <NewspaperIcon className="h-5 w-5" /> },
+  { id: 2, name: "Book", color: "blue", icon: <DeviceTabletIcon className="h-5 w-5" /> },
+  { id: 3, name: "Case Study", color: "green", icon: <ClipboardDocumentIcon className="h-5 w-5" /> },
+  { id: 4, name: "Cheat Sheet", color: "indigo", icon: <DocumentTextIcon className="h-5 w-5" /> },
+  { id: 5, name: "Collection", color: "purple", icon: <BookOpenIcon className="h-5 w-5" /> },
+  { id: 6, name: "Dataset", color: "orange", icon: <TableCellsIcon className="h-5 w-5" /> },
+  { id: 7, name: "Documentation", color: "red", icon: <BookOpenIcon className="h-5 w-5" /> },
+  { id: 8, name: "E-Book", color: "blue", icon: <DeviceTabletIcon className="h-5 w-5" /> },
+  { id: 9, name: "Glossary", color: "red", icon: <AcademicCapIcon className="h-5 w-5" /> },
+  { id: 10, name: "Infographic", color: "yellow", icon: <ChartBarIcon className="h-5 w-5" /> },
+  { id: 11, name: "Interactive Activity", color: "teal", icon: <PuzzlePieceIcon className="h-5 w-5" /> },
+  { id: 12, name: "Lecture Video", color: "red", icon: <VideoCameraIcon className="h-5 w-5" /> },
+  { id: 13, name: "Online Course", color: "blue", icon: <PlayCircleIcon className="h-5 w-5" /> },
+  { id: 14, name: "Presentation Slides", color: "green", icon: <PresentationChartBarIcon className="h-5 w-5" /> },
+  { id: 15, name: "Reports and White Papers", color: "gray", icon: <BookOpenIcon className="h-5 w-5" /> },
+  { id: 16, name: "Research Paper", color: "indigo", icon: <BeakerIcon className="h-5 w-5" /> },
+  { id: 17, name: "Thesis / Dissertation", color: "blue", icon: <ArchiveBoxIcon className="h-5 w-5" /> },
+  { id: 18, name: "Tutorial Video", color: "red", icon: <FilmIcon className="h-5 w-5" /> },
+  { id: 19, name: "Webinars & Videos", color: "purple", icon: <VideoCameraIcon className="h-5 w-5" /> },
+  { id: 20, name: "Link", color: "gray", icon: <LinkIcon className="h-5 w-5" /> }
+];
+

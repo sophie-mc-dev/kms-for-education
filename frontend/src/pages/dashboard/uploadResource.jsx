@@ -17,13 +17,19 @@ import { XMarkIcon, CloudArrowUpIcon } from "@heroicons/react/24/solid";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
 
-import { resourceTypes } from "@/data/resource-types";
+import { resourceTypes } from "@/data/resource-types.jsx";
 import { resourceCategories } from "@/data/resource-categories";
 import { useUser } from "@/context/userContext";
 
 export function UploadResource() {
   const navigate = useNavigate();
   const { user, setUser } = useUser();
+  const [tagInput, setTagInput] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const [successMessage, setSuccessMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+  const [errors, setErrors] = useState({});
 
   const [formData, setFormData] = useState({
     title: "",
@@ -34,12 +40,8 @@ export function UploadResource() {
     tags: [],
     file: null,
     visibility: "public",
+    estimatedTime: "",
   });
-
-  const [tagInput, setTagInput] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [successMessage, setSuccessMessage] = useState("");
-  const [errorMessage, setErrorMessage] = useState("");
 
   const handleInputChange = (event) => {
     const { name, value } = event.target;
@@ -49,6 +51,7 @@ export function UploadResource() {
     }));
   };
 
+  // todo
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -86,8 +89,20 @@ export function UploadResource() {
     }));
   };
 
+  const validateForm = () => {
+    let newErrors = {};
+
+    if (!formData.title.trim()) newErrors.title = "Title is required";
+    if (!formData.type) newErrors.type = "Type is required";
+    if (!formData.category) newErrors.category = "Category is required";
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!validateForm()) return;
     setLoading(true);
     setSuccessMessage("");
     setErrorMessage("");
@@ -96,7 +111,10 @@ export function UploadResource() {
       ...formData,
       tags: formData.tags,
     };
-    console.log("Submitting Form Data:", formattedData);
+
+    if (validateForm()) {
+      console.log("Form submitted:", formattedData);
+    }
 
     // const createdBy = `${user.first_name} ${user.last_name}`;
     const formDataToSend = new FormData();
@@ -111,6 +129,7 @@ export function UploadResource() {
     formDataToSend.append("category", formData.category);
     formDataToSend.append("created_by", "Sample Author");
     formDataToSend.append("visibility", formData.visibility);
+    formDataToSend.append("estimatedTime", formData.estimatedTime);
 
     // Append file (if exists)
     if (formData.file) {
@@ -118,12 +137,12 @@ export function UploadResource() {
     }
 
     formData.tags.forEach((tag) => {
-      formDataToSend.append("tags[]", tag); 
+      formDataToSend.append("tags[]", tag);
     });
 
     // Debugging: Log FormData contents
     for (let pair of formDataToSend.entries()) {
-      console.log(pair[0], pair[1]);
+      // console.log(pair[0], pair[1]);
     }
 
     try {
@@ -174,13 +193,18 @@ export function UploadResource() {
         </CardHeader>
 
         <CardBody className="p-6 space-y-6">
-          <Input
-            label="Title"
-            name="title"
-            value={formData.title}
-            onChange={handleInputChange}
-            required
-          />
+          <div>
+            <Input
+              label="Title"
+              name="title"
+              value={formData.title}
+              onChange={handleInputChange}
+              required
+            />
+            {errors.title && (
+              <p className="text-red-500 text-sm mt-2">{errors.title}</p>
+            )}
+          </div>
 
           <ReactQuill
             theme="snow"
@@ -195,55 +219,69 @@ export function UploadResource() {
             onChange={handleInputChange}
           />
 
-          <Select
-            label="Type"
-            name="type"
-            value={formData.type}
-            onChange={(value) =>
-              setFormData((prev) => ({ ...prev, type: value }))
-            }
-            required
-          >
-            <Option value="" disabled>
-              Select the resource format
-            </Option>
-            {resourceTypes.map((type) => (
-              <Option key={type.id} value={type.name}>
-                {type.name}
-              </Option>
-            ))}
-          </Select>
+          <div className="flex gap-4">
+            {/* Type Select */}
+            <div className="flex-1">
+              <Select
+                label="Type"
+                name="type"
+                value={formData.type}
+                onChange={(value) =>
+                  setFormData((prev) => ({ ...prev, type: value }))
+                }
+                required
+              >
+                <Option value="" disabled>
+                  Select the resource format
+                </Option>
+                {resourceTypes.map((type) => (
+                  <Option key={type.id} value={type.name}>
+                    {type.name}
+                  </Option>
+                ))}
+              </Select>
+              {errors.type && (
+                <p className="text-red-500 text-sm mt-2">{errors.type}</p>
+              )}
+            </div>
 
-          <Select
-            label="Category"
-            name="category"
-            value={formData.category}
-            onChange={(value) =>
-              setFormData((prev) => ({ ...prev, category: value }))
-            }
-            required
-          >
-            <Option value="" disabled>
-              Select a category
-            </Option>
-            {resourceCategories.map((category) => (
-              <Option key={category.id} value={category.name}>
-                {category.name}
-              </Option>
-            ))}
-          </Select>
+            {/* Category Select */}
+            <div className="flex-1">
+              <Select
+                label="Category"
+                name="category"
+                value={formData.category}
+                onChange={(value) =>
+                  setFormData((prev) => ({ ...prev, category: value }))
+                }
+                required
+              >
+                <Option value="" disabled>
+                  Select a category
+                </Option>
+                {resourceCategories.map((category) => (
+                  <Option key={category.id} value={category.name}>
+                    {category.name}
+                  </Option>
+                ))}
+              </Select>
+              {errors.category && (
+                <p className="text-red-500 text-sm mt-2">{errors.category}</p>
+              )}
+            </div>
+          </div>
 
           <div>
             <div className="border border-gray-300 p-2 rounded-md w-full flex flex-wrap gap-2">
               {formData.tags.map((tag, index) => (
                 <div
                   key={index}
-                  className="flex items-center bg-blue-200 px-2 py-1 rounded-md"
+                  className="flex items-center bg-green-200 px-2 py-1 rounded-md"
                 >
-                  <span className="text-sm text-blue-900">{tag}</span>
+                  <span className="text-sm text-green-900">{tag}</span>
                   <button
                     onClick={() => removeTag(index)}
-                    className="ml-1 text-blue-700"
+                    className="ml-1 text-green-700"
                   >
                     <XMarkIcon className="w-4 h-4" />
                   </button>
@@ -268,6 +306,15 @@ export function UploadResource() {
               className="mt-1 block w-full text-sm text-gray-500"
             />
           </div>
+
+          <Input
+            label="Estimated Time (minutes)"
+            name="estimatedTime"
+            type="number"
+            min="1"
+            value={formData.estimatedTime}
+            onChange={handleInputChange}
+          />
 
           <div>
             <div className="flex gap-4">

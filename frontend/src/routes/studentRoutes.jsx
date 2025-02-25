@@ -1,8 +1,7 @@
 import {
   HomeIcon,
   UserCircleIcon,
-  TableCellsIcon,
-  InformationCircleIcon,
+  ClipboardDocumentCheckIcon,
   ServerStackIcon,
   RectangleStackIcon,
   MagnifyingGlassIcon,
@@ -15,8 +14,11 @@ import {
   Notifications,
   Search,
   StudentResources,
+  StudentLearningPath,
 } from "@/pages/dashboard";
 import { SignIn, SignUp } from "@/pages/auth";
+
+
 
 const icon = {
   className: "w-5 h-5 text-inherit",
@@ -45,6 +47,12 @@ export const studentRoutes = [
         element: <StudentResources />,
       },
       {
+        icon: <ClipboardDocumentCheckIcon {...icon} />,
+        name: "learning paths",
+        path: "/learningpaths",
+        element: <StudentLearningPath />,
+      },
+      {
         icon: <UserCircleIcon {...icon} />,
         name: "profile",
         path: "/profile",
@@ -70,19 +78,6 @@ export const studentRoutes = [
         element: <SignUp />,
       },
       // TODO: add logout button that takes user to homepage
-
-      {
-        icon: <TableCellsIcon {...icon} />,
-        name: "tables",
-        path: "/tables",
-        element: <Tables />,
-      },
-      {
-        icon: <InformationCircleIcon {...icon} />,
-        name: "notifications",
-        path: "/notifications",
-        element: <Notifications />,
-      },
     ],
   },
 ];

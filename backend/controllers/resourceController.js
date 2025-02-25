@@ -5,16 +5,16 @@ const resourceController = {
   uploadResource: async (req, res) => {
     console.log("Received Form Data:", req.body); 
 
-    const { title, description, url, type, category, created_by, tags, visibility } = req.body;
+    const { title, description, url, type, category, created_by, tags, visibility, estimated_time } = req.body;
 
     try {
         let file_path = req.file ? req.file.path : null; // If no file, this will be null
 
         const result = await pool.query(
-            `INSERT INTO resources (title, description, url, type, category, created_by, tags, file_path, visibility) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
+            `INSERT INTO resources (title, description, url, type, category, created_by, tags, file_path, visibility, estimated_time) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
             RETURNING *`,
-            [title, description, url, type, category, created_by, tags, file_path, visibility]
+            [title, description, url, type, category, created_by, tags, file_path, visibility, estimated_time]
         );
 
         res.status(201).json({ message: "Resource uploaded successfully", resource: result.rows[0] });

@@ -1,102 +1,96 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   Input,
-  Chip,
   Card,
   CardBody,
   Typography,
-} from '@material-tailwind/react';
-import {
-  VideoCameraIcon,
-  DocumentTextIcon,
-  PuzzlePieceIcon,
-  LinkIcon,
-} from '@heroicons/react/24/outline';
-import { useNavigate } from 'react-router-dom';
-import { exampleResources } from '@/data/exampleResources';
+  Checkbox,
+  Chip,
+  Button,
+} from "@material-tailwind/react";
+import { resourceTypes } from "@/data/resource-types.jsx";
+import { resourceCategories } from "@/data/resource-categories";
+import { ResourceCard } from "@/widgets/cards/";
 
 export function Search() {
-  const navigate = useNavigate();
-  const [searchQuery, setSearchQuery] = useState('');
+  const [resources, setResources] = useState([]);
+  const [searchQuery, setSearchQuery] = useState("");
+
   const [categoryFilter, setCategoryFilter] = useState([]);
+  const [typeFilter, setTypeFilter] = useState([]);
   const [tagFilter, setTagFilter] = useState([]);
-  const [typeFilter, setTypeFilter] = useState('');
 
-  const categories = ['Databases', 'Programming', 'Algorithms', 'Web Development'];
-  const tags = [
-    'SQL',
-    'Database',
-    'Java',
-    'OOP',
-    'Data Structures',
-    'Exercises',
-    'HTML',
-    'CSS',
-    'Javascript',
-  ];
-  const types = ['video', 'document', 'exercise', 'link'];
+  const [expanded, setExpanded] = useState(false);
+  const visibleLimit = 5;
 
-  const filteredResources = exampleResources.filter((resource) => {
+  const getAllResources = async () => {
+    try {
+      const response = await fetch("http://localhost:8080/api/resources");
+      if (!response.ok) {
+        throw new Error("Failed to fetch resources");
+      }
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error("Error fetching resources:", error);
+      return [];
+    }
+  };
+
+  useEffect(() => {
+    const fetchResources = async () => {
+      const data = await getAllResources();
+      setResources(data);
+    };
+    fetchResources();
+  }, []);
+
+  const filteredResources = resources.filter((resource) => {
     const searchMatch =
       resource.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       resource.description.toLowerCase().includes(searchQuery.toLowerCase());
 
+    const typeMatch =
+      typeFilter.length > 0 ? typeFilter.includes(resource.type) : true;
+
     const categoryMatch =
-      categoryFilter.length > 0 ? categoryFilter.includes(resource.category) : true;
+      categoryFilter.length > 0
+        ? categoryFilter.includes(resource.category)
+        : true;
 
     const tagMatch =
-      tagFilter.length > 0 ? resource.tags.some((tag) => tagFilter.includes(tag)) : true;
-
-    const typeMatch = typeFilter ? resource.type === typeFilter : true;
+      tagFilter.length > 0
+        ? resource.tags.some((tag) => tagFilter.includes(tag))
+        : true;
 
     return searchMatch && categoryMatch && tagMatch && typeMatch;
   });
 
-  const handleCategoryChange = (category) => {
+  // Toggle category selection
+  const toggleCategory = (category) => {
     setCategoryFilter((prev) =>
-      prev.includes(category) ? prev.filter((item) => item !== category) : [...prev, category]
+      prev.includes(category)
+        ? prev.filter((c) => c !== category)
+        : [...prev, category]
     );
   };
 
-  const handleTagChange = (tag) => {
+  // Toggle type selection
+  const toggleType = (type) => {
+    setTypeFilter((prev) =>
+      prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type]
+    );
+  };
+
+  const handleTagClick = (tag) => {
     setTagFilter((prev) =>
-      prev.includes(tag) ? prev.filter((item) => item !== tag) : [...prev, tag]
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
     );
-  };
-
-  const getIcon = (type) => {
-    switch (type) {
-      case 'video':
-        return <VideoCameraIcon className="h-6 w-6 mr-2 text-red-500" />;
-      case 'document':
-        return <DocumentTextIcon className="h-6 w-6 mr-2 text-blue-500" />;
-      case 'exercise':
-        return <PuzzlePieceIcon className="h-6 w-6 mr-2 text-green-500" />;
-      case 'link':
-        return <LinkIcon className="h-6 w-6 mr-2 text-brown-500" />;
-      default:
-        return null;
-    }
-  };
-
-  const getTypeColor = (type, isSelected) => {
-    switch (type) {
-      case 'video':
-        return isSelected ? 'bg-red-500 text-white' : 'border-red-500 text-red-500';
-      case 'document':
-        return isSelected ? 'bg-blue-500 text-white' : 'border-blue-500 text-blue-500';
-      case 'exercise':
-        return isSelected ? 'bg-green-500 text-white' : 'border-green-500 text-green-500';
-      case 'link':
-        return isSelected ? 'bg-brown-500 text-white' : 'border-brown-500 text-brown-500';
-      default:
-        return '';
-    }
   };
 
   return (
-    <div className="p-4 grid grid-cols-4 gap-4">
-      <Card className="col-span-4 mb-6 border border-gray-300 shadow-md rounded-lg">
+    <div className="mt-12 grid grid-cols-4 gap-4">
+      <Card className="col-span-4 border border-gray-300 shadow-md rounded-lg">
         <CardBody className="space-y-6 p-6">
           <Input
             label="Search Resources"
@@ -104,75 +98,24 @@ export function Search() {
             onChange={(e) => setSearchQuery(e.target.value)}
             className="mb-4"
           />
-          <div className="mb-4">
-            <div className="flex flex-wrap gap-3">
-              {types.map((type) => {
-                const isSelected = typeFilter === type;
-                return (
-                  <Chip
-                    key={type}
-                    value={
-                      <span className="flex items-center">
-                        {getIcon(type)}
-                        {type.charAt(0).toUpperCase() + type.slice(1)}
-                      </span>
-                    }
-                    onClick={() => setTypeFilter(isSelected ? '' : type)}
-                    variant={isSelected ? 'filled' : 'outlined'}
-                    className={`cursor-pointer ${getTypeColor(type, isSelected)}`}
-                  />
-                );
-              })}
-            </div>
-          </div>
         </CardBody>
       </Card>
 
       <Card className="col-span-3 border border-gray-300 shadow-md flex flex-col min-h-screen">
         <CardBody>
+          <Typography variant="h6" color="blue-gray" className="mb-2">
+            Results
+          </Typography>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-            {filteredResources.map((resource) => (
-              <Card
-                key={resource.id}
-                className="border border-blue-gray-100 shadow-sm cursor-pointer"
-                onClick={() => navigate(`resources/${resource.id}`)}
-              >
-                <CardBody>
-                  <div className="flex items-center mb-3">
-                    {getIcon(resource.type)}
-                    <Typography variant="small" color="blue-gray" className="ml-1">
-                      {resource.type.charAt(0).toUpperCase() + resource.type.slice(1)}
-                    </Typography>
-                  </div>
-                  <Typography variant="h6" color="blue-gray" className="mb-2 font-semibold">
-                    {resource.title}
-                  </Typography>
-                  <Typography variant="paragraph" color="blue-gray" className="mb-3 leading-relaxed">
-                    {resource.description.substring(0, 70) + '...'}
-                  </Typography>
-
-                  <div className="flex flex-wrap gap-2 mb-2">
-                    <Typography variant="caption" color="blue-gray" className="mr-1">
-                      Author: <span className="font-semibold">{resource.author}</span>
-                    </Typography>
-                    <Typography variant="caption" color="blue-gray">
-                      Category: <span className="font-semibold">{resource.category}</span>
-                    </Typography>
-                  </div>
-
-                  <div className="flex flex-wrap gap-1">
-                    {resource.tags.map((tag) => (
-                      <Chip
-                        key={tag}
-                        value={tag}
-                        size="sm"
-                        className="bg-blue-gray-100 text-blue-gray-700 font-medium"
-                      />
-                    ))}
-                  </div>
-                </CardBody>
-              </Card>
-            ))}
+            {filteredResources.length > 0 ? (
+              filteredResources.map((resource) => (
+                <ResourceCard key={resource.id} resource={resource} />
+              ))
+            ) : (
+              <Typography variant="small" color="gray">
+                No resources found.
+              </Typography>
+            )}
           </div>
         </CardBody>
       </Card>
@@ -182,42 +125,105 @@ export function Search() {
           <Typography variant="h6" color="blue-gray" className="mb-2">
             Filters
           </Typography>
+
+          {/* TYPES */}
           <div className="mb-4">
-            <Typography variant="small" color="blue-gray">
-              Categories:
+            <Typography
+              variant="small"
+              color="blue-gray"
+              className="text-xs font-semibold uppercase text-blue-gray-500"
+            >
+              Resource Types:
             </Typography>
-            {categories.map((category) => (
-              <div key={category} className="flex items-center">
-                <input
-                  className="cursor-pointer"
-                  type="checkbox"
-                  checked={categoryFilter.includes(category)}
-                  onChange={() => handleCategoryChange(category)}
-                />
-                <Typography color="blue-gray" className="ml-2">
-                  {category}
-                </Typography>
-              </div>
-            ))}
+            <div>
+              {[...resourceTypes]
+                .sort((a, b) => a.name.localeCompare(b.name))
+                .slice(0, expanded ? resourceTypes.length : visibleLimit)
+                .map((type) => (
+                  <div key={type.id} className="flex items-center">
+                    <Checkbox
+                      checked={typeFilter.includes(type.name)}
+                      onChange={() => toggleType(type.name)}
+                    />
+                    <Typography variant="small" className="leading-none">
+                      {type.name}
+                    </Typography>
+                  </div>
+                ))}
+
+              {resourceTypes.length > visibleLimit && (
+                <Button
+                  variant="text"
+                  size="small"
+                  className="font-normal underline text-blue-gray-500"
+                  onClick={() => setExpanded(!expanded)}
+                >
+                  {expanded ? "Show Less" : "Show More"}
+                </Button>
+              )}
+            </div>
           </div>
 
+          {/* CATEGORIES */}
           <div className="mb-4">
-            <Typography variant="small" color="blue-gray">
+            <Typography
+              variant="small"
+              color="blue-gray"
+              className="text-xs font-semibold uppercase text-blue-gray-500"
+            >
+              Categories:
+            </Typography>
+            <div>
+              {[...resourceCategories]
+                .sort((a, b) => a.name.localeCompare(b.name))
+                .slice(0, expanded ? resourceCategories.length : visibleLimit)
+                .map((category) => (
+                  <div key={category.id} className="flex items-center">
+                    <Checkbox
+                      checked={categoryFilter.includes(category.name)}
+                      onChange={() => toggleCategory(category.name)}
+                    />
+                    <Typography variant="small" className="leading-none">
+                      {category.name}
+                    </Typography>
+                  </div>
+                ))}
+
+              {resourceCategories.length > visibleLimit && (
+                <Button
+                  variant="text"
+                  size="small"
+                  className="font-normal underline text-blue-gray-500"
+                  onClick={() => setExpanded(!expanded)}
+                >
+                  {expanded ? "Show Less" : "Show More"}
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {/* TAGS */}
+          <div>
+            <Typography
+              variant="small"
+              color="blue-gray"
+              className="mb-2 text-xs font-semibold uppercase text-blue-gray-500"
+            >
               Tags:
             </Typography>
-            {tags.map((tag) => (
-              <div key={tag} className="flex items-center">
-                <input
-                  className="cursor-pointer"
-                  type="checkbox"
-                  checked={tagFilter.includes(tag)}
-                  onChange={() => handleTagChange(tag)}
+            <div className="flex flex-wrap gap-2">
+              {Array.from(
+                new Set(resources.flatMap((resource) => resource.tags))
+              ).map((tag) => (
+                <Chip
+                  key={tag}
+                  value={tag}
+                  color={tagFilter.includes(tag) ? "green" : "blue-gray"}
+                  className="cursor-pointer font-medium"
+                  onClick={() => handleTagClick(tag)}
                 />
-                <Typography color="blue-gray" className="ml-2">
-                  {tag}
-                </Typography>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </CardBody>
       </Card>

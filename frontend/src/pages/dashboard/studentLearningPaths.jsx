@@ -12,10 +12,10 @@ etc
 
 import React from 'react'
 
-export function LearningPath() {
+export function StudentLearningPaths() {
   return (
     <div>learning path display page</div>
   )
 }
 
-export default LearningPath;
+export default StudentLearningPaths;

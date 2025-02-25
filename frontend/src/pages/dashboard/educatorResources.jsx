@@ -61,7 +61,7 @@ export function EducatorResources() {
       {collections.map((category) => (
         <Card
           key={category}
-          className="col-span-4 mb-6 border border-gray-300 shadow-md rounded-lg"
+          className="col-span-4 mb-6 rounded-lg border border-blue-gray-100 shadow-sm"
         >
           <CardHeader
             floated={false}

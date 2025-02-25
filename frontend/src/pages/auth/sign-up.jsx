@@ -25,12 +25,30 @@ export function SignUp() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
+  
+    // Check if any required field is empty
+    if (
+      !formData.firstName.trim() ||
+      !formData.lastName.trim() ||
+      !formData.email.trim() ||
+      !formData.password.trim() ||
+      !formData.confirmPassword.trim() ||
+      !formData.userRole.trim()
+    ) {
+      alert("All fields are required.");
+      return;
+    }
+  
+    if (!formData.termsAccepted) {
+      alert("You must accept the Terms and Conditions.");
+      return;
+    }
+  
     if (formData.password !== formData.confirmPassword) {
       alert("Passwords do not match.");
       return;
     }
-
+  
     try {
       const response = await axios.post("http://localhost:8080/api/auth/sign-up", {
         email: formData.email,
@@ -44,8 +62,8 @@ export function SignUp() {
       console.error("Registration failed:", error);
       alert("Registration failed. Please try again.");
     }
-    console.log(formData);
   };
+  
 
   return (
     <section className="m-8 flex">
@@ -59,8 +77,8 @@ export function SignUp() {
         </div>
         <form onSubmit={handleSubmit} className="mt-8 mb-2 mx-auto w-80 max-w-screen-lg lg:w-1/2">
           <div className="mb-4 flex flex-col gap-4">
-            <Input size="lg" label="First Name" name="firstName" value={formData.firstName} onChange={handleChange} />
-            <Input size="lg" label="Last Name" name="lastName" value={formData.lastName} onChange={handleChange} />
+            <Input size="lg" label="First Name" name="firstName" value={formData.firstName} onChange={handleChange} required/>
+            <Input size="lg" label="Last Name" name="lastName" value={formData.lastName} onChange={handleChange} required/>
             <Input type="email" size="lg" label="Email" name="email" value={formData.email} onChange={handleChange} required />
             <Input type={showPassword ? "text" : "password"} size="lg" label="Password" name="password" value={formData.password} onChange={handleChange} required />
             <Input type={showPassword ? "text" : "password"} size="lg" label="Confirm Password" name="confirmPassword"  value={formData.confirmPassword} onChange={handleChange} required />
