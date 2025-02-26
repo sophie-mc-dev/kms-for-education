@@ -6,7 +6,7 @@ async function hashPassword(password) {
   return await bcrypt.hash(password, saltRounds);
 }
 
-const userController = {
+const usersController = {
   // Register new user
   signup: async (req, res) => {
     const { email, password, firstName, lastName, userRole } = req.body;
@@ -140,6 +140,71 @@ const userController = {
       res.status(500).json({ message: "Error deleting user" });
     }
   },
+
+  addUserLearningPathProgress: async (req, res) => {
+    const userId = req.user.id;
+    const { learningPathId } = req.params;
+
+    try {
+      // Insert progress record (default 0% progress)
+      const result = await pool.query(
+        `INSERT INTO user_learning_path_progress (user_id, learning_path_id, progress)
+         VALUES ($1, $2, 0) RETURNING *`,
+        [userId, learningPathId]
+      );
+
+      res.status(201).json({ message: "Learning path progress started", progress: result.rows[0] });
+    } catch (err) {
+      console.error("Error adding learning path progress:", err);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  },
+
+  getUserLearningPaths: async (req, res) => {
+    const userId = req.user.id; 
+
+    try {
+      const result = await pool.query(
+        `SELECT lp.* FROM learning_paths lp
+         JOIN user_learning_paths ulp ON lp.id = ulp.learning_path_id
+         WHERE ulp.user_id = $1`,
+        [userId]
+      );
+
+      res.json(result.rows);
+    } catch (err) {
+      console.error("Error fetching user learning paths:", err);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  },
+
+  updateUserLearningPathProgress: async (req, res) => {
+    const userId = req.user.id;
+    const { learningPathId } = req.params;
+    const { progress } = req.body;
+
+    if (progress < 0 || progress > 100) {
+      return res.status(400).json({ error: "Progress must be between 0 and 100" });
+    }
+
+    try {
+      const result = await pool.query(
+        `UPDATE user_learning_path_progress 
+         SET progress = $1, updated_at = NOW()
+         WHERE user_id = $2 AND learning_path_id = $3 RETURNING *`,
+        [progress, userId, learningPathId]
+      );
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: "Learning path progress not found" });
+      }
+
+      res.json({ message: "Learning path progress updated", progress: result.rows[0] });
+    } catch (err) {
+      console.error("Error updating learning path progress:", err);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  },
 };
 
-module.exports = userController;
+module.exports = usersController;

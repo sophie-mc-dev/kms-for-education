@@ -3,8 +3,12 @@ require("dotenv").config();
 const express = require("express");
 const session = require("express-session");
 const passport = require("./config/passport");
-const userRoutes = require("./routes/userRoutes");
-const resourceRoutes = require("./routes/resourceRoutes");
+const authenticationRoutes = require("./routes/authenticationRoutes");
+const usersRoutes = require("./routes/usersRoutes");
+const resourcesRoutes = require("./routes/resourcesRoutes");
+const bookmarksRoutes = require("./routes/bookmarksRoutes");
+const learningPathsRoutes = require("./routes/learningPathsRoutes");
+const modulesRoutes = require("./routes/modulesRoutes");
 const cors = require("cors");
 
 const app = express();
@@ -48,8 +52,12 @@ async function startServer() {
   app.use(passport.session());
 
   // Routes
-  app.use("/api/auth", userRoutes);
-  app.use("/api/resources", resourceRoutes);
+  app.use("/api/auth", authenticationRoutes);
+  app.use("/api/users", usersRoutes);
+  app.use("/api/resources", resourcesRoutes);
+  app.use("/api/bookmarks", bookmarksRoutes);
+  app.use("/api/learning-paths", learningPathsRoutes);
+  app.use("/api/modules", modulesRoutes);
 
   app.get("/", (req, res) => {
     res.send("API is running...");
