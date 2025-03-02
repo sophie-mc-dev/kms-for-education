@@ -8,7 +8,7 @@ import {
   Button,
 } from "@material-tailwind/react";
 
-export function ResourceDetail() {
+export function ResourceDetails() {
   const { resourceId } = useParams();
   const [resource, setResource] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -209,4 +209,4 @@ export function ResourceDetail() {
   );
 }
 
-export default ResourceDetail;
+export default ResourceDetails;

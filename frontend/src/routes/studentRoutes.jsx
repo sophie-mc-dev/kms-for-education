@@ -14,7 +14,7 @@ import {
   Notifications,
   Search,
   StudentResources,
-  StudentLearningPath,
+  LearningPage,
 } from "@/pages/dashboard";
 import { SignIn, SignUp } from "@/pages/auth";
 
@@ -41,16 +41,16 @@ export const studentRoutes = [
         element: <Search />,
       },
       {
-        icon: <BookOpenIcon {...icon} />,
-        name: "my resources",
-        path: "/resources",
-        element: <StudentResources />,
+        icon: <ClipboardDocumentCheckIcon {...icon} />,
+        name: "learning",
+        path: "/learning",
+        element: <LearningPage />,
       },
       {
-        icon: <ClipboardDocumentCheckIcon {...icon} />,
-        name: "learning paths",
-        path: "/learningpaths",
-        element: <StudentLearningPath />,
+        icon: <BookOpenIcon {...icon} />,
+        name: "resources",
+        path: "/resources",
+        element: <StudentResources />,
       },
       {
         icon: <UserCircleIcon {...icon} />,

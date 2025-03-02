@@ -14,7 +14,7 @@ import React from 'react'
 
 export function EducatorLearningPaths() {
   return (
-    <div>learning path display page</div>
+    <div>learning path display page educator</div>
   )
 }
 

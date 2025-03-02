@@ -189,8 +189,8 @@ const usersController = {
 
     try {
       const result = await pool.query(
-        `UPDATE user_learning_path_progress 
-         SET progress = $1, updated_at = NOW()
+        `UPDATE learning_path_progress 
+         SET progress_percentage = $1, updated_at = NOW()
          WHERE user_id = $2 AND learning_path_id = $3 RETURNING *`,
         [progress, userId, learningPathId]
       );

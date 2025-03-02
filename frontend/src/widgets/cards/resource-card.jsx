@@ -34,7 +34,7 @@ export function ResourceCard({ resource }) {
 
   return (
     <Card
-      className="border border-blue-gray-100 shadow-sm cursor-pointer hover:shadow-md transition h-full relative"
+      className="border border-blue-gray-100 shadow-sm cursor-pointer hover:shadow-md transition h-full min-h-[250px] flex flex-col"
       onClick={() => navigate(`resources/${resource.id}`)}
     >
       <div
@@ -94,7 +94,10 @@ export function ResourceCard({ resource }) {
               {resource.category}
             </Typography>
           </div>
-          <div className="flex flex-wrap gap-1" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="flex flex-wrap gap-1"
+            onClick={(e) => e.stopPropagation()}
+          >
             {resource.tags?.map((tag) => (
               <Chip
                 key={tag}
