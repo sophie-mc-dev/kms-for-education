@@ -3,3 +3,4 @@ export * from "@/widgets/cards/profile-info-card";
 export * from "@/widgets/cards/message-card";
 export * from "@/widgets/cards/resource-card";
 export * from "@/widgets/cards/learning-card";
+export * from "@/widgets/cards/module-card";

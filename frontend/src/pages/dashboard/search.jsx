@@ -11,8 +11,10 @@ import {
 import { resourceTypes } from "@/data/resource-types.jsx";
 import { resourceCategories } from "@/data/resource-categories";
 import { ResourceCard } from "@/widgets/cards/";
+import { useUser } from "@/context/UserContext";
 
 export function Search() {
+  const { userId } = useUser();
   const [resources, setResources] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -90,7 +92,7 @@ export function Search() {
 
   return (
     <div className="mt-12 grid grid-cols-4 gap-4">
-      <Card className="col-span-4 border border-gray-300 shadow-md rounded-lg">
+      <Card className="col-span-4 border border-gray-300 rounded-lg">
         <CardBody className="space-y-6 p-6">
           <Input
             label="Search Resources"
@@ -101,7 +103,7 @@ export function Search() {
         </CardBody>
       </Card>
 
-      <Card className="col-span-3 border border-gray-300 shadow-md flex flex-col min-h-screen">
+      <Card className="col-span-3 border border-blue-gray-100 flex flex-col min-h-screen">
         <CardBody>
           <Typography variant="h6" color="blue-gray" className="mb-2">
             Results
@@ -109,7 +111,11 @@ export function Search() {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             {filteredResources.length > 0 ? (
               filteredResources.map((resource) => (
-                <ResourceCard key={resource.id} resource={resource} />
+                <ResourceCard
+                  key={resource.id}
+                  resource={resource}
+                  userId={userId}
+                />
               ))
             ) : (
               <Typography variant="small" color="gray">
@@ -120,7 +126,7 @@ export function Search() {
         </CardBody>
       </Card>
 
-      <Card className="col-span-1 border border-gray-300 shadow-md flex flex-col min-h-screen">
+      <Card className="col-span-1 border border-gray-300 flex flex-col min-h-screen">
         <CardBody>
           <Typography variant="h6" color="blue-gray" className="mb-2">
             Filters
@@ -154,7 +160,7 @@ export function Search() {
               {resourceTypes.length > visibleLimit && (
                 <Button
                   variant="text"
-                  size="small"
+                  size="sm"
                   className="font-normal underline text-blue-gray-500"
                   onClick={() => setExpanded(!expanded)}
                 >
@@ -192,7 +198,7 @@ export function Search() {
               {resourceCategories.length > visibleLimit && (
                 <Button
                   variant="text"
-                  size="small"
+                  size="sm"
                   className="font-normal underline text-blue-gray-500"
                   onClick={() => setExpanded(!expanded)}
                 >

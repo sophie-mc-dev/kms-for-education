@@ -57,7 +57,7 @@ export function ResourceDetails() {
       <div className="p-4 text-red-500">{error || "Resource not found"}</div>
     );
   }
-  
+
   return (
     <div className="mt-12 flex gap-4 h-full">
       <div className="w-3/4 flex flex-col gap-4">
@@ -73,9 +73,9 @@ export function ResourceDetails() {
               </Typography>
             </div>
 
-            <div className="mb-6 flex items-center">
+            <div className="mb-6 flex items-center gap-x-4">
               {/* Left Section: Date and Author */}
-              <div className="flex items-center gap-x-4">
+              <div className="flex items-center gap-x-1">
                 <Typography className="block text-xs font-semibold uppercase text-blue-gray-500">
                   Published On:
                 </Typography>
@@ -85,7 +85,8 @@ export function ResourceDetails() {
                 >
                   {formattedDate}
                 </Typography>
-
+              </div>
+              <div className="flex items-center gap-x-1">
                 <Typography className="block text-xs font-semibold uppercase text-blue-gray-500">
                   Authored By:
                 </Typography>

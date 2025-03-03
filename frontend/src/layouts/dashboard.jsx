@@ -64,6 +64,7 @@ export function Dashboard() {
               ))
           )}
           <Route path="search/resources/:resourceId" element={<ResourceDetails />} />
+          <Route path="resources/resources/:resourceId" element={<ResourceDetails />} />
           <Route path="learning/learning-path/:learningPathId" element={<LearningPathDetails />} />
           <Route path="learning/module/:moduleId" element={<ModuleDetails />} />
           <Route path="resources/upload" element={<UploadResource />} />
