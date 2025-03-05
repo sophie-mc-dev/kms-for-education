@@ -17,8 +17,6 @@ export function Profile() {
   const [user, setUser] = useState(null);
 
   useEffect(() => {
-    console.log("User ID from context:", userId); // Debugging userId
-
     const fetchUserProfile = async () => {
       if (!userId) {
         console.warn("No userId available, skipping fetch.");
@@ -29,11 +27,10 @@ export function Profile() {
         const response = await fetch(
           `http://localhost:8080/api/users/${userId}`
         );
-        console.log("Response status:", response.status); // Check response
         if (!response.ok) throw new Error("Failed to fetch user profile");
 
         const data = await response.json();
-        console.log("Fetched user data:", data); // Debugging data received
+        // console.log("Fetched user data:", data); 
         setUser(data);
       } catch (error) {
         console.error("Error fetching user profile:", error);
@@ -41,7 +38,7 @@ export function Profile() {
     };
 
     fetchUserProfile();
-  }, [userId]); // Dependency array ensures it runs when userId updates
+  }, [userId]); 
 
   return (
     <>
@@ -90,7 +87,7 @@ export function Profile() {
             <ProfileInfoCard
               title="Profile Information"
               details={{
-                "Full Name": `${user.first_name} ${user.last_name}` || "N/A",
+                "Full Name": user ? `${user.first_name} ${user.last_name}` : "N/A",
                 Email: user?.email || "N/A",
               }}
               action={

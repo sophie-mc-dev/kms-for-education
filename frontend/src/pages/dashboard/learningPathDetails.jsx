@@ -1,40 +1,62 @@
-import React from "react";
-import { Card, CardBody, Typography, Chip } from "@material-tailwind/react";
-import { Bars3Icon } from "@heroicons/react/24/solid";
+import React, { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
+import { Card, CardBody, Typography } from "@material-tailwind/react";
+import { ModuleCard } from "@/widgets/cards";
 
 export function LearningPathDetails() {
-  // Sample Learning Path Data
-  const learningPath = {
-    title: "Machine Learning for Engineers",
-    description:
-      "An in-depth learning path covering fundamentals to advanced concepts of machine learning, including hands-on projects.",
-    estimated_duration: "12 weeks",
-    ects: 6,
-  };
+  const { learningPathId } = useParams();
+  const [learningPath, setLearningPath] = useState(null);
+  const [modules, setModules] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const cleanedLearningPathId = learningPathId.replace("lp_", "");
 
-  // Sample Modules Data
-  const modules = [
-    {
-      id: 1,
-      title: "Introduction to Machine Learning",
-      description: "Overview of ML concepts, history, and applications.",
-      has_assessment: true,
-    },
-    {
-      id: 2,
-      title: "Supervised Learning",
-      description:
-        "Understanding regression, classification, and evaluation metrics.",
-      has_assessment: true,
-    },
-    {
-      id: 3,
-      title: "Unsupervised Learning",
-      description:
-        "Exploring clustering and dimensionality reduction techniques.",
-      has_assessment: false,
-    },
-  ];
+  // Fetch learning path data
+  useEffect(() => {
+    const fetchLearningPath = async () => {
+      try {
+        const response = await fetch(
+          `http://localhost:8080/api/learning-paths/${cleanedLearningPathId}`
+        );
+        if (!response.ok) {
+          throw new Error("Failed to fetch learning path");
+        }
+        const data = await response.json();
+        setLearningPath(data);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchLearningPath();
+  }, []); 
+
+  // Fetch modules data
+  useEffect(() => {
+    const fetchModules = async () => {
+      try {
+        const response = await fetch(
+          `http://localhost:8080/api/learning-paths/${cleanedLearningPathId}/modules`
+        );
+        if (!response.ok) {
+          throw new Error("Failed to fetch modules");
+        }
+        const data = await response.json();
+        setModules(data);
+      } catch (err) {
+        setError(err.message);
+      }
+    };
+
+    fetchModules();
+  }, []); // Fetch modules when the component mounts
+
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error}</div>;
+
+  if (!learningPath) return <div>No Learning Path Data</div>;
 
   return (
     <div className="mt-12 flex gap-4 h-full">
@@ -83,48 +105,7 @@ export function LearningPathDetails() {
 
           <div className="flex flex-col gap-2">
             {modules.map((module, index) => (
-              <div
-                key={module.id}
-                className="flex items-center justify-between p-3 border border-blue-gray-100 rounded-lg bg-blue-gray-50"
-              >
-                <div className="flex items-start gap-4">
-                  {/* Drag Handle */}
-                  <Bars3Icon className="h-6 w-6 text-blue-gray-500 cursor-grab" />
-
-                  {/* Module Details */}
-                  <div>
-                    <Typography
-                      variant="h6"
-                      color="blue-gray"
-                      className="font-semibold"
-                    >
-                      {`${index + 1}. ${module.title}`}
-                    </Typography>
-                    <Typography
-                      variant="small"
-                      className="text-blue-gray-600 mt-1"
-                    >
-                      {module.description}
-                    </Typography>
-
-                    {/* Estimated Time & Resources */}
-                    <div className="flex gap-4 mt-2 text-sm text-blue-gray-500">
-                      <div className="flex items-center gap-1">
-                        ⏳{" "}
-                        <span>{module.estimated_time || "Unknown"} hours</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        📚 <span>{module.resource_count || "0"} materials</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Assessment Badge */}
-                {module.has_assessment && (
-                  <Chip size="sm" color="green" value="Assessment Available" />
-                )}
-              </div>
+              <ModuleCard key={module.id} module={module} index={index} />
             ))}
           </div>
         </CardBody>

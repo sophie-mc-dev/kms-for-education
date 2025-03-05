@@ -31,7 +31,7 @@ const modulesController = {
 
   // Create a new module
   createModule: async (req, res) => {
-    const { title, description, learning_path_id, order_index, assessment_id } =
+    const { title, description, learning_path_id, order_index, assessment_id, estimated_duration } =
       req.body;
 
     if (!title) {
@@ -40,8 +40,8 @@ const modulesController = {
 
     try {
       const result = await pool.query(
-        `INSERT INTO modules (title, description, learning_path_id, order_index, assessment_id) 
-         VALUES ($1, $2, $3, $4, $5) 
+        `INSERT INTO modules (title, description, learning_path_id, order_index, assessment_id, estimated_duration) 
+         VALUES ($1, $2, $3, $4, $5, $6) 
          RETURNING *`,
         [
           title,
@@ -49,6 +49,7 @@ const modulesController = {
           learning_path_id,
           order_index,
           assessment_id || null,
+          estimated_duration
         ]
       );
       res.status(201).json(result.rows[0]);
@@ -61,15 +62,15 @@ const modulesController = {
   // Update a module
   updateModule: async (req, res) => {
     const { id } = req.params;
-    const { title, description, learning_path_id, order_index, assessment_id } =
+    const { title, description, learning_path_id, order_index, assessment_id, estimated_duration } =
       req.body;
     try {
       const result = await pool.query(
         `UPDATE modules 
-         SET title = $1, description = $2, learning_path_id = $3, order_index = $4, assessment_id = $5, updated_at = NOW()
-         WHERE id = $6 
+         SET title = $1, description = $2, learning_path_id = $3, order_index = $4, assessment_id = $5, estimated_duration = $6, updated_at = NOW()
+         WHERE id = $7 
          RETURNING *`,
-        [title, description, learning_path_id, order_index, assessment_id, id]
+        [title, description, learning_path_id, order_index, assessment_id, estimated_duration, id]
       );
       if (result.rows.length === 0) {
         return res.status(404).json({ error: "Module not found" });

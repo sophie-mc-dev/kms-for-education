@@ -1,116 +1,136 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Card,
   CardBody,
   Typography,
   Button,
+  Spinner,
 } from "@material-tailwind/react";
 import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/solid";
 import { ResourceCard } from "@/widgets/cards/";
 
 export function ModuleDetails() {
   const { moduleId } = useParams();
+  const [module, setModule] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const navigate = useNavigate();
+  const cleanedModuleId = moduleId.replace("md_", "");
 
-  // Sample Data (Mock Data)
-  const sampleModule = {
-    id: "1",
-    title: "Introduction to AI",
-    estimated_duration: "2 weeks",
-    ects: 5,
-    has_assessment: true,
-    assessment_id: "101",
-  };
+  // Fetch module data
+  useEffect(() => {
+    const fetchModule = async () => {
+      try {
+        const response = await fetch(
+          `http://localhost:8080/api/modules/${cleanedModuleId}`
+        );
+        if (!response.ok) {
+          throw new Error("Failed to fetch module");
+        }
+        const data = await response.json();
+        setModule(data);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const sampleResources = [
-    { id: "r1", title: "AI Basics", type: "Video", link: "#" },
-    { id: "r2", title: "Machine Learning Overview", type: "Article", link: "#" },
-  ];
+    fetchModule();
+  }, []);
 
-  const sampleLearningPath = [
-    { id: "1", title: "Introduction to AI" },
-    { id: "2", title: "Machine Learning Fundamentals" },
-    { id: "3", title: "Deep Learning" },
-  ];
-
-  const sampleUserProgress = {
-    passed_modules_ids: ["1"], // Modules the user has completed
-  };
-
-  // Set module, resources, learning path, and user progress from sample data
-  const module = sampleModule;
-  const resources = sampleResources;
-  const learningPath = sampleLearningPath;
-  const userProgress = sampleUserProgress;
-
-  // Determine previous and next modules
-  const currentIndex = learningPath.findIndex(m => m.id === module.id);
-  const previousModule = learningPath[currentIndex - 1];
-  const nextModule = learningPath[currentIndex + 1];
-
-  const canProceed = userProgress.passed_modules_ids.includes(module.id);
+  // Handle loading and error states
+  if (loading)
+    return (
+      <div className="flex justify-center items-center mt-12">
+        <Spinner />
+      </div>
+    );
+  if (error)
+    return <div className="mt-12 text-center text-red-500">Error: {error}</div>;
+  if (!module)
+    return <div className="mt-12 text-center">No Module Data Available</div>;
 
   return (
-    <div className="flex gap-4 h-full mt-12">
+    <div className="flex gap-4 mt-12 min-h-screen flex-col lg:flex-row">
       {/* Left Section: Module Content */}
-      <Card className="border border-blue-gray-100 shadow-sm p-4 flex-1">
-        <CardBody>
-          <Typography variant="h4" color="blue-gray" className="font-semibold mb-2">
+      <Card className="border border-blue-gray-100 shadow-sm p-4 flex-1 min-h-full flex flex-col">
+        <CardBody className="flex-grow">
+          <Typography variant="h4" color="blue-gray" className="font-semibold">
             {module.title}
           </Typography>
-          <Typography variant="small" className="text-blue-gray-500">
-            Estimated Duration: {module.estimated_duration} | ECTS: {module.ects}
-          </Typography>
 
-          {/* Resources */}
-          <div className="mt-6">
-            <Typography variant="h6" color="blue-gray" className="mb-3">Resources</Typography>
-            <div className="grid grid-cols-2 gap-4">
-              
+          <div className="mt-4 flex items-center gap-x-6">
+            <div className="flex items-center gap-x-2">
+              <Typography className="text-xs font-semibold uppercase text-blue-gray-500">
+                Estimated Duration:
+              </Typography>
+              <Typography variant="small" className="text-blue-gray-600">
+                {module.estimated_duration}
+              </Typography>
             </div>
           </div>
 
-          {/* Navigation Buttons */}
-          <div className="flex justify-between mt-6">
-            {previousModule ? (
-              <Button color="blue-gray" onClick={() => navigate(`/modules/${previousModule.id}`)}>
-                <ChevronLeftIcon className="h-5 w-5 inline-block mr-2" /> Previous
-              </Button>
-            ) : <div />}
+          <Typography className="mt-2 text-blue-gray-700">
+            {module.description}
+          </Typography>
 
-            {nextModule && (
-              <Button
-                color="blue-gray"
-                disabled={!canProceed}
-                onClick={() => navigate(`/modules/${nextModule.id}`)}
-              >
-                Next <ChevronRightIcon className="h-5 w-5 inline-block ml-2" />
-              </Button>
-            )}
+          {/* Divider */}
+          <div className="border-t my-4"></div>
+
+          {/* Resources Section */}
+          <div className="mt-6">
+            <Typography variant="h6" color="blue-gray" className="mb-3">
+              Resources
+            </Typography>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {module.resources && module.resources.length > 0 ? (
+                module.resources.map((resource) => (
+                  <ResourceCard key={resource.id} resource={resource} />
+                ))
+              ) : (
+                <Typography className="text-blue-gray-600">
+                  No resources available for this module.
+                </Typography>
+              )}
+            </div>
           </div>
         </CardBody>
+
+        {/* Navigation Buttons at the bottom */}
+        <div className="flex justify-center gap-4 mt-auto mb-6">
+          <Button
+            variant="outlined"
+            color="blue"
+            onClick={() =>
+              navigate(`/modules/md_${parseInt(cleanedModuleId) - 1}`)
+            }
+            disabled={parseInt(cleanedModuleId) <= 1}
+            className="flex items-center px-6 py-3 text-sm font-medium border-2 border-blue-600 rounded-lg hover:bg-blue-600 hover:text-white transition-colors duration-300 disabled:opacity-50"
+          >
+            <ChevronLeftIcon className="h-5 w-5 mr-2" />
+            Previous
+          </Button>
+          <Button
+            variant="outlined"
+            color="blue"
+            onClick={() =>
+              navigate(`/modules/md_${parseInt(cleanedModuleId) + 1}`)
+            }
+            disabled={parseInt(cleanedModuleId) >= module.totalModules}
+            className="flex items-center px-6 py-3 text-sm font-medium border-2 border-blue-600 rounded-lg hover:bg-blue-600 hover:text-white transition-colors duration-300 disabled:opacity-50"
+          >
+            Next
+            <ChevronRightIcon className="h-5 w-5 ml-2" />
+          </Button>
+        </div>
       </Card>
 
       {/* Right Sidebar: Learning Path Progress */}
       <Card className="w-80 border border-blue-gray-100 shadow-sm">
         <CardBody>
-          <Typography variant="h6" color="blue-gray" className="mb-4">
-            Learning Path
-          </Typography>
-          <div className="space-y-2">
-            {learningPath.map(m => (
-              <Button
-                key={m.id}
-                fullWidth
-                variant={m.id === module.id ? "filled" : "outlined"}
-                color={userProgress.passed_modules_ids.includes(m.id) ? "green" : "blue-gray"}
-                onClick={() => navigate(`/modules/${m.id}`)}
-              >
-                {m.title}
-              </Button>
-            ))}
-          </div>
+          hey
         </CardBody>
       </Card>
     </div>
