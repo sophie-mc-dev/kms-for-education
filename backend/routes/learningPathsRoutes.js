@@ -1,26 +1,25 @@
 const express = require("express");
 const router = express.Router();
 const learningPathsController = require("../controllers/learningPathsController");
+const passport = require("passport");
+
+const isAuthenticated = (req, res, next) => {
+  if (req.isAuthenticated()) {
+    return next();
+  } else {
+    return res.status(401).json({ error: "User not authenticated" });
+  }
+};
 
 // CRUD for Learning Paths
-router.post("/", learningPathsController.addLearningPath);
-router.delete("/:id", learningPathsController.removeLearningPath);
+router.post("/", isAuthenticated, learningPathsController.addLearningPath);
 router.get("/", learningPathsController.getLearningPaths);
 router.get("/:id", learningPathsController.getLearningPathById);
 router.put("/:id", learningPathsController.updateLearningPath);
+router.delete("/:id", learningPathsController.removeLearningPath);
 
-// CRUD for Modules
-router.post("/:learning_path_id/modules", learningPathsController.addModuleToLearningPath);
+// Adding an existing module to a learning path
+router.post("/:learning_path_id/modules/:module_id", learningPathsController.addExistingModuleToLearningPath);
 router.get("/:learning_path_id/modules", learningPathsController.getModulesByLearningPath);
-router.put("/:learning_path_id/modules/:id", learningPathsController.updateModule);
-router.delete("/:learning_path_id/modules/:id", learningPathsController.removeModuleFromLearningPath);
-
-// Module Resources Endpoints:
-router.post("/:learning_path_id/modules/:id/resources", learningPathsController.addModuleResources);
-router.get("/:learning_path_id/modules//:id/resources", learningPathsController.getModuleResources);
-router.delete("/:learning_path_id/modules//:id/resources/:resource_id", learningPathsController.deleteModuleResources);
-
-router.post("/:learning_path_id/modules/:id/progress", learningPathsController.checkModuleProgression);
-router.post("/:learning_path_id/modules/:id/progress", learningPathsController.updateModuleProgression);
 
 module.exports = router;
