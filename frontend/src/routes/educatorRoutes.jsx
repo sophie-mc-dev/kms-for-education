@@ -1,60 +1,71 @@
 import {
-    HomeIcon,
-    UserCircleIcon,
-    ServerStackIcon,
-    RectangleStackIcon,
-    BookOpenIcon
-  } from "@heroicons/react/24/solid";
-  import { Home, Profile, EducatorResources } from "@/pages/dashboard";
-  import { SignIn, SignUp } from "@/pages/auth";
-  
-  const icon = {
-    className: "w-5 h-5 text-inherit",
-  };
-  
-  export const educatorRoutes = [
-    {
-      layout: "dashboard",
-      pages: [
-        {
-          icon: <HomeIcon {...icon} />,
-          name: "dashboard",
-          path: "/home",
-          element: <Home />,
-        },
-        {
-          icon: <BookOpenIcon {...icon} />,
-          name: "my resources",
-          path: "/resources",
-          element: <EducatorResources />,
-        },
-        {
-          icon: <UserCircleIcon {...icon} />,
-          name: "profile",
-          path: "/profile",
-          element: <Profile />,
-        },
-      ],
-    },
-    {
-      title: "auth pages",
-      layout: "auth",
-      pages: [
-        {
-          icon: <ServerStackIcon {...icon} />,
-          name: "sign in",
-          path: "/sign-in",
-          element: <SignIn />,
-        },
-        {
-          icon: <RectangleStackIcon {...icon} />,
-          name: "sign up",
-          path: "/sign-up",
-          element: <SignUp />,
-        },
-      ],
-    },
-  ];
-  
-  export default educatorRoutes;
-  
+  HomeIcon,
+  UserCircleIcon,
+  ServerStackIcon,
+  RectangleStackIcon,
+  BookOpenIcon,
+  ClipboardDocumentCheckIcon,
+} from "@heroicons/react/24/solid";
+import {
+  Home,
+  Profile,
+  EducatorResources,
+  LearningPage,
+} from "@/pages/dashboard";
+import { SignIn, SignUp } from "@/pages/auth";
+
+const icon = {
+  className: "w-5 h-5 text-inherit",
+};
+
+export const educatorRoutes = [
+  {
+    layout: "dashboard",
+    pages: [
+      {
+        icon: <HomeIcon {...icon} />,
+        name: "dashboard",
+        path: "/home",
+        element: <Home />,
+      },
+      {
+        icon: <BookOpenIcon {...icon} />,
+        name: "my resources",
+        path: "/resources",
+        element: <EducatorResources />,
+      },
+      {
+        icon: <ClipboardDocumentCheckIcon {...icon} />,
+        name: "learning",
+        path: "/learning",
+        element: <LearningPage />,
+      },
+      {
+        icon: <UserCircleIcon {...icon} />,
+        name: "profile",
+        path: "/profile",
+        element: <Profile />,
+      },
+    ],
+  },
+  {
+    title: "auth pages",
+    layout: "auth",
+    pages: [
+      {
+        icon: <ServerStackIcon {...icon} />,
+        name: "sign in",
+        path: "/sign-in",
+        element: <SignIn />,
+      },
+      {
+        icon: <RectangleStackIcon {...icon} />,
+        name: "sign up",
+        path: "/sign-up",
+        element: <SignUp />,
+      },
+    ],
+  },
+];
+
+export default educatorRoutes;

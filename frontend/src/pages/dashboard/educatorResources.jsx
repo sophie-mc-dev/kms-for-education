@@ -41,7 +41,7 @@ export function EducatorResources() {
   return (
     <div className="mt-12 flex flex-col gap-6">
       <CardFooter className="flex items-center justify-end py-0 px-1">
-        <Link to="upload">
+        <Link to="upload-resource">
           <Button variant="filled" size="sm" className="flex items-center gap-2">
             <CloudArrowUpIcon className="w-4 h-4" />
             Upload Resource

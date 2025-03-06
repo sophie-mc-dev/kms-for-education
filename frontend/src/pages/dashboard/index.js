@@ -6,6 +6,8 @@ export * from "@/pages/dashboard/search";
 export * from "@/pages/dashboard/studentResources";
 export * from "@/pages/dashboard/educatorResources";
 export * from "@/pages/dashboard/uploadResource";
+export * from "@/pages/dashboard/createLearningPath";
+export * from "@/pages/dashboard/createModule";
 export * from "@/pages/dashboard/learning";
 export * from "@/pages/dashboard/resourceDetails";
 export * from "@/pages/dashboard/moduleDetails";

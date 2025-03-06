@@ -6,14 +6,10 @@ import {
   Sidenav,
   DashboardNavbar,
   Configurator,
-  Footer,
 } from "@/widgets/layout";
 import { useMaterialTailwindController, setOpenConfigurator } from "@/context";
 import { useUser } from "@/context/UserContext";
-import { ResourceDetails, UploadResource } from "@/pages/dashboard";
-import LearningPathDetails from "@/pages/dashboard/learningPathDetails";
-import ModuleDetails from "@/pages/dashboard/moduleDetails";
-
+import { ResourceDetails, UploadResource, CreateLearningPath, CreateModule, LearningPathDetails, ModuleDetails } from "@/pages/dashboard";
 
 export function Dashboard() {
   const [controller, dispatch] = useMaterialTailwindController();
@@ -67,7 +63,9 @@ export function Dashboard() {
           <Route path="resources/resources/:resourceId" element={<ResourceDetails />} />
           <Route path="learning/learning-path/:learningPathId" element={<LearningPathDetails />} />
           <Route path="learning/module/:moduleId" element={<ModuleDetails />} />
-          <Route path="resources/upload" element={<UploadResource />} />
+          <Route path="resources/upload-resource" element={<UploadResource />} />
+          <Route path="learning/upload-learning-path" element={<CreateLearningPath />} />
+          <Route path="learning/upload-module" element={<CreateModule />} />
         </Routes>
         <div className="text-blue-gray-600">
           {/* <Footer /> */}

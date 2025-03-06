@@ -178,6 +178,9 @@ export function UploadResource() {
     }
   };
 
+  // TODO: handle file change
+  // store array of files instead of just one
+
   return (
     <div className="mt-12 flex justify-center">
       <Card className="w-full h-full border border-gray-300 shadow-md rounded-lg">
@@ -303,6 +306,7 @@ export function UploadResource() {
               type="file"
               name="file"
               // onChange={handleFileChange}
+              multiple
               className="mt-1 block w-full text-sm text-gray-500"
             />
           </div>

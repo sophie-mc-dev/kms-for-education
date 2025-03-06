@@ -1,7 +1,21 @@
 import React, { useState, useEffect } from "react";
-import { Input, Card, CardBody, Typography, Checkbox, Button } from "@material-tailwind/react";
-import { LearningLPCard } from "@/widgets/cards/";  // For learning paths
-import { LearningMDCard } from "@/widgets/cards/";  // For modules
+import {
+  Input,
+  Card,
+  CardBody,
+  Typography,
+  Checkbox,
+  Button,
+  Popover,
+  PopoverHandler,
+  PopoverContent,
+  IconButton,
+} from "@material-tailwind/react";
+import { LearningLPCard } from "@/widgets/cards/";
+import { LearningMDCard } from "@/widgets/cards/";
+import { PlusIcon } from "@heroicons/react/24/solid";
+import { useUser } from "@/context/UserContext";
+import { Link } from "react-router-dom";
 
 export function LearningPage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -9,8 +23,8 @@ export function LearningPage() {
   const [modules, setModules] = useState([]);
   const [filterLP, setFilterLP] = useState(true);
   const [filterMD, setFilterMD] = useState(true);
+  const { userRole } = useUser();
 
-  // Fetch learning paths and modules when the component is mounted
   useEffect(() => {
     const fetchLearningPathsAndModules = async () => {
       try {
@@ -32,7 +46,6 @@ export function LearningPage() {
     fetchLearningPathsAndModules();
   }, []);
 
-  // Filter based on search query
   const filteredLearningPaths = learningPaths.filter((item) =>
     item.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -40,7 +53,6 @@ export function LearningPage() {
     item.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Combine and filter by category selection
   let combinedItems = [];
   if (filterLP) {
     combinedItems = [
@@ -63,26 +75,53 @@ export function LearningPage() {
     ];
   }
 
-  // Sort alphabetically
   const sortedItems = combinedItems.sort((a, b) =>
     a.title.localeCompare(b.title)
   );
 
   return (
-    <div className="mt-12 grid grid-cols-4 gap-4">
-      <Card className="col-span-4 border border-gray-300 shadow-md rounded-lg">
-        <CardBody className="space-y-6 p-6">
-          <Input
-            label="Search Resources"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="mb-4"
-          />
-        </CardBody>
-      </Card>
+    <div className="mt-12 flex flex-col gap-6">
+      {/* Educator Action Button */}
+      {userRole === "educator" && (
+        <div className="flex items-center justify-end py-0 px-1">
+          <Popover placement="bottom-end">
+            <PopoverHandler>
+              <Button
+                variant="filled"
+                size="sm"
+                className="flex items-center gap-2"
+              >
+                <PlusIcon className="w-4 h-4" />
+                Create
+              </Button>
+            </PopoverHandler>
+            <PopoverContent className="p-2 border rounded-lg shadow-lg bg-white w-48">
+              <Link to="upload-learning-path">
+                <Button variant="text" fullWidth className="text-left">
+                  Learning Path
+                </Button>
+              </Link>
+              <Link to="upload-module">
+                <Button variant="text" fullWidth className="text-left mt-1">
+                  Module
+                </Button>
+              </Link>
+            </PopoverContent>
+          </Popover>
+        </div>
+      )}
 
-      {/* Combined Learning Paths and Modules Section */}
-      <Card className="col-span-3 border border-gray-300 shadow-md flex flex-col min-h-screen">
+      {/* Search Section */}
+
+      <Input
+        label="Search Resources"
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        className="mb-4"
+      />
+
+      {/* Results Section */}
+      <Card className="border border-gray-300 shadow-md flex flex-col min-h-screen">
         <CardBody>
           <Typography variant="h6" color="blue-gray" className="mb-2">
             Results
@@ -100,7 +139,7 @@ export function LearningPage() {
       </Card>
 
       {/* Filters Sidebar */}
-      <Card className="col-span-1 border border-gray-300 shadow-md flex flex-col min-h-screen">
+      <Card className="border border-gray-300 shadow-md flex flex-col min-h-screen">
         <CardBody>
           <Typography variant="h6" color="blue-gray" className="mb-2">
             Filters
