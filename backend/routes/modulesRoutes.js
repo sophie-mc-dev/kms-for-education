@@ -17,4 +17,10 @@ router.put("/:id", modulesController.updateModule);
 // Delete a module
 router.delete("/:id", modulesController.deleteModule);
 
+// Adding an existing resource to a module
+router.post("/:module_id/resources/:resource_id", modulesController.addExistingResourceToModule);
+router.delete("/:module_id/resources/:resource_id", modulesController.removeResourceFromModule);
+router.get("/:module_id/resources", modulesController.getResourcesByModuleId);
+router.get("/:module_id/resource_count", modulesController.getModuleResourceCount);
+
 module.exports = router;

@@ -126,6 +126,27 @@ const learningPathsController = {
     }
   },
 
+  // Remove a module from a learning path
+  removeModuleFromLearningPath: async (req, res) => {
+    const { learning_path_id, module_id } = req.params;
+
+    try {
+      const result = await pool.query(
+        "DELETE FROM learning_path_modules WHERE learning_path_id = $1 AND module_id = $2 RETURNING *",
+        [learning_path_id, module_id]
+      );
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: "Module not found in the specified learning path" });
+      }
+
+      res.json({ message: "Module removed from learning path successfully" });
+    } catch (err) {
+      console.error("Error removing module from learning path:", err);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  },
+
   getModulesByLearningPath: async (req, res) => {
     const { learning_path_id } = req.params;
   
@@ -142,8 +163,14 @@ const learningPathsController = {
       if (result.rows.length === 0) {
         return res.status(404).json({ error: "No modules found for this learning path" });
       }
+
+          // Adding order_index dynamically based on the order of modules fetched
+    const modulesWithOrderIndex = result.rows.map((module, index) => {
+      module.order_index = index + 1;  // Start the order index from 1
+      return module;
+    });
   
-      res.status(200).json(result.rows);
+    res.status(200).json(modulesWithOrderIndex);
     } catch (err) {
       console.error("Error fetching modules for learning path:", err);
       res.status(500).json({ error: "Internal Server Error" });

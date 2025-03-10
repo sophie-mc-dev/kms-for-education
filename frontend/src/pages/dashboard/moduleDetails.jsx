@@ -13,6 +13,7 @@ import { ResourceCard } from "@/widgets/cards/";
 export function ModuleDetails() {
   const { moduleId } = useParams();
   const [module, setModule] = useState(null);
+  const [resources, setResources] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
@@ -39,6 +40,26 @@ export function ModuleDetails() {
 
     fetchModule();
   }, []);
+
+  // Fetch modules data
+  useEffect(() => {
+    const fetchResources = async () => {
+      try {
+        const response = await fetch(
+          `http://localhost:8080/api/modules/${cleanedModuleId}/resources`
+        );
+        if (!response.ok) {
+          throw new Error("Failed to fetch resources");
+        }
+        const data = await response.json();
+        setResources(data);
+      } catch (err) {
+        setError(err.message);
+      }
+    };
+
+    fetchResources();
+  }, []); // Fetch resources when the component mounts
 
   // Handle loading and error states
   if (loading)
@@ -67,7 +88,7 @@ export function ModuleDetails() {
                 Estimated Duration:
               </Typography>
               <Typography variant="small" className="text-blue-gray-600">
-                {module.estimated_duration}
+                {module.estimated_duration} min
               </Typography>
             </div>
           </div>
@@ -85,8 +106,8 @@ export function ModuleDetails() {
               Resources
             </Typography>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {module.resources && module.resources.length > 0 ? (
-                module.resources.map((resource) => (
+              {resources && resources.length > 0 ? (
+                resources.map((resource) => (
                   <ResourceCard key={resource.id} resource={resource} />
                 ))
               ) : (

@@ -1,5 +1,12 @@
 const { pool } = require("../db/db");
 
+const multer = require('multer');
+const mammoth = require('mammoth');
+const DOMPurify = require('dompurify');
+const fs = require('fs');
+const { google } = require('googleapis');
+const { Readable } = require('stream');
+
 const resourcesController = {
   // Upload a new resource
   uploadResource: async (req, res) => {
@@ -8,7 +15,8 @@ const resourcesController = {
     const { title, description, url, type, category, created_by, tags, visibility, estimated_time } = req.body;
 
     try {
-        let file_path = req.file ? req.file.path : null; // If no file, this will be null
+        let file_path = req.file ? req.file.path : null; 
+        let convertedHtml = null;
 
         const result = await pool.query(
             `INSERT INTO resources (title, description, url, type, category, created_by, tags, file_path, visibility, estimated_time) 

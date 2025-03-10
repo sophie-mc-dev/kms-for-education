@@ -9,10 +9,9 @@ import {
   Popover,
   PopoverHandler,
   PopoverContent,
-  IconButton,
 } from "@material-tailwind/react";
-import { LearningLPCard } from "@/widgets/cards/";
-import { LearningMDCard } from "@/widgets/cards/";
+import { LearningLPCard } from "@/widgets/cards";
+import { LearningMDCard } from "@/widgets/cards";
 import { PlusIcon } from "@heroicons/react/24/solid";
 import { useUser } from "@/context/UserContext";
 import { Link } from "react-router-dom";
@@ -28,15 +27,11 @@ export function LearningPage() {
   useEffect(() => {
     const fetchLearningPathsAndModules = async () => {
       try {
-        const response = await fetch(
-          "http://localhost:8080/api/learning-paths"
-        );
+        const response = await fetch("http://localhost:8080/api/learning-paths");
         const data = await response.json();
         setLearningPaths(data);
 
-        const modulesResponse = await fetch(
-          "http://localhost:8080/api/modules"
-        );
+        const modulesResponse = await fetch("http://localhost:8080/api/modules");
         const modulesData = await modulesResponse.json();
         setModules(modulesData);
       } catch (error) {
@@ -75,22 +70,16 @@ export function LearningPage() {
     ];
   }
 
-  const sortedItems = combinedItems.sort((a, b) =>
-    a.title.localeCompare(b.title)
-  );
+  const sortedItems = combinedItems.sort((a, b) => a.title.localeCompare(b.title));
 
   return (
-    <div className="mt-12 flex flex-col gap-6">
+    <div className="mt-12 grid grid-cols-4 gap-4">
       {/* Educator Action Button */}
       {userRole === "educator" && (
-        <div className="flex items-center justify-end py-0 px-1">
+        <div className="col-span-4 flex justify-end py-2 px-4">
           <Popover placement="bottom-end">
             <PopoverHandler>
-              <Button
-                variant="filled"
-                size="sm"
-                className="flex items-center gap-2"
-              >
+              <Button variant="filled" size="sm" className="flex items-center gap-2">
                 <PlusIcon className="w-4 h-4" />
                 Create
               </Button>
@@ -112,18 +101,20 @@ export function LearningPage() {
       )}
 
       {/* Search Section */}
-
-      <Input
-        label="Search Resources"
-        value={searchQuery}
-        onChange={(e) => setSearchQuery(e.target.value)}
-        className="mb-4"
-      />
+      <Card className="col-span-4 border border-gray-300 rounded-lg">
+        <CardBody className="p-6">
+          <Input
+            label="Search Learning Resources"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </CardBody>
+      </Card>
 
       {/* Results Section */}
-      <Card className="border border-gray-300 shadow-md flex flex-col min-h-screen">
+      <Card className="col-span-3 border border-gray-300 shadow-md">
         <CardBody>
-          <Typography variant="h6" color="blue-gray" className="mb-2">
+          <Typography variant="h6" color="blue-gray" className="mb-4">
             Results
           </Typography>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
@@ -139,38 +130,18 @@ export function LearningPage() {
       </Card>
 
       {/* Filters Sidebar */}
-      <Card className="border border-gray-300 shadow-md flex flex-col min-h-screen">
+      <Card className="col-span-1 border border-gray-300 shadow-md">
         <CardBody>
-          <Typography variant="h6" color="blue-gray" className="mb-2">
+          <Typography variant="h6" color="blue-gray" className="mb-4">
             Filters
           </Typography>
           <div className="mb-4">
-            <Typography
-              variant="small"
-              color="blue-gray"
-              className="text-xs font-semibold uppercase text-blue-gray-500"
-            >
+            <Typography variant="small" className="text-xs font-semibold uppercase text-blue-gray-500">
               Type:
             </Typography>
             <div className="flex flex-col gap-2">
-              <div className="flex items-center">
-                <Checkbox
-                  checked={filterLP}
-                  onChange={() => setFilterLP(!filterLP)}
-                />
-                <Typography variant="small" className="leading-none">
-                  Learning Paths
-                </Typography>
-              </div>
-              <div className="flex items-center">
-                <Checkbox
-                  checked={filterMD}
-                  onChange={() => setFilterMD(!filterMD)}
-                />
-                <Typography variant="small" className="leading-none">
-                  Modules
-                </Typography>
-              </div>
+              <Checkbox checked={filterLP} onChange={() => setFilterLP(!filterLP)} label="Learning Paths" />
+              <Checkbox checked={filterMD} onChange={() => setFilterMD(!filterMD)} label="Modules" />
             </div>
           </div>
         </CardBody>

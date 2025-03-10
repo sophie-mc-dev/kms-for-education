@@ -306,7 +306,6 @@ export function UploadResource() {
               type="file"
               name="file"
               // onChange={handleFileChange}
-              multiple
               className="mt-1 block w-full text-sm text-gray-500"
             />
           </div>

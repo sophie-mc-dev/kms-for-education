@@ -34,24 +34,56 @@ export function LearningPathDetails() {
   }, []); 
 
   // Fetch modules data
-  useEffect(() => {
-    const fetchModules = async () => {
-      try {
-        const response = await fetch(
-          `http://localhost:8080/api/learning-paths/${cleanedLearningPathId}/modules`
-        );
-        if (!response.ok) {
-          throw new Error("Failed to fetch modules");
-        }
-        const data = await response.json();
-        setModules(data);
-      } catch (err) {
-        setError(err.message);
+// Fetch modules data after updating the order
+useEffect(() => {
+  const fetchModules = async () => {
+    try {
+      const response = await fetch(
+        `http://localhost:8080/api/learning-paths/${cleanedLearningPathId}/modules`
+      );
+      if (!response.ok) {
+        throw new Error("Failed to fetch modules");
       }
-    };
+      const data = await response.json();
+      console.log(data)
+      setModules(data);  // Update state with newly ordered modules
 
-    fetchModules();
-  }, []); // Fetch modules when the component mounts
+      // After fetching, update the module order index in the backend
+      await updateModuleOrderIndex(cleanedLearningPathId);
+      setModules(data);
+      console.log(data)
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  fetchModules();
+}, []); // Ensure this is called only once
+
+  // Function to update the module order index in the backend
+  const updateModuleOrderIndex = async (learningPathId) => {
+    try {
+      const response = await fetch(
+        `http://localhost:8080/api/learning-paths/${learningPathId}/modules/order`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log("success"); // Success message
+      } else {
+        const errorData = await response.json();
+        console.error("error"); // Error message
+      }
+    } catch (error) {
+      console.error("Error updating module order:", error);
+    }
+  };
 
   if (loading) return <div>Loading...</div>;
   if (error) return <div>Error: {error}</div>;
@@ -73,7 +105,7 @@ export function LearningPathDetails() {
                 Estimated Duration:
               </Typography>
               <Typography variant="small" className="text-blue-gray-600">
-                {learningPath.estimated_duration}
+                {learningPath.estimated_duration} minutes
               </Typography>
             </div>
 
