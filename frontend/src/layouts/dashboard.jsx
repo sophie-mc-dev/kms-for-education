@@ -9,7 +9,7 @@ import {
 } from "@/widgets/layout";
 import { useMaterialTailwindController, setOpenConfigurator } from "@/context";
 import { useUser } from "@/context/UserContext";
-import { ResourceDetails, UploadResource, CreateLearningPath, CreateModule, LearningPathDetails, ModuleDetails } from "@/pages/dashboard";
+import { ResourceDetails, UploadResource, CreateLearningPath, CreateStudentLearningPath, CreateModule, LearningPathDetails, ModuleDetails } from "@/pages/dashboard";
 
 export function Dashboard() {
   const [controller, dispatch] = useMaterialTailwindController();
@@ -66,6 +66,7 @@ export function Dashboard() {
           <Route path="learning/module/:moduleId" element={<ModuleDetails />} />
           <Route path="resources/upload-resource" element={<UploadResource />} />
           <Route path="learning/upload-learning-path" element={<CreateLearningPath />} />
+          <Route path="learning/create-learning-path" element={<CreateStudentLearningPath />} />
           <Route path="learning/upload-module" element={<CreateModule />} />
         </Routes>
         <div className="text-blue-gray-600">

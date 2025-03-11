@@ -100,6 +100,18 @@ export function LearningPage() {
         </div>
       )}
 
+      {/* Educator Action Button */}
+      {userRole === "student" && (
+        <div className="col-span-4 flex justify-end py-2 px-4">
+          <Link to="create-learning-path">
+              <Button variant="filled" size="sm" className="flex items-center gap-2">
+                <PlusIcon className="w-4 h-4" />
+                Create Learning Path
+              </Button>
+              </Link>
+        </div>
+      )}
+
       {/* Search Section */}
       <Card className="col-span-4 border border-gray-300 rounded-lg">
         <CardBody className="p-6">

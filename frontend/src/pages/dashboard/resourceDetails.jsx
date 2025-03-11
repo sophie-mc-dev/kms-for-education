@@ -88,7 +88,7 @@ export function ResourceDetails() {
               </div>
               <div className="flex items-center gap-x-1">
                 <Typography className="block text-xs font-semibold uppercase text-blue-gray-500">
-                  Authored By:
+                  Added By:
                 </Typography>
                 <Typography
                   variant="small"
@@ -167,16 +167,63 @@ export function ResourceDetails() {
                 className="font-semibold capitalize"
               >
                 Content:
-                {/* show files, links, embedded videos, exercises, etc... */}
               </Typography>
-              <Button
-                color="blue-gray"
-                onClick={() =>
-                  window.open(resource.url, "_blank", "noopener, noreferrer")
-                }
-              >
-                View Now
-              </Button>
+
+              {resource.type === "video" ||
+              resource.url.includes("youtube.com") ? (
+                // Embed YouTube Video
+                <div className="mt-2">
+                  <iframe
+                    width="100%"
+                    height="400"
+                    src={`https://www.youtube.com/embed/${new URL(
+                      resource.url
+                    ).searchParams.get("v")}`}
+                    title="YouTube video player"
+                    frameBorder="0"
+                    allowFullScreen
+                    className="rounded-md shadow-md"
+                  ></iframe>
+                </div>
+              ) : resource.type === "pdf" || resource.url.endsWith(".pdf") ? (
+                // Embed PDF
+                <div className="mt-2">
+                  <embed
+                    src={resource.url}
+                    type="application/pdf"
+                    width="100%"
+                    height="500px"
+                    className="border rounded-md shadow-md"
+                  />
+                  <Button
+                    color="blue-gray"
+                    className="mt-2"
+                    onClick={() => window.open(resource.url)}
+                  >
+                    Open PDF
+                  </Button>
+                </div>
+              ) : resource.type === "image" ||
+                /\.(jpg|jpeg|png|gif)$/i.test(resource.url) ? (
+                // Display Image
+                <div className="mt-2">
+                  <img
+                    src={resource.url}
+                    alt={resource.title}
+                    className="max-w-full h-auto rounded-md shadow-md"
+                  />
+                </div>
+              ) : (
+                // Other Files
+                <div className="mt-2">
+                  <Button
+                    color="blue-gray"
+                    onClick={() => window.open(resource.url, "_blank")}
+                  >
+                    View Resource
+                  </Button>
+                </div>
+              )}
             </div>
           </CardBody>
         </Card>
@@ -198,10 +245,10 @@ export function ResourceDetails() {
         <Card className="border border-blue-gray-100 p-4 h-full">
           <CardBody>
             <Typography variant="h6" className="font-semibold mb-2">
-              Related Learning Paths
+              Related Modules
             </Typography>
             <Typography variant="small" className="text-gray-600 italic">
-              Learning paths that include this resource will be displayed here.
+              Modules that include this resource will be displayed here.
             </Typography>
           </CardBody>
         </Card>

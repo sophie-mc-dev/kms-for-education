@@ -36,7 +36,7 @@ export const resourceTypes = [
   { id: 16, name: "Research Paper", color: "indigo", icon: <BeakerIcon className="h-5 w-5" /> },
   { id: 17, name: "Thesis / Dissertation", color: "blue", icon: <ArchiveBoxIcon className="h-5 w-5" /> },
   { id: 18, name: "Tutorial Video", color: "red", icon: <FilmIcon className="h-5 w-5" /> },
-  { id: 19, name: "Webinars & Videos", color: "purple", icon: <VideoCameraIcon className="h-5 w-5" /> },
+  { id: 19, name: "Video", color: "purple", icon: <VideoCameraIcon className="h-5 w-5" /> },
   { id: 20, name: "Link", color: "gray", icon: <LinkIcon className="h-5 w-5" /> }
 ];
 

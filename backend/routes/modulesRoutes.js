@@ -22,5 +22,6 @@ router.post("/:module_id/resources/:resource_id", modulesController.addExistingR
 router.delete("/:module_id/resources/:resource_id", modulesController.removeResourceFromModule);
 router.get("/:module_id/resources", modulesController.getResourcesByModuleId);
 router.get("/:module_id/resource_count", modulesController.getModuleResourceCount);
+router.get("/:resource_id", modulesController.getModulesByResourceId);
 
 module.exports = router;

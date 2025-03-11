@@ -10,31 +10,31 @@ import {
   Select,
   Typography,
   Option,
-  Radio,
 } from "@material-tailwind/react";
+
+import { DndProvider, useDrag, useDrop } from "react-dnd";
+import { HTML5Backend } from "react-dnd-html5-backend";
+import { ModuleCard } from "@/widgets/cards";
 
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
-import { useUser } from "@/context/userContext";
 
-export function CreateLearningPath() {
+export function CreateStudentLearningPath() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [visibility, setVisibility] = useState("public");
-  const [estimatedDuration, setEstimatedDuration] = useState("");
-  const [ects, setEcts] = useState("");
-  const [content, setContent] = useState("");
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loading, setLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [errors, setErrors] = useState({});
+
+  const [searchQuery, setSearchQuery] = useState("");
   const [modules, setModules] = useState([]);
   const [selectedModules, setSelectedModules] = useState([]);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   const navigate = useNavigate();
-
-  // TODO: ADD MODULES OPTION
 
   useEffect(() => {
     const fetchModules = async () => {
@@ -50,6 +50,30 @@ export function CreateLearningPath() {
     fetchModules();
   }, []);
 
+  // Filtered modules based on search query
+  const filteredModules = modules.filter((module) =>
+    module.title.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // Add module to selected list
+  const addModule = (module) => {
+    if (!selectedModules.some((m) => m.id === module.id)) {
+      setSelectedModules([...selectedModules, module]);
+    }
+  };
+
+  // Remove module from selected list
+  const removeModule = (id) => {
+    setSelectedModules(selectedModules.filter((module) => module.id !== id));
+  };
+
+  const moveModule = (fromIndex, toIndex) => {
+    const updatedModules = [...selectedModules];
+    const [movedModule] = updatedModules.splice(fromIndex, 1);
+    updatedModules.splice(toIndex, 0, movedModule);
+    setSelectedModules(updatedModules);
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -57,14 +81,10 @@ export function CreateLearningPath() {
     const learningPathData = {
       title,
       description,
-      visibility,
-      estimatedDuration,
-      ects,
-      content,
       modules: selectedModules,
     };
 
-    fetch("/api/learning-paths", {
+    fetch("http://localhost:8080/api/learning-paths", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -93,7 +113,7 @@ export function CreateLearningPath() {
           className="m-0 flex items-center justify-between p-6"
         >
           <Typography variant="h6" color="blue-gray">
-            New Learning Path
+            Create Learning Path
           </Typography>
         </CardHeader>
 
@@ -112,83 +132,59 @@ export function CreateLearningPath() {
             {/* Description */}
             <div className="mb-4">
               <ReactQuill
-                value={content}
-                onChange={setContent}
+                value={description}
+                onChange={setDescription}
                 placeholder="Describe the learning path content here"
               />
             </div>
 
-            {/* Estimated Duration */}
-            <div className="flex gap-4">
-              <div className="mb-4 flex-1">
-                <Input
-                  label="Estimated Duration (in minutes)"
-                  value={estimatedDuration}
-                  onChange={(e) => setEstimatedDuration(e.target.value)}
-                  type="number"
-                  required
-                />
-              </div>
-
-              {/* ECTS */}
-              <div className="mb-4 flex-1">
-                <Input
-                  label="ECTS"
-                  value={ects}
-                  onChange={(e) => setEcts(e.target.value)}
-                  type="number"
-                  required
-                />
-              </div>
+            {/* Search Modules Input */}
+            <div className="mb-4 relative">
+              <Input
+                label="Search Modules"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => setSearchOpen(true)}
+                onBlur={() => setTimeout(() => setSearchOpen(false), 200)}
+              />
+              {searchOpen && (
+                <div className="absolute z-10 mt-2 w-full bg-white border rounded-lg shadow-lg p-4 max-h-60 overflow-auto">
+                  {filteredModules.length > 0 ? (
+                    filteredModules.map((module) => (
+                      <div key={module.id} className="mb-2">
+                        <ModuleCard
+                          module={module}
+                          addModule={addModule}
+                          isSelected={selectedModules.some((m) => m.id === module.id)}
+                        />
+                      </div>
+                    ))
+                  ) : (
+                    <Typography className="text-gray-500">No modules found.</Typography>
+                  )}
+                </div>
+              )}
             </div>
 
-            {/* Modules (Multi-Select) */}
+            {/* Selected Modules */}
             <div className="mb-4">
-              <Select
-                label="Select Modules"
-                multiple
-                value={selectedModules}
-                onChange={(e) => setSelectedModules(e)}
-                required
-              >
-                {modules.map((module) => (
-                  <Option key={module.id} value={module.id}>
-                    {module.title}
-                  </Option>
-                ))}
-              </Select>
-            </div>
-
-            {/* Visibility */}
-            <div className="mb-4">
-              <div className="flex items-center gap-4">
-                <Typography className="text-xs font-semibold uppercase text-blue-gray-500">
-                  Visibility:
-                </Typography>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="visibility"
-                    value="public"
-                    checked={visibility === "public"}
-                    onChange={() => setVisibility("public")}
-                    className="cursor-pointer"
-                  />
-                  <Typography variant="small">Public</Typography>
-                </label>
-
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="visibility"
-                    value="private"
-                    checked={visibility === "private"}
-                    onChange={() => setVisibility("private")}
-                    className="cursor-pointer"
-                  />
-                  <Typography variant="small">Private</Typography>
-                </label>
-              </div>
+              <Typography className="text-xs font-semibold uppercase text-blue-gray-500">
+                Selected Modules
+              </Typography>
+              {selectedModules.length === 0 ? (
+                <Typography className="text-gray-500">No modules selected.</Typography>
+              ) : (
+                <div className="grid gap-4">
+                  {selectedModules.map((module) => (
+                    <ModuleCard
+                      key={module.id}
+                      module={module}
+                      removeModule={() => removeModule(module.id)}
+                      isSelected={true}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           </form>
         </CardBody>
@@ -230,4 +226,4 @@ export function CreateLearningPath() {
   );
 }
 
-export default CreateLearningPath;
+export default CreateStudentLearningPath;

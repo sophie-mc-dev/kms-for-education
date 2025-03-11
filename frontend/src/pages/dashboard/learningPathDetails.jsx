@@ -46,12 +46,7 @@ useEffect(() => {
       }
       const data = await response.json();
       console.log(data)
-      setModules(data);  // Update state with newly ordered modules
-
-      // After fetching, update the module order index in the backend
-      await updateModuleOrderIndex(cleanedLearningPathId);
-      setModules(data);
-      console.log(data)
+      setModules(data);  
     } catch (err) {
       setError(err.message);
     }
@@ -59,31 +54,6 @@ useEffect(() => {
 
   fetchModules();
 }, []); // Ensure this is called only once
-
-  // Function to update the module order index in the backend
-  const updateModuleOrderIndex = async (learningPathId) => {
-    try {
-      const response = await fetch(
-        `http://localhost:8080/api/learning-paths/${learningPathId}/modules/order`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      if (response.ok) {
-        const result = await response.json();
-        console.log("success"); // Success message
-      } else {
-        const errorData = await response.json();
-        console.error("error"); // Error message
-      }
-    } catch (error) {
-      console.error("Error updating module order:", error);
-    }
-  };
 
   if (loading) return <div>Loading...</div>;
   if (error) return <div>Error: {error}</div>;
@@ -136,8 +106,8 @@ useEffect(() => {
           </Typography>
 
           <div className="flex flex-col gap-2">
-            {modules.map((module, index) => (
-              <ModuleCard key={module.id} module={module} index={index} />
+            {modules.map((module) => (
+              <ModuleCard key={module.id} module={module} />
             ))}
           </div>
         </CardBody>

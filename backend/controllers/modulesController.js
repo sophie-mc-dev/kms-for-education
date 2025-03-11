@@ -179,6 +179,26 @@ const modulesController = {
       res.status(500).json({ error: "Internal Server Error" });
     }
   },
+
+  getModulesByResourceId: async (req, res) => {
+    const { resource_id } = req.params;
+  
+    try {
+      const result = await pool.query(
+        `SELECT m.* 
+         FROM modules m
+         INNER JOIN module_resources mr ON m.id = mr.module_id
+         WHERE mr.resource_id = $1
+         ORDER BY m.id ASC`,
+        [resource_id]
+      );
+  
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error fetching modules for resource:", error);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  },
 };
 
 module.exports = modulesController;

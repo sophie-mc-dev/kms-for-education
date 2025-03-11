@@ -17,13 +17,14 @@ const resourcesController = {
     try {
         let file_path = req.file ? req.file.path : null; 
         let convertedHtml = null;
+        let format = req.file ? req.file.originalname.split('.').pop() : null; 
 
         const result = await pool.query(
-            `INSERT INTO resources (title, description, url, type, category, created_by, tags, file_path, visibility, estimated_time) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
-            RETURNING *`,
-            [title, description, url, type, category, created_by, tags, file_path, visibility, estimated_time]
-        );
+          `INSERT INTO resources (title, description, url, type, category, created_by, tags, file_path, visibility, estimated_time, format) 
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) 
+          RETURNING *`,
+          [title, description, url, type, category, created_by, tags, file_path, visibility, estimated_time, format]
+      );
 
         res.status(201).json({ message: "Resource uploaded successfully", resource: result.rows[0] });
     } catch (error) {
@@ -99,6 +100,7 @@ const resourcesController = {
       if (file_path !== undefined) { fields.push(`file_path = $${index++}`); values.push(file_path); }
       if (visibility !== undefined) { fields.push(`visibility = $${index++}`); values.push(visibility); }
       if (estimated_time !== undefined) { fields.push(`estimated_time = $${index++}`); values.push(estimated_time); }
+      if (format !== undefined) { fields.push(`format = $${index++}`); values.push(format); }
 
       // Ensure there's something to update
       if (fields.length === 0) {

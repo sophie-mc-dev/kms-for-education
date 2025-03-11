@@ -2,23 +2,44 @@ const { pool } = require("../db/db");
 
 const learningPathsController = {
   addLearningPath: async (req, res) => {
-    const { title, description, visibility, estimated_duration, ects } = req.body;
+    const { title, description, visibility, estimated_duration, ects, modules } = req.body;
     const user_id = req.user.user_id;
 
     if (!title || !description || !visibility || !estimated_duration || ects === undefined) {
       return res.status(400).json({ error: "All fields are required" });
     }
-    
+
+    const client = await pool.connect(); // Start a transaction
+
     try {
-      const result = await pool.query(
+      await client.query("BEGIN"); // Begin transaction
+
+      // Insert Learning Path
+      const learningPathResult = await client.query(
         `INSERT INTO learning_paths (title, description, user_id, visibility, estimated_duration, ects, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW()) RETURNING *`,
+         VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW()) RETURNING id`,
         [title, description, user_id, visibility, estimated_duration, ects]
       );
-      res.status(201).json({ message: "Learning Path created", learningPath: result.rows[0] });
+
+      const learningPathId = learningPathResult.rows[0].id;
+
+      // Insert modules if provided
+      if (modules && modules.length > 0) {
+        const moduleValues = modules.map((moduleId) => `(${learningPathId}, ${moduleId})`).join(", ");
+        await client.query(
+          `INSERT INTO learning_path_modules (learning_path_id, module_id) VALUES ${moduleValues}`
+        );
+      }
+
+      await client.query("COMMIT"); // Commit transaction
+      res.status(201).json({ message: "Learning Path created successfully", learningPathId });
+
     } catch (err) {
+      await client.query("ROLLBACK"); // Rollback if an error occurs
       console.error("Error creating learning path:", err);
       res.status(500).json({ error: "Internal Server Error" });
+    } finally {
+      client.release(); // Release database connection
     }
   },
 

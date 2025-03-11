@@ -3,7 +3,7 @@ import { Card, CardBody, Typography } from "@material-tailwind/react";
 import { ClockIcon } from "@heroicons/react/24/outline";
 import { Bars3Icon } from "@heroicons/react/24/solid";
 
-export function ModuleCard({ module, index }) {
+export function ModuleCard({ module, addModule, removeModule, isSelected }) {
   const [resourceCount, setResourceCount] = useState(null);
 
   useEffect(() => {
@@ -25,7 +25,13 @@ export function ModuleCard({ module, index }) {
   }, [module.id]);
 
   return (
-    <Card className="border border-blue-gray-100 rounded-lg bg-blue-gray-50">
+    // <Card className="border border-blue-gray-100 rounded-lg bg-blue-gray-50 mt-2">
+
+<Card 
+      className="border border-blue-gray-100 rounded-lg bg-blue-gray-50 mt-2 cursor-pointer transition"
+      onClick={() => (isSelected ? removeModule(module.id) : addModule(module))}
+    >
+
       <CardBody className="flex items-start justify-between gap-4">
         {/* Drag Handle */}
         <div className="flex items-center">
@@ -35,7 +41,7 @@ export function ModuleCard({ module, index }) {
         {/* Module Details */}
         <div className="flex-1">
           <Typography variant="h6" color="blue-gray" className="font-semibold">
-            {`${index + 1}. ${module.title}`}
+            {module.title}
           </Typography>
           <Typography variant="small" className="text-blue-gray-600 mt-1">
             {module.description}
