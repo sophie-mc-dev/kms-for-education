@@ -1,42 +1,97 @@
 const { pool } = require("../db/db");
+const { convertToHTML } = require("../utils/convert-to-html");
+const { uploadToR2 } = require("../utils/r2-upload");
 
-const multer = require('multer');
-const mammoth = require('mammoth');
-const DOMPurify = require('dompurify');
-const fs = require('fs');
-const { google } = require('googleapis');
-const { Readable } = require('stream');
+const multer = require("multer");
 
 const resourcesController = {
   // Upload a new resource
+  // TODO: conversion to html logic, error handling
   uploadResource: async (req, res) => {
-    console.log("Received Form Data:", req.body); 
+    console.log("Received Form Data:", req.body);
 
-    const { title, description, url, type, category, created_by, tags, visibility, estimated_time } = req.body;
+    const {
+      title,
+      description,
+      type,
+      category,
+      created_by,
+      tags,
+      visibility,
+      estimated_time,
+    } = req.body;
+
+    let client;
 
     try {
-        let file_path = req.file ? req.file.path : null; 
-        let convertedHtml = null;
-        let format = req.file ? req.file.originalname.split('.').pop() : null; 
+      client = await pool.connect();
+      await client.query("BEGIN");
 
-        const result = await pool.query(
-          `INSERT INTO resources (title, description, url, type, category, created_by, tags, file_path, visibility, estimated_time, format) 
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) 
+      let format = req.file ? req.file.originalname.split(".").pop() : null;
+
+      // 1. Insert resource data into the database
+      const result = await client.query(
+        `INSERT INTO resources (title, description, type, category, created_by, tags, visibility, estimated_time, format) 
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
           RETURNING *`,
-          [title, description, url, type, category, created_by, tags, file_path, visibility, estimated_time, format]
+        [
+          title,
+          description,
+          type,
+          category,
+          created_by,
+          tags,
+          visibility,
+          estimated_time,
+          format,
+        ]
       );
 
-        res.status(201).json({ message: "Resource uploaded successfully", resource: result.rows[0] });
+      const resourceId = result.rows[0].id;
+
+      // 2. Upload file to R2
+      console.log("File received in uploadToR2:", req.file);
+      const r2Url = await uploadToR2(req.file, resourceId);
+
+      // 3. Convert file to HTML if needed
+      let htmlContent = null;
+      if (["txt", "md", "pdf", "docx"].includes(format)) {
+        htmlContent = await convertToHTML(r2Url, format);
+      }
+
+      // 4. Store HTML in the database
+      await client.query(
+        `UPDATE resources SET url = $1, html_content = $2 WHERE id = $3`,
+        [r2Url, htmlContent, resourceId]
+      );
+
+      await client.query("COMMIT");
+
+      res.status(201).json({
+        message: "Resource uploaded successfully",
+        resourceId: resourceId,
+      });
     } catch (error) {
-        console.error("Error uploading resource:", error);
-        res.status(500).json({ error: "Internal Server Error" });
+      console.error("Error uploading resource:", error);
+
+      if (client) {
+        await client.query("ROLLBACK");
+      }
+
+      res.status(500).json({ error: "Internal Server Error" });
+    } finally {
+      if (client) {
+        client.release();
+      }
     }
-},
+  },
 
   // Get all resources
   getAllResources: async (req, res) => {
     try {
-      const result = await pool.query("SELECT * FROM resources ORDER BY created_at DESC");
+      const result = await pool.query(
+        "SELECT * FROM resources ORDER BY created_at DESC"
+      );
       res.json(result.rows);
     } catch (error) {
       console.error("Error fetching resources:", error);
@@ -49,7 +104,9 @@ const resourcesController = {
     const { id } = req.params;
 
     try {
-      const result = await pool.query("SELECT * FROM resources WHERE id = $1", [id]);
+      const result = await pool.query("SELECT * FROM resources WHERE id = $1", [
+        id,
+      ]);
 
       if (result.rows.length === 0) {
         return res.status(404).json({ error: "Resource not found" });
@@ -75,12 +132,15 @@ const resourcesController = {
       tags,
       file_path,
       visibility,
-      estimated_time
+      estimated_time,
     } = req.body;
 
     try {
       // Check if the resource exists before updating
-      const existingResource = await pool.query(`SELECT * FROM resources WHERE id = $1`, [id]);
+      const existingResource = await pool.query(
+        `SELECT * FROM resources WHERE id = $1`,
+        [id]
+      );
       if (existingResource.rows.length === 0) {
         return res.status(404).json({ error: "Resource not found" });
       }
@@ -90,17 +150,50 @@ const resourcesController = {
       const values = [];
       let index = 1;
 
-      if (title !== undefined) { fields.push(`title = $${index++}`); values.push(title); }
-      if (description !== undefined) { fields.push(`description = $${index++}`); values.push(description); }
-      if (url !== undefined) { fields.push(`url = $${index++}`); values.push(url); }
-      if (type !== undefined) { fields.push(`type = $${index++}`); values.push(type); }
-      if (category !== undefined) { fields.push(`category = $${index++}`); values.push(category); }
-      if (created_by !== undefined) { fields.push(`created_by = $${index++}`); values.push(created_by); }
-      if (tags !== undefined) { fields.push(`tags = $${index++}`); values.push(tags); }
-      if (file_path !== undefined) { fields.push(`file_path = $${index++}`); values.push(file_path); }
-      if (visibility !== undefined) { fields.push(`visibility = $${index++}`); values.push(visibility); }
-      if (estimated_time !== undefined) { fields.push(`estimated_time = $${index++}`); values.push(estimated_time); }
-      if (format !== undefined) { fields.push(`format = $${index++}`); values.push(format); }
+      if (title !== undefined) {
+        fields.push(`title = $${index++}`);
+        values.push(title);
+      }
+      if (description !== undefined) {
+        fields.push(`description = $${index++}`);
+        values.push(description);
+      }
+      if (url !== undefined) {
+        fields.push(`url = $${index++}`);
+        values.push(url);
+      }
+      if (type !== undefined) {
+        fields.push(`type = $${index++}`);
+        values.push(type);
+      }
+      if (category !== undefined) {
+        fields.push(`category = $${index++}`);
+        values.push(category);
+      }
+      if (created_by !== undefined) {
+        fields.push(`created_by = $${index++}`);
+        values.push(created_by);
+      }
+      if (tags !== undefined) {
+        fields.push(`tags = $${index++}`);
+        values.push(tags);
+      }
+      if (file_path !== undefined) {
+        fields.push(`file_path = $${index++}`);
+        values.push(file_path);
+      }
+      if (visibility !== undefined) {
+        fields.push(`visibility = $${index++}`);
+        values.push(visibility);
+      }
+      if (estimated_time !== undefined) {
+        fields.push(`estimated_time = $${index++}`);
+        values.push(estimated_time);
+      }
+      if (format !== undefined) {
+        fields.push(`format = $${index++}`);
+        values.push(format);
+      }
 
       // Ensure there's something to update
       if (fields.length === 0) {
@@ -111,13 +204,18 @@ const resourcesController = {
       fields.push(`updated_at = NOW()`);
 
       // Construct query
-      const query = `UPDATE resources SET ${fields.join(", ")} WHERE id = $${index} RETURNING *`;
+      const query = `UPDATE resources SET ${fields.join(
+        ", "
+      )} WHERE id = $${index} RETURNING *`;
       values.push(id);
 
       // Execute update query
       const result = await pool.query(query, values);
 
-      res.json({ message: "Resource updated successfully", resource: result.rows[0] });
+      res.json({
+        message: "Resource updated successfully",
+        resource: result.rows[0],
+      });
     } catch (error) {
       console.error("Error updating resource:", error);
       res.status(500).json({ error: "Internal Server Error" });
@@ -130,7 +228,10 @@ const resourcesController = {
 
     try {
       // Check if the resource exists before deleting
-      const existingResource = await pool.query("SELECT * FROM resources WHERE id = $1", [id]);
+      const existingResource = await pool.query(
+        "SELECT * FROM resources WHERE id = $1",
+        [id]
+      );
 
       if (existingResource.rows.length === 0) {
         return res.status(404).json({ error: "Resource not found" });
@@ -145,7 +246,9 @@ const resourcesController = {
 
       // Handle foreign key constraint error
       if (error.code === "23503") {
-        return res.status(400).json({ error: "Cannot delete resource as it is referenced in another table." });
+        return res.status(400).json({
+          error: "Cannot delete resource as it is referenced in another table.",
+        });
       }
 
       res.status(500).json({ error: "Internal Server Error" });

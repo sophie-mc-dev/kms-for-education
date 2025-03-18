@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Input,
   Card,
@@ -14,21 +14,32 @@ import { Link } from "react-router-dom";
 
 export function EducatorResources() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [resources, setResources] = useState([]);
 
-  const collections = ["Recently Added", "Published", "Private"];
+  const collections = ["Published"];
 
-  // Sample resources data
-  const resources = [
-    { id: 1, title: "AI in Education", category: "Recently Added" },
-    { id: 2, title: "Semantic Web Basics", category: "Published" },
-    { id: 3, title: "Knowledge Management Systems", category: "Private" },
-    {
-      id: 4,
-      title: "Machine Learning for Students",
-      category: "Recently Added",
-    },
-    { id: 5, title: "Collaborative Learning Tools", category: "Published" },
-  ];
+  // TODO: get resources published by the educator (add method on backend)
+  const getAllResources = async () => {
+    try {
+      const response = await fetch("http://localhost:8080/api/resources");
+      if (!response.ok) throw new Error("Failed to fetch resources");
+
+      return await response.json();
+    } catch (error) {
+      console.error("Error fetching resources:", error);
+      return [];
+    }
+  };
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const allResources = await getAllResources();
+
+      setResources(allResources);
+    };
+
+    fetchData();
+  }, []);
 
   // Filter function
   const filteredResources = (category) =>
@@ -42,7 +53,11 @@ export function EducatorResources() {
     <div className="mt-12 flex flex-col gap-6">
       <CardFooter className="flex items-center justify-end py-0 px-1">
         <Link to="upload-resource">
-          <Button variant="filled" size="sm" className="flex items-center gap-2">
+          <Button
+            variant="filled"
+            size="sm"
+            className="flex items-center gap-2"
+          >
             <CloudArrowUpIcon className="w-4 h-4" />
             Upload Resource
           </Button>

@@ -7,6 +7,7 @@ import {
   Chip,
   Button,
 } from "@material-tailwind/react";
+import ReactMarkdown from "react-markdown";
 
 export function ResourceDetails() {
   const { resourceId } = useParams();
@@ -48,15 +49,118 @@ export function ResourceDetails() {
       })
     : "N/A";
 
-  if (loading) {
-    return <div className="p-4">Loading...</div>;
-  }
-
-  if (error || !resource) {
+  if (loading) return <div className="p-4">Loading...</div>;
+  if (error || !resource)
     return (
       <div className="p-4 text-red-500">{error || "Resource not found"}</div>
     );
-  }
+
+  // Function to extract YouTube video ID from different formats
+  const getYouTubeEmbedUrl = (url) => {
+    try {
+      const urlObj = new URL(url);
+      if (urlObj.hostname.includes("youtube.com")) {
+        return `https://www.youtube.com/embed/${urlObj.searchParams.get("v")}`;
+      } else if (urlObj.hostname.includes("youtu.be")) {
+        return `https://www.youtube.com/embed/${urlObj.pathname.substring(1)}`;
+      }
+    } catch (error) {
+      console.error("Invalid YouTube URL:", error);
+    }
+    return null;
+  };
+
+  // Render content based on file type
+  const renderResourceContent = () => {
+    const { url, format, html_content } = resource;
+
+    if (url.includes("youtube.com") || url.includes("youtu.be")) {
+      const embedUrl = getYouTubeEmbedUrl(url);
+      return embedUrl ? (
+        <iframe
+          width="60%"
+          height="400"
+          src={embedUrl}
+          title="YouTube video"
+          allowFullScreen
+          className="rounded-md shadow-md"
+        ></iframe>
+      ) : null;
+    }
+
+    if (/\.(jpg|jpeg|png|gif)$/i.test(url)) {
+      return (
+        <img
+          src={url}
+          alt={resource.title}
+          className="max-w-full h-auto rounded-md shadow-md"
+        />
+      );
+    }
+
+    if (format === "pdf" || url.endsWith(".pdf")) {
+      return (
+        <div>
+          <embed
+            src={url}
+            type="application/pdf"
+            width="100%"
+            height="700px"
+            className="border rounded-md shadow-md"
+          />
+          {/* <Button
+            color="blue-gray"
+            className="mt-2"
+            onClick={() => window.open(url)}
+          >
+            Open PDF
+          </Button> */}
+        </div>
+      );
+    }
+
+    if (["docx", "pptx", "xlsx"].includes(format)) {
+      const officeViewerUrl = `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(
+        url
+      )}`;
+      return (
+        <div>
+          <iframe
+            src={officeViewerUrl}
+            width="100%"
+            height="500px"
+            className="rounded-md shadow-md"
+          ></iframe>
+          <Button
+            color="blue-gray"
+            className="mt-2"
+            onClick={() => window.open(url)}
+          >
+            Download File
+          </Button>
+        </div>
+      );
+    }
+
+    // Render text and markdown files directly
+    if (["txt", "md"].includes(format) && html_content) {
+      // Extract content inside <pre> tags if present
+      const extractedContent = html_content.replace(/<\/?pre>/g, "");
+    
+      return format === "md" ? (
+        <ReactMarkdown className="prose">{extractedContent}</ReactMarkdown>
+      ) : (
+        <div className="prose whitespace-pre-wrap">{extractedContent}</div>
+      );
+    }
+    
+
+    return (
+      <Button color="blue-gray" onClick={() => window.open(url, "_blank")}>
+        View Resource
+      </Button>
+    );
+  };
 
   return (
     <div className="mt-12 flex gap-4 h-full">
@@ -113,7 +217,7 @@ export function ResourceDetails() {
                 color="blue-gray"
                 className="font-semibold capitalize"
               >
-                Type:
+                Resource Type:
               </Typography>
               <Typography
                 variant="small"
@@ -139,6 +243,22 @@ export function ResourceDetails() {
               </Typography>
             </div>
 
+            <div className="mb-6">
+              <Typography
+                variant="small"
+                color="blue-gray"
+                className="font-semibold capitalize"
+              >
+                File Format:
+              </Typography>
+              <Typography
+                variant="small"
+                className="font-normal text-blue-gray-500 uppercase"
+              >
+                {resource.format}
+              </Typography>
+            </div>
+
             {resource.tags && resource.tags.length > 0 && (
               <div className="mb-6">
                 <Typography
@@ -161,69 +281,16 @@ export function ResourceDetails() {
             )}
 
             <div className="mb-6">
-              <Typography
-                variant="small"
-                color="blue-gray"
-                className="font-semibold capitalize"
-              >
-                Content:
-              </Typography>
-
-              {resource.type === "video" ||
-              resource.url.includes("youtube.com") ? (
-                // Embed YouTube Video
-                <div className="mt-2">
-                  <iframe
-                    width="100%"
-                    height="400"
-                    src={`https://www.youtube.com/embed/${new URL(
-                      resource.url
-                    ).searchParams.get("v")}`}
-                    title="YouTube video player"
-                    frameBorder="0"
-                    allowFullScreen
-                    className="rounded-md shadow-md"
-                  ></iframe>
-                </div>
-              ) : resource.type === "pdf" || resource.url.endsWith(".pdf") ? (
-                // Embed PDF
-                <div className="mt-2">
-                  <embed
-                    src={resource.url}
-                    type="application/pdf"
-                    width="100%"
-                    height="500px"
-                    className="border rounded-md shadow-md"
-                  />
-                  <Button
-                    color="blue-gray"
-                    className="mt-2"
-                    onClick={() => window.open(resource.url)}
-                  >
-                    Open PDF
-                  </Button>
-                </div>
-              ) : resource.type === "image" ||
-                /\.(jpg|jpeg|png|gif)$/i.test(resource.url) ? (
-                // Display Image
-                <div className="mt-2">
-                  <img
-                    src={resource.url}
-                    alt={resource.title}
-                    className="max-w-full h-auto rounded-md shadow-md"
-                  />
-                </div>
-              ) : (
-                // Other Files
-                <div className="mt-2">
-                  <Button
-                    color="blue-gray"
-                    onClick={() => window.open(resource.url, "_blank")}
-                  >
-                    View Resource
-                  </Button>
-                </div>
-              )}
+              <div className="mb-6">
+                <Typography
+                  variant="small"
+                  color="blue-gray"
+                  className="font-semibold capitalize"
+                >
+                  Content:
+                </Typography>
+                {renderResourceContent()}
+              </div>
             </div>
           </CardBody>
         </Card>

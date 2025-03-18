@@ -47,11 +47,10 @@ export function UploadResource() {
     const { name, value } = event.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: value,
+      [name]: name === "estimatedTime" ? Number(value) || "" : value, 
     }));
   };
 
-  // todo
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -129,9 +128,8 @@ export function UploadResource() {
     formDataToSend.append("category", formData.category);
     formDataToSend.append("created_by", "Sample Author");
     formDataToSend.append("visibility", formData.visibility);
-    formDataToSend.append("estimatedTime", formData.estimatedTime);
+    formDataToSend.append("estimatedTime", Number(formData.estimatedTime));
 
-    // Append file (if exists)
     if (formData.file) {
       formDataToSend.append("file", formData.file);
     }
@@ -168,6 +166,7 @@ export function UploadResource() {
         tags: [],
         file: null,
         visibility: "public",
+        estimatedTime: "",
       });
       setTagInput("");
     } catch (error) {
@@ -177,9 +176,6 @@ export function UploadResource() {
       setLoading(false);
     }
   };
-
-  // TODO: handle file change
-  // store array of files instead of just one
 
   return (
     <div className="mt-12 flex justify-center">
@@ -305,7 +301,8 @@ export function UploadResource() {
             <input
               type="file"
               name="file"
-              // onChange={handleFileChange}
+              accept=".pdf,.doc,.docx,.ppt,.pptx,.png,.jpg,.jpeg,.txt"
+              onChange={handleFileChange}
               className="mt-1 block w-full text-sm text-gray-500"
             />
           </div>

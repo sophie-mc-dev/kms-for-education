@@ -5,7 +5,7 @@ const resourcesController = require("../controllers/resourcesController");
 const multer = require("multer");
 const upload = multer();
 
-router.post("/upload", upload.none(), resourcesController.uploadResource);
+router.post("/upload", upload.single('file'), resourcesController.uploadResource);
 
 router.get("/", resourcesController.getAllResources);
 

@@ -62,7 +62,7 @@ export function Search() {
 
     const tagMatch =
       tagFilter.length > 0
-        ? resource.tags.some((tag) => tagFilter.includes(tag))
+        ? resource.tags?.some((tag) => tagFilter.includes(tag)) || false
         : true;
 
     return searchMatch && categoryMatch && tagMatch && typeMatch;
