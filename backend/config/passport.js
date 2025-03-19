@@ -1,11 +1,11 @@
 const passport = require("passport");
 const LocalStrategy = require("passport-local").Strategy;
 const bcrypt = require("bcrypt");
-const { pool } = require("../db/db");
+const { pool } = require("../db/postgres");
 
 passport.use(
   new LocalStrategy(
-    { usernameField: 'email', passwordField: 'password' },
+    { usernameField: "email", passwordField: "password" },
     async (email, password, done) => {
       try {
         const result = await pool.query(
@@ -13,24 +13,26 @@ passport.use(
           [email]
         );
         const user = result.rows[0];
-  
+
         if (!user) {
           return done(null, false, { message: "Incorrect email." });
         }
-  
-        const passwordMatch = await bcrypt.compare(password, user.password_hash);
+
+        const passwordMatch = await bcrypt.compare(
+          password,
+          user.password_hash
+        );
         if (!passwordMatch) {
           return done(null, false, { message: "Incorrect password." });
         }
-  
+
         return done(null, user);
       } catch (err) {
         return done(err);
       }
     }
-  )  
+  )
 );
-
 
 passport.serializeUser((user, done) => {
   done(null, user.user_id);

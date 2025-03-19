@@ -1,4 +1,4 @@
-const { pool } = require("../db/db");
+const { pool } = require("../db/postgres");
 const bcrypt = require("bcrypt");
 
 async function hashPassword(password) {
@@ -153,7 +153,10 @@ const usersController = {
         [userId, learningPathId]
       );
 
-      res.status(201).json({ message: "Learning path progress started", progress: result.rows[0] });
+      res.status(201).json({
+        message: "Learning path progress started",
+        progress: result.rows[0],
+      });
     } catch (err) {
       console.error("Error adding learning path progress:", err);
       res.status(500).json({ error: "Internal Server Error" });
@@ -161,7 +164,7 @@ const usersController = {
   },
 
   getUserLearningPaths: async (req, res) => {
-    const userId = req.user.id; 
+    const userId = req.user.id;
 
     try {
       const result = await pool.query(
@@ -184,7 +187,9 @@ const usersController = {
     const { progress } = req.body;
 
     if (progress < 0 || progress > 100) {
-      return res.status(400).json({ error: "Progress must be between 0 and 100" });
+      return res
+        .status(400)
+        .json({ error: "Progress must be between 0 and 100" });
     }
 
     try {
@@ -196,10 +201,15 @@ const usersController = {
       );
 
       if (result.rows.length === 0) {
-        return res.status(404).json({ error: "Learning path progress not found" });
+        return res
+          .status(404)
+          .json({ error: "Learning path progress not found" });
       }
 
-      res.json({ message: "Learning path progress updated", progress: result.rows[0] });
+      res.json({
+        message: "Learning path progress updated",
+        progress: result.rows[0],
+      });
     } catch (err) {
       console.error("Error updating learning path progress:", err);
       res.status(500).json({ error: "Internal Server Error" });

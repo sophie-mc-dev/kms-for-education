@@ -16,20 +16,30 @@ const cors = require("cors");
 const app = express();
 const port = process.env.PORT;
 
-const { testConnection } = require('./db/db');
+const { testPostgresConnection } = require("./db/postgres"); // PostgreSQL
+const { testNeo4jConnection } = require("./db/neo4j"); // Neo4j
+const { syncData } = require("./db/sync_pg_to_neo4j");
 
 async function startServer() {
-  const isConnected = await testConnection();
-  if (!isConnected) {
+  const isPostgresConnected  = await testPostgresConnection();
+  const isNeo4jConnected = await testNeo4jConnection();
+
+  if (!isPostgresConnected || !isNeo4jConnected) {
     console.error("Database connection failed. Exiting...");
     process.exit(1);
   }
 
+  // **Sync data from PostgreSQL to Neo4j**
+  console.log("Syncing data from PostgreSQL to Neo4j...");
+  await syncData(); // Call sync function
+
   // CORS Configuration
-  app.use(cors({
-    origin: "http://localhost:5173",
-    credentials: true
-  }));  
+  app.use(
+    cors({
+      origin: "http://localhost:5173",
+      credentials: true,
+    })
+  );
 
   // Body Parsers
   app.use(express.json());
@@ -41,11 +51,11 @@ async function startServer() {
       secret: process.env.SESSION_SECRET,
       resave: false,
       saveUninitialized: false,
-      cookie: { 
-        maxAge: 30 * 24 * 60 * 60 * 1000,  // 30 days
-        secure: false, 
-        httpOnly: true
-      }
+      cookie: {
+        maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+        secure: false,
+        httpOnly: true,
+      },
     })
   );
 
@@ -60,7 +70,7 @@ async function startServer() {
   app.use("/api/bookmarks", bookmarksRoutes);
   app.use("/api/learning-paths", learningPathsRoutes);
   app.use("/api/modules", modulesRoutes);
-  
+
   app.use("/api/assessments", assessmentsRoutes);
   app.use("/api/assessment-results", assessmentResultsRoutes);
 

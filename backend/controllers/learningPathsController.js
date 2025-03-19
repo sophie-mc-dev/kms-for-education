@@ -1,11 +1,24 @@
-const { pool } = require("../db/db");
+const { pool } = require("../db/postgres");
 
 const learningPathsController = {
   addLearningPath: async (req, res) => {
-    const { title, description, visibility, estimated_duration, ects, modules } = req.body;
+    const {
+      title,
+      description,
+      visibility,
+      estimated_duration,
+      ects,
+      modules,
+    } = req.body;
     const user_id = req.user.user_id;
 
-    if (!title || !description || !visibility || !estimated_duration || ects === undefined) {
+    if (
+      !title ||
+      !description ||
+      !visibility ||
+      !estimated_duration ||
+      ects === undefined
+    ) {
       return res.status(400).json({ error: "All fields are required" });
     }
 
@@ -25,15 +38,19 @@ const learningPathsController = {
 
       // Insert modules if provided
       if (modules && modules.length > 0) {
-        const moduleValues = modules.map((moduleId) => `(${learningPathId}, ${moduleId})`).join(", ");
+        const moduleValues = modules
+          .map((moduleId) => `(${learningPathId}, ${moduleId})`)
+          .join(", ");
         await client.query(
           `INSERT INTO learning_path_modules (learning_path_id, module_id) VALUES ${moduleValues}`
         );
       }
 
       await client.query("COMMIT"); // Commit transaction
-      res.status(201).json({ message: "Learning Path created successfully", learningPathId });
-
+      res.status(201).json({
+        message: "Learning Path created successfully",
+        learningPathId,
+      });
     } catch (err) {
       await client.query("ROLLBACK"); // Rollback if an error occurs
       console.error("Error creating learning path:", err);
@@ -46,7 +63,10 @@ const learningPathsController = {
   removeLearningPath: async (req, res) => {
     const { id } = req.params;
     try {
-      const result = await pool.query("DELETE FROM learning_paths WHERE id = $1 RETURNING *", [id]);
+      const result = await pool.query(
+        "DELETE FROM learning_paths WHERE id = $1 RETURNING *",
+        [id]
+      );
       if (result.rows.length === 0) {
         return res.status(404).json({ error: "Learning Path not found" });
       }
@@ -94,9 +114,16 @@ const learningPathsController = {
 
   updateLearningPath: async (req, res) => {
     const { id } = req.params;
-    const { title, description, visibility, estimated_duration, ects } = req.body;
+    const { title, description, visibility, estimated_duration, ects } =
+      req.body;
 
-    if (!title || !description || !visibility || !estimated_duration || ects === undefined) {
+    if (
+      !title ||
+      !description ||
+      !visibility ||
+      !estimated_duration ||
+      ects === undefined
+    ) {
       return res.status(400).json({ error: "All fields are required" });
     }
 
@@ -110,7 +137,10 @@ const learningPathsController = {
       if (result.rows.length === 0) {
         return res.status(404).json({ error: "Learning Path not found" });
       }
-      res.json({ message: "Learning Path updated", learningPath: result.rows[0] });
+      res.json({
+        message: "Learning Path updated",
+        learningPath: result.rows[0],
+      });
     } catch (err) {
       console.error("Error updating learning path:", err);
       res.status(500).json({ error: "Internal Server Error" });
@@ -119,28 +149,38 @@ const learningPathsController = {
 
   addExistingModuleToLearningPath: async (req, res) => {
     const { learning_path_id, module_id } = req.params;
-  
+
     if (!learning_path_id || !module_id) {
-      return res.status(400).json({ error: "Learning path ID and module ID are required" });
+      return res
+        .status(400)
+        .json({ error: "Learning path ID and module ID are required" });
     }
-    
+
     try {
-      const learningPathCheck = await pool.query("SELECT * FROM learning_paths WHERE id = $1", [learning_path_id]);
+      const learningPathCheck = await pool.query(
+        "SELECT * FROM learning_paths WHERE id = $1",
+        [learning_path_id]
+      );
       if (learningPathCheck.rows.length === 0) {
         return res.status(404).json({ error: "Learning path not found" });
       }
-      
-      const moduleCheck = await pool.query("SELECT * FROM modules WHERE id = $1", [module_id]);
+
+      const moduleCheck = await pool.query(
+        "SELECT * FROM modules WHERE id = $1",
+        [module_id]
+      );
       if (moduleCheck.rows.length === 0) {
         return res.status(404).json({ error: "Module not found" });
       }
-      
+
       await pool.query(
         `INSERT INTO learning_path_modules (learning_path_id, module_id) VALUES ($1, $2)`,
         [learning_path_id, module_id]
       );
-      
-      res.status(201).json({ message: "Module added to learning path successfully" });
+
+      res
+        .status(201)
+        .json({ message: "Module added to learning path successfully" });
     } catch (err) {
       console.error("Error adding module to learning path:", err);
       res.status(500).json({ error: "Internal Server Error" });
@@ -158,7 +198,9 @@ const learningPathsController = {
       );
 
       if (result.rows.length === 0) {
-        return res.status(404).json({ error: "Module not found in the specified learning path" });
+        return res
+          .status(404)
+          .json({ error: "Module not found in the specified learning path" });
       }
 
       res.json({ message: "Module removed from learning path successfully" });
@@ -170,7 +212,7 @@ const learningPathsController = {
 
   getModulesByLearningPath: async (req, res) => {
     const { learning_path_id } = req.params;
-  
+
     try {
       // Query to fetch all modules for the specified learning path
       const result = await pool.query(
@@ -180,18 +222,20 @@ const learningPathsController = {
          WHERE lpm.learning_path_id = $1`,
         [learning_path_id]
       );
-  
+
       if (result.rows.length === 0) {
-        return res.status(404).json({ error: "No modules found for this learning path" });
+        return res
+          .status(404)
+          .json({ error: "No modules found for this learning path" });
       }
 
-          // Adding order_index dynamically based on the order of modules fetched
-    const modulesWithOrderIndex = result.rows.map((module, index) => {
-      module.order_index = index + 1;  // Start the order index from 1
-      return module;
-    });
-  
-    res.status(200).json(modulesWithOrderIndex);
+      // Adding order_index dynamically based on the order of modules fetched
+      const modulesWithOrderIndex = result.rows.map((module, index) => {
+        module.order_index = index + 1; // Start the order index from 1
+        return module;
+      });
+
+      res.status(200).json(modulesWithOrderIndex);
     } catch (err) {
       console.error("Error fetching modules for learning path:", err);
       res.status(500).json({ error: "Internal Server Error" });
