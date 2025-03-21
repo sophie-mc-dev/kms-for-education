@@ -1,6 +1,63 @@
 const { pool } = require("../db/postgres");
 
 const modulesController = {
+  createModule: async (req, res) => {
+    const { title, description, order_index, estimated_duration, assessment } =
+      req.body;
+
+    if (!title) {
+      return res.status(400).json({ error: "Title is required" });
+    }
+
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+
+      // Insert module
+      const moduleResult = await client.query(
+        `INSERT INTO modules (title, description, order_index, estimated_duration) 
+       VALUES ($1, $2, $3, $4) 
+       RETURNING *`,
+        [title, description, order_index, estimated_duration]
+      );
+
+      const module = moduleResult.rows[0];
+
+      // If an assessment is included, insert it
+      if (
+        assessment &&
+        assessment.title &&
+        assessment.questions &&
+        assessment.solution
+      ) {
+        const assessmentResult = await client.query(
+          `INSERT INTO assessments (title, description, assessment_type, questions, solution, module_id) 
+         VALUES ($1, $2, $3, $4, $5, $6) 
+         RETURNING *`,
+          [
+            assessment.title,
+            assessment.description || null,
+            assessment.assessment_type || "quiz",
+            JSON.stringify(assessment.questions),
+            JSON.stringify(assessment.solution),
+            module.id,
+          ]
+        );
+
+        module.assessment = assessmentResult.rows[0];
+      }
+
+      await client.query("COMMIT");
+      res.status(201).json(module);
+    } catch (error) {
+      await client.query("ROLLBACK");
+      console.error("Error creating module:", error);
+      res.status(500).json({ error: "Internal Server Error" });
+    } finally {
+      client.release();
+    }
+  },
+
   // Get all modules
   getAllModules: async (req, res) => {
     try {
@@ -29,65 +86,85 @@ const modulesController = {
     }
   },
 
-  // Create a new module
-  createModule: async (req, res) => {
-    const {
-      title,
-      description,
-      order_index,
-      assessment_id,
-      estimated_duration,
-    } = req.body;
-
-    if (!title) {
-      return res.status(400).json({ error: "Title is required" });
-    }
-
-    try {
-      const result = await pool.query(
-        `INSERT INTO modules (title, description, order_index, assessment_id, estimated_duration) 
-         VALUES ($1, $2, $3, $4, $5) 
-         RETURNING *`,
-        [
-          title,
-          description,
-          order_index,
-          assessment_id || null,
-          estimated_duration,
-        ]
-      );
-      res.status(201).json(result.rows[0]);
-    } catch (error) {
-      console.error("Error creating module:", error);
-      res.status(500).json({ error: "Internal Server Error" });
-    }
-  },
-
   // Update a module
   updateModule: async (req, res) => {
     const { id } = req.params;
-    const {
-      title,
-      description,
-      order_index,
-      assessment_id,
-      estimated_duration,
-    } = req.body;
+    const { title, description, order_index, estimated_duration, assessment } =
+      req.body;
+
+    const client = await pool.connect();
     try {
-      const result = await pool.query(
+      await client.query("BEGIN");
+
+      // Update module details
+      const moduleResult = await client.query(
         `UPDATE modules 
-         SET title = $1, description = $2, order_index = $3, assessment_id = $4, estimated_duration = $5, updated_at = NOW()
-         WHERE id = $6 
+         SET title = $1, description = $2, order_index = $3, estimated_duration = $4, updated_at = NOW()
+         WHERE id = $5 
          RETURNING *`,
-        [title, description, order_index, assessment_id, estimated_duration, id]
+        [title, description, order_index, estimated_duration, id]
       );
-      if (result.rows.length === 0) {
+
+      if (moduleResult.rows.length === 0) {
+        await client.query("ROLLBACK");
         return res.status(404).json({ error: "Module not found" });
       }
-      res.json(result.rows[0]);
+
+      const module = moduleResult.rows[0];
+
+      // Check if an assessment exists for this module
+      const existingAssessment = await client.query(
+        `SELECT * FROM assessments WHERE module_id = $1`,
+        [id]
+      );
+
+      if (
+        assessment &&
+        assessment.title &&
+        assessment.questions &&
+        assessment.solution
+      ) {
+        if (existingAssessment.rows.length > 0) {
+          // Update existing assessment
+          await client.query(
+            `UPDATE assessments 
+             SET title = $1, description = $2, assessment_type = $3, questions = $4, solution = $5, updated_at = NOW()
+             WHERE module_id = $6
+             RETURNING *`,
+            [
+              assessment.title,
+              assessment.description || null,
+              assessment.assessment_type || "quiz",
+              JSON.stringify(assessment.questions),
+              JSON.stringify(assessment.solution),
+              id,
+            ]
+          );
+        } else {
+          // Create new assessment and link to module
+          await client.query(
+            `INSERT INTO assessments (title, description, assessment_type, questions, solution, module_id) 
+             VALUES ($1, $2, $3, $4, $5, $6)`,
+            [
+              assessment.title,
+              assessment.description || null,
+              assessment.assessment_type || "quiz",
+              JSON.stringify(assessment.questions),
+              JSON.stringify(assessment.solution),
+              id,
+            ]
+          );
+        }
+      }
+
+      await client.query("COMMIT");
+      res.json({ message: "Module updated successfully", module });
     } catch (error) {
+      await client.query("ROLLBACK");
       console.error("Error updating module:", error);
       res.status(500).json({ error: "Internal Server Error" });
+    } finally {
+      client.release();
     }
   },
 
@@ -226,6 +303,173 @@ const modulesController = {
       res.json(result.rows);
     } catch (error) {
       console.error("Error fetching modules for resource:", error);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  },
+
+  getAssessmentByModuleId: async (req, res) => {
+    const { moduleId } = req.params;
+
+    try {
+      const result = await pool.query(
+        `SELECT * FROM assessments WHERE module_id = $1`,
+        [moduleId]
+      );
+
+      if (result.rows.length === 0) {
+        return res
+          .status(404)
+          .json({ error: "Assessment not found for this module" });
+      }
+
+      res.json(result.rows[0]);
+    } catch (error) {
+      console.error("Error fetching assessment:", error);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  },
+
+  // Mark Module as Complete
+  completeModule: async (req, res) => {
+    const { module_id } = req.params;
+    const user_id = req.user.user_id;
+
+    try {
+      // Check if the module has an associated assessment
+      const moduleResult = await pool.query(
+        `SELECT assessment_id FROM modules WHERE id = $1`,
+        [module_id]
+      );
+
+      if (moduleResult.rows.length === 0) {
+        return res.status(404).json({ error: "Module not found" });
+      }
+
+      const { assessment_id } = moduleResult.rows[0];
+
+      // If the module has an assessment, check if the user has passed it
+      if (assessment_id) {
+        const assessmentResult = await pool.query(
+          `SELECT passed FROM assessment_results 
+           WHERE user_id = $1 AND assessment_id = $2 
+           ORDER BY submission_time DESC 
+           LIMIT 1`,
+          [user_id, assessment_id]
+        );
+
+        if (
+          assessmentResult.rows.length === 0 ||
+          !assessmentResult.rows[0].passed
+        ) {
+          return res
+            .status(400)
+            .json({
+              error:
+                "User must pass the assessment before completing the module",
+            });
+        }
+      }
+
+      // Insert into user_module_progress
+      await pool.query(
+        `INSERT INTO user_module_progress (user_id, module_id, completed_at) 
+        VALUES ($1, $2, NOW()) 
+        ON CONFLICT (user_id, module_id) DO NOTHING`,
+        [user_id, module_id]
+      );
+
+      res.json({ message: "Module marked as completed" });
+    } catch (err) {
+      console.error("Error marking module complete:", err);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  },
+
+  submitAssessment: async (req, res) => {
+    const { assessment_id } = req.params;
+    const user_id = req.user.user_id;
+    const { answers } = req.body; // User-submitted answers in JSON format
+
+    try {
+      // Fetch correct answers from the database
+      const assessment = await pool.query(
+        `SELECT solution FROM assessments WHERE id = $1`,
+        [assessment_id]
+      );
+
+      if (assessment.rows.length === 0) {
+        return res.status(404).json({ error: "Assessment not found" });
+      }
+
+      const correctAnswers = assessment.rows[0].solution; // JSON of correct answers
+
+      // Evaluate score
+      let score = 0;
+      let totalQuestions = Object.keys(correctAnswers).length;
+
+      for (let questionId in correctAnswers) {
+        if (correctAnswers[questionId] === answers[questionId]) {
+          score++;
+        }
+      }
+
+      let percentage = (score / totalQuestions) * 100;
+      let passed = percentage >= 70; // Example: Passing threshold = 70%
+
+      // Insert into assessment_results
+      await pool.query(
+        `INSERT INTO assessment_results (user_id, assessment_id, module_id, score, passed, submission_time, answers) 
+        VALUES ($1, $2, (SELECT module_id FROM assessments WHERE id = $2), $3, $4, NOW(), $5) 
+        RETURNING *`,
+        [user_id, assessment_id, score, passed, answers]
+      );
+
+      res.json({ message: "Assessment submitted successfully", score, passed });
+    } catch (err) {
+      console.error("Error submitting assessment:", err);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  },
+
+  // Lock/unlock modules based on assessment results
+  unlockModule: async (req, res) => {
+    const { module_id } = req.params;
+    const user_id = req.user.user_id;
+
+    try {
+      // Check if the module has an associated assessment
+      const assessmentCheck = await pool.query(
+        `SELECT assessment_id FROM modules WHERE id = $1`,
+        [module_id]
+      );
+
+      if (
+        assessmentCheck.rows.length === 0 ||
+        !assessmentCheck.rows[0].assessment_id
+      ) {
+        return res
+          .status(400)
+          .json({ error: "Module has no assessment requirement" });
+      }
+
+      const assessment_id = assessmentCheck.rows[0].assessment_id;
+
+      // Check if the user has passed the assessment
+      const assessmentResult = await pool.query(
+        `SELECT * FROM assessment_results 
+       WHERE user_id = $1 AND assessment_id = $2 AND passed = true`,
+        [user_id, assessment_id]
+      );
+
+      if (assessmentResult.rows.length === 0) {
+        return res
+          .status(403)
+          .json({ error: "Assessment not passed. Module remains locked." });
+      }
+
+      res.json({ message: "Module unlocked!" });
+    } catch (err) {
+      console.error("Error unlocking module:", err);
       res.status(500).json({ error: "Internal Server Error" });
     }
   },

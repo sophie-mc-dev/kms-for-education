@@ -21,21 +21,10 @@ const syncData = async () => {
       );
     }
 
-    // Sync Resources
-    // const resources = await pgClient.query("SELECT id, title, description, category, type FROM resources");
-    // for (let resource of resources.rows) {
-    //   await neoSession.run(
-    //     "MERGE (r:Resource {id: $id}) SET r.title = $title, r.description = $description, r.category = $category, r.type = $type",
-    //     { id: resource.id.toString(), title: resource.title, description: resource.description, category: resource.category, type: resource.type }
-    //   );
-    // }
-
     // **Sync Resources**
     const resources = await pgClient.query("SELECT id, title, description, category, type, tags FROM resources");
 
     for (let resource of resources.rows) {
-      console.log(`Syncing resource: ${resource.id} - ${resource.title}`);
-
       // **Check if tags is an array** (PostgreSQL should return it as an array)
       const tags = Array.isArray(resource.tags) ? resource.tags : [];
 

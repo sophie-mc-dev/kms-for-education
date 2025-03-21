@@ -23,4 +23,9 @@ router.post("/:learning_path_id/modules/:module_id", learningPathsController.add
 router.delete("/:learning_path_id/modules/:module_id", learningPathsController.removeModuleFromLearningPath);
 router.get("/:learning_path_id/modules", learningPathsController.getModulesByLearningPath);
 
+// Progress
+router.post("/:learning_path_id/start", learningPathsController.startLearningPath);
+router.get("/:learning_path_id/progress/:user_id", learningPathsController.getLearningPathProgress);
+router.post("/:learning_path_id/complete", learningPathsController.startLearningPath);
+
 module.exports = router;

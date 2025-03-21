@@ -215,6 +215,8 @@ const usersController = {
       res.status(500).json({ error: "Internal Server Error" });
     }
   },
+
+  // get a user's started learning paths
 };
 
 module.exports = usersController;

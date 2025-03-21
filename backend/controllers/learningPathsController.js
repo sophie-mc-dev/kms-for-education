@@ -8,7 +8,7 @@ const learningPathsController = {
       visibility,
       estimated_duration,
       ects,
-      modules,
+      modules, // Expecting an array of module IDs
     } = req.body;
     const user_id = req.user.user_id;
 
@@ -22,10 +22,10 @@ const learningPathsController = {
       return res.status(400).json({ error: "All fields are required" });
     }
 
-    const client = await pool.connect(); // Start a transaction
+    const client = await pool.connect();
 
     try {
-      await client.query("BEGIN"); // Begin transaction
+      await client.query("BEGIN");
 
       // Insert Learning Path
       const learningPathResult = await client.query(
@@ -38,25 +38,29 @@ const learningPathsController = {
 
       // Insert modules if provided
       if (modules && modules.length > 0) {
-        const moduleValues = modules
-          .map((moduleId) => `(${learningPathId}, ${moduleId})`)
+        const values = modules
+          .map((_, index) => `($1, $${index + 2})`)
           .join(", ");
+        const queryParams = [learningPathId, ...modules];
+
         await client.query(
-          `INSERT INTO learning_path_modules (learning_path_id, module_id) VALUES ${moduleValues}`
+          `INSERT INTO learning_path_modules (learning_path_id, module_id) VALUES ${values}`,
+          queryParams
         );
       }
 
-      await client.query("COMMIT"); // Commit transaction
+      await client.query("COMMIT");
+
       res.status(201).json({
         message: "Learning Path created successfully",
         learningPathId,
       });
     } catch (err) {
-      await client.query("ROLLBACK"); // Rollback if an error occurs
+      await client.query("ROLLBACK");
       console.error("Error creating learning path:", err);
       res.status(500).json({ error: "Internal Server Error" });
     } finally {
-      client.release(); // Release database connection
+      client.release();
     }
   },
 
@@ -241,6 +245,106 @@ const learningPathsController = {
       res.status(500).json({ error: "Internal Server Error" });
     }
   },
+
+  // Start Learning Path for a User
+  startLearningPath: async (req, res) => {
+    const { learning_path_id } = req.params;
+    const user_id = req.user.user_id;
+
+    try {
+      // Check if Learning Path exists
+      const lpCheck = await pool.query(
+        "SELECT * FROM learning_paths WHERE id = $1",
+        [learning_path_id]
+      );
+      if (lpCheck.rows.length === 0) {
+        return res.status(404).json({ error: "Learning Path not found" });
+      }
+
+      // Check if user has already started
+      const userLPCheck = await pool.query(
+        "SELECT * FROM learning_path_progress WHERE user_id = $1 AND learning_path_id = $2",
+        [user_id, learning_path_id]
+      );
+      if (userLPCheck.rows.length > 0) {
+        return res.status(400).json({ error: "Learning path already started" });
+      }
+
+      // Insert progress entry
+      await pool.query(
+        `INSERT INTO learning_path_progress (user_id, learning_path_id, progress_percentage, started_at, status) 
+         VALUES ($1, $2, 0, NOW(), 'in_progress')
+         ON CONFLICT (user_id, learning_path_id) DO UPDATE SET started_at = NOW(), status = 'in_progress'`,
+        [user_id, learning_path_id]
+      );
+
+      res.status(201).json({ message: "Learning Path started successfully" });
+    } catch (err) {
+      console.error("Error starting learning path:", err);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  },
+
+  // Get User's Learning Path Progress
+  getLearningPathProgress: async (req, res) => {
+    const { learning_path_id } = req.params;
+    const user_id = req.user.user_id;
+
+    try {
+      const result = await pool.query(
+        `SELECT * FROM learning_path_progress 
+         WHERE user_id = $1 AND learning_path_id = $2`,
+        [user_id, learning_path_id]
+      );
+      if (result.rows.length === 0) {
+        return res
+          .status(404)
+          .json({ error: "Progress not found for this learning path" });
+      }
+      res.json(result.rows[0]);
+    } catch (err) {
+      console.error("Error fetching learning path progress:", err);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  },
+
+  // Update Learning Path Progress
+  updateLearningPathProgress: async (req, res) => {
+    const { learning_path_id } = req.params;
+    const { module_id, progress_percentage, status } = req.body;
+    const user_id = req.user.user_id;
+
+    if (!user_id || !learning_path_id || !module_id || !status) {
+      return res.status(400).json({ error: "All fields are required" });
+    }
+
+    if (progress_percentage < 0 || progress_percentage > 100) {
+      return res.status(400).json({ error: "Invalid progress percentage" });
+    }
+
+    try {
+      const result = await pool.query(
+        `UPDATE learning_path_progress 
+         SET progress_percentage = $1, status = $2, updated_at = NOW()
+         WHERE user_id = $3 AND learning_path_id = $4 AND module_id = $5
+         RETURNING *`,
+        [progress_percentage, status, user_id, learning_path_id, module_id]
+      );
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: "Learning path not found or not started" });
+      }
+
+      res.json({
+        message: "Progress updated successfully",
+        progress: result.rows[0],
+      });
+    } catch (err) {
+      console.error("Error updating learning path progress:", err);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  },
+
 };
 
 module.exports = learningPathsController;

@@ -2,7 +2,6 @@ const { pool } = require("../db/postgres");
 const { convertToHTML } = require("../utils/convert-to-html");
 const { uploadToR2 } = require("../utils/r2-upload");
 const { deleteFromR2 } = require("../utils/r2-delete");
-const multer = require("multer");
 
 const resourcesController = {
   // Upload a new resource
@@ -305,6 +304,8 @@ const resourcesController = {
       res.status(500).json({ error: "Internal Server Error" });
     }
   },
+
+  // get resource views
 
 };
 

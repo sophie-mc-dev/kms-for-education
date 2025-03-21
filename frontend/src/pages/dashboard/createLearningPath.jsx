@@ -12,29 +12,23 @@ import {
   Option,
   Radio,
 } from "@material-tailwind/react";
-
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
-import { useUser } from "@/context/userContext";
+import { LearningMDCard } from "@/widgets/cards";
 
 export function CreateLearningPath() {
+  const [step, setStep] = useState(1);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [visibility, setVisibility] = useState("public");
   const [estimatedDuration, setEstimatedDuration] = useState("");
   const [ects, setEcts] = useState("");
-  const [content, setContent] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [successMessage, setSuccessMessage] = useState("");
-  const [errorMessage, setErrorMessage] = useState("");
-  const [errors, setErrors] = useState({});
   const [modules, setModules] = useState([]);
   const [selectedModules, setSelectedModules] = useState([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const navigate = useNavigate();
-
-  // TODO: ADD MODULES OPTION
 
   useEffect(() => {
     const fetchModules = async () => {
@@ -44,7 +38,6 @@ export function CreateLearningPath() {
         setModules(data);
       } catch (error) {
         console.error("Error fetching modules:", error);
-        setErrorMessage("Error fetching modules");
       }
     };
     fetchModules();
@@ -60,27 +53,29 @@ export function CreateLearningPath() {
       visibility,
       estimatedDuration,
       ects,
-      content,
       modules: selectedModules,
     };
 
     fetch("/api/learning-paths", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(learningPathData),
     })
       .then((response) => response.json())
-      .then((data) => {
+      .then(() => {
         setIsSubmitting(false);
-        setSuccessMessage("Learning path created successfully");
         navigate("/learning-paths");
       })
-      .catch((error) => {
-        setIsSubmitting(false);
-        setErrorMessage("Error creating learning path");
-      });
+      .catch(() => setIsSubmitting(false));
+  };
+
+  const handleModuleToggle = (module) => {
+    setSelectedModules(
+      (prevSelected) =>
+        prevSelected.some((mod) => mod.id === module.id)
+          ? prevSelected.filter((mod) => mod.id !== module.id) // Remove if exists
+          : [...prevSelected, module] // Add if not selected
+    );
   };
 
   return (
@@ -93,136 +88,153 @@ export function CreateLearningPath() {
           className="m-0 flex items-center justify-between p-6"
         >
           <Typography variant="h6" color="blue-gray">
-            New Learning Path
+            {step === 1 ? "Learning Path Details" : "Add Modules"}
           </Typography>
         </CardHeader>
 
         <CardBody className="p-6">
-          <form onSubmit={handleSubmit}>
-            {/* Title */}
-            <div className="mb-4">
+          {step === 1 && (
+            <div className="space-y-6">
               <Input
                 label="Title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 required
               />
-            </div>
-
-            {/* Description */}
-            <div className="mb-4">
               <ReactQuill
-                value={content}
-                onChange={setContent}
-                placeholder="Describe the learning path content here"
+                value={description}
+                onChange={setDescription}
+                placeholder="Describe the learning path"
               />
-            </div>
-
-            {/* Estimated Duration */}
-            <div className="flex gap-4">
-              <div className="mb-4 flex-1">
+              <div className="flex gap-4">
                 <Input
-                  label="Estimated Duration (in minutes)"
+                  label="Estimated Duration (min)"
+                  type="number"
                   value={estimatedDuration}
                   onChange={(e) => setEstimatedDuration(e.target.value)}
-                  type="number"
                   required
                 />
-              </div>
-
-              {/* ECTS */}
-              <div className="mb-4 flex-1">
                 <Input
                   label="ECTS"
+                  type="number"
                   value={ects}
                   onChange={(e) => setEcts(e.target.value)}
-                  type="number"
                   required
                 />
               </div>
-            </div>
-
-            {/* Modules (Multi-Select) */}
-            <div className="mb-4">
-              <Select
-                label="Select Modules"
-                multiple
-                value={selectedModules}
-                onChange={(e) => setSelectedModules(e)}
-                required
-              >
-                {modules.map((module) => (
-                  <Option key={module.id} value={module.id}>
-                    {module.title}
-                  </Option>
-                ))}
-              </Select>
-            </div>
-
-            {/* Visibility */}
-            <div className="mb-4">
-              <div className="flex items-center gap-4">
+              <div>
                 <Typography className="text-xs font-semibold uppercase text-blue-gray-500">
                   Visibility:
                 </Typography>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
+                <div className="flex gap-4">
+                  <Radio
                     name="visibility"
                     value="public"
                     checked={visibility === "public"}
                     onChange={() => setVisibility("public")}
-                    className="cursor-pointer"
+                    label="Public"
                   />
-                  <Typography variant="small">Public</Typography>
-                </label>
-
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
+                  <Radio
                     name="visibility"
                     value="private"
                     checked={visibility === "private"}
                     onChange={() => setVisibility("private")}
-                    className="cursor-pointer"
+                    label="Private"
                   />
-                  <Typography variant="small">Private</Typography>
-                </label>
+                </div>
               </div>
             </div>
-          </form>
+          )}
+
+          {step === 2 && (
+            <div className="space-y-6">
+              {/* Searchable Input */}
+              <Input
+                label="Search Modules"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+
+              {/* Filtered Modules in Grid Layout */}
+              <div className="grid grid-cols-4 gap-4">
+                {modules
+                  .filter((mod) =>
+                    mod.title.toLowerCase().includes(searchTerm.toLowerCase())
+                  )
+                  .map((module) => {
+                    const isSelected = selectedModules.some(
+                      (mod) => mod.id === module.id
+                    );
+
+                    return (
+                      <div
+                        key={module.id}
+                        className=" p-2 bg-white grid items-center"
+                      >
+                        <LearningMDCard moduleItem={module} />
+
+                        {/* Add / Remove Button */}
+                        {isSelected ? (
+                          <Button
+                            color="red"
+                            size="sm"
+                            className="mt-2"
+                            onClick={() => handleModuleToggle(module)}
+                          >
+                            Remove
+                          </Button>
+                        ) : (
+                          <Button
+                            color="blue"
+                            size="sm"
+                            className="mt-2"
+                            onClick={() => handleModuleToggle(module)}
+                          >
+                            Add
+                          </Button>
+                        )}
+                      </div>
+                    );
+                  })}
+              </div>
+
+              {/* Display Selected Modules */}
+              {selectedModules.length > 0 && (
+                <div className="mt-6">
+                  <Typography variant="h6" color="blue-gray">
+                    Selected Modules:
+                  </Typography>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-2">
+                    {selectedModules.map((module) => (
+                      <div key={module.id} className="relative">
+                        <LearningMDCard moduleItem={module} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </CardBody>
 
-        <CardFooter className="flex flex-col items-center gap-4 p-6">
-          <div className="flex gap-4">
-            <Button
-              variant="text"
-              onClick={() => navigate("/dashboard/learning")}
-            >
-              Cancel
+        <CardFooter className="flex justify-center p-6">
+          {step > 1 && (
+            <Button variant="text" onClick={() => setStep(step - 1)}>
+              Back
             </Button>
+          )}
+          {step < 2 ? (
+            <Button variant="filled" onClick={() => setStep(step + 1)}>
+              Next
+            </Button>
+          ) : (
             <Button
               variant="filled"
               onClick={handleSubmit}
-              className="flex items-center gap-2"
-              disabled={loading}
+              disabled={isSubmitting}
             >
-              {loading ? (
-                <>
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                  Uploading...
-                </>
-              ) : (
-                "Submit"
-              )}
+              {isSubmitting ? "Submitting..." : "Submit"}
             </Button>
-          </div>
-
-          {successMessage && (
-            <div className="text-green-600 text-center">{successMessage}</div>
-          )}
-          {errorMessage && (
-            <div className="text-red-600 text-center">{errorMessage}</div>
           )}
         </CardFooter>
       </Card>
