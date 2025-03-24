@@ -2,7 +2,7 @@ const { pool } = require("../db/postgres");
 
 const modulesController = {
   createModule: async (req, res) => {
-    const { title, description, order_index, estimated_duration, assessment } =
+    const { title, description, estimated_duration, assessment, resources } =
       req.body;
 
     if (!title) {
@@ -15,35 +15,37 @@ const modulesController = {
 
       // Insert module
       const moduleResult = await client.query(
-        `INSERT INTO modules (title, description, order_index, estimated_duration) 
-       VALUES ($1, $2, $3, $4) 
+        `INSERT INTO modules (title, description, estimated_duration) 
+       VALUES ($1, $2, $3) 
        RETURNING *`,
-        [title, description, order_index, estimated_duration]
+        [title, description, estimated_duration]
       );
 
       const module = moduleResult.rows[0];
 
+      // Insert selected resources into module_resources table
+      const values = resources.map((_, i) => `($1, $${i + 2})`).join(", ");
+      const query = `INSERT INTO module_resources (module_id, resource_id) VALUES ${values}`;
+      await client.query(query, [module.id, ...resources]);
+
       // If an assessment is included, insert it
       if (
         assessment &&
-        assessment.title &&
         assessment.questions &&
+        assessment.answers &&
         assessment.solution
       ) {
         const assessmentResult = await client.query(
-          `INSERT INTO assessments (title, description, assessment_type, questions, solution, module_id) 
-         VALUES ($1, $2, $3, $4, $5, $6) 
+          `INSERT INTO assessments (questions, answers, solution, module_id) 
+         VALUES ($1, $2, $3, $4) 
          RETURNING *`,
           [
-            assessment.title,
-            assessment.description || null,
-            assessment.assessment_type || "quiz",
             JSON.stringify(assessment.questions),
+            JSON.stringify(assessment.answers),
             JSON.stringify(assessment.solution),
             module.id,
           ]
         );
-
         module.assessment = assessmentResult.rows[0];
       }
 
@@ -52,7 +54,7 @@ const modulesController = {
     } catch (error) {
       await client.query("ROLLBACK");
       console.error("Error creating module:", error);
-      res.status(500).json({ error: "Internal Server Error" });
+      res.status(500).json({ error: error.message })
     } finally {
       client.release();
     }
@@ -128,13 +130,12 @@ const modulesController = {
           // Update existing assessment
           await client.query(
             `UPDATE assessments 
-             SET title = $1, description = $2, assessment_type = $3, questions = $4, solution = $5, updated_at = NOW()
-             WHERE module_id = $6
+             SET title = $1, description = $2, questions = $3, solution = $4, updated_at = NOW()
+             WHERE module_id = $5
              RETURNING *`,
             [
               assessment.title,
               assessment.description || null,
-              assessment.assessment_type || "quiz",
               JSON.stringify(assessment.questions),
               JSON.stringify(assessment.solution),
               id,
@@ -143,12 +144,11 @@ const modulesController = {
         } else {
           // Create new assessment and link to module
           await client.query(
-            `INSERT INTO assessments (title, description, assessment_type, questions, solution, module_id) 
-             VALUES ($1, $2, $3, $4, $5, $6)`,
+            `INSERT INTO assessments (title, description, questions, solution, module_id) 
+             VALUES ($1, $2, $3, $4, $5)`,
             [
               assessment.title,
               assessment.description || null,
-              assessment.assessment_type || "quiz",
               JSON.stringify(assessment.questions),
               JSON.stringify(assessment.solution),
               id,
@@ -361,12 +361,9 @@ const modulesController = {
           assessmentResult.rows.length === 0 ||
           !assessmentResult.rows[0].passed
         ) {
-          return res
-            .status(400)
-            .json({
-              error:
-                "User must pass the assessment before completing the module",
-            });
+          return res.status(400).json({
+            error: "User must pass the assessment before completing the module",
+          });
         }
       }
 

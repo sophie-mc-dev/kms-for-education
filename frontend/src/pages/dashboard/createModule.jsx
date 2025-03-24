@@ -13,6 +13,7 @@ import {
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
 import { useUser } from "@/context/userContext";
+import { useNavigate } from "react-router-dom";
 
 export function CreateModule() {
   const [step, setStep] = useState(1);
@@ -22,7 +23,7 @@ export function CreateModule() {
   const [resources, setResources] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedResources, setSelectedResources] = useState([]);
-  const [searchTerm, setSearchTerm] = useState(""); 
+  const [searchTerm, setSearchTerm] = useState("");
   const { userId } = useUser();
   const [questions, setQuestions] = useState(
     Array.from({ length: 5 }, () => ({
@@ -31,6 +32,7 @@ export function CreateModule() {
       correct_answer: null,
     }))
   );
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchResources = async () => {
@@ -49,15 +51,19 @@ export function CreateModule() {
     e.preventDefault();
     setLoading(true);
     try {
-      const response = await fetch("/api/modules", {
+      const response = await fetch("http://localhost:8080/api/modules", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title,
           description,
           estimated_duration: Number(estimatedDuration),
+          assessment: {
+            questions,
+            answers: questions.map((q) => q.options),
+            solution: questions.map((q) => q.correct_answer),
+          },
           resources: selectedResources.map((res) => res.id),
-          questions,
         }),
       });
       if (response.ok) navigate("/learning");
@@ -122,14 +128,12 @@ export function CreateModule() {
 
           {step === 2 && (
             <div className="space-y-6">
-              {/* Searchable Input */}
               <Input
                 label="Search Resources"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
 
-              {/* Filtered Resources in Grid Layout */}
               <div className="grid grid-cols-4 gap-4">
                 {resources
                   .filter((res) =>
@@ -143,19 +147,18 @@ export function CreateModule() {
                     return (
                       <div
                         key={resource.id}
-                        className=" p-2 bg-white grid items-center"
+                        className="p-2 bg-white grid items-center"
                       >
                         <ResourceCard resource={resource} userId={userId} />
 
-                        {/* Add / Remove Button */}
                         {isSelected ? (
                           <Button
-                            color="red"
+                            color="gray"
                             size="sm"
                             className="mt-2"
-                            onClick={() => handleResourceToggle(resource)}
+                            disabled
                           >
-                            Remove
+                            Added
                           </Button>
                         ) : (
                           <Button
@@ -172,7 +175,6 @@ export function CreateModule() {
                   })}
               </div>
 
-              {/* Display Selected Resources */}
               {selectedResources.length > 0 && (
                 <div className="mt-6">
                   <Typography variant="h6" color="blue-gray">
@@ -182,6 +184,14 @@ export function CreateModule() {
                     {selectedResources.map((resource) => (
                       <div key={resource.id} className="relative">
                         <ResourceCard resource={resource} userId={userId} />
+                        <Button
+                          color="red"
+                          size="sm"
+                          className="mt-2 w-full"
+                          onClick={() => handleResourceToggle(resource)}
+                        >
+                          Remove
+                        </Button>
                       </div>
                     ))}
                   </div>

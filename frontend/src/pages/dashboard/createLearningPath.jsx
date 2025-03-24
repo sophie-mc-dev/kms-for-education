@@ -15,6 +15,8 @@ import {
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
 import { LearningMDCard } from "@/widgets/cards";
+import { DragDropContext, Draggable } from "react-beautiful-dnd";
+import { StrictModeDroppable as Droppable } from "@/helpers/StrictModeDroppable";
 
 export function CreateLearningPath() {
   const [step, setStep] = useState(1);
@@ -27,7 +29,6 @@ export function CreateLearningPath() {
   const [selectedModules, setSelectedModules] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -43,9 +44,22 @@ export function CreateLearningPath() {
     fetchModules();
   }, []);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
+
+    const token = localStorage.getItem("token"); 
+    console.log("Retrieved token:", token);
+
+    if (!token) {
+      console.error("No authentication token found!");
+      return;
+    }
+
+    const modulesWithOrder = selectedModules.map((module, index) => ({
+      module_id: module.id,
+      order_index: index,
+    }));
 
     const learningPathData = {
       title,
@@ -53,20 +67,31 @@ export function CreateLearningPath() {
       visibility,
       estimatedDuration,
       ects,
-      modules: selectedModules,
+      modules: modulesWithOrder,
     };
 
-    fetch("/api/learning-paths", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(learningPathData),
-    })
-      .then((response) => response.json())
-      .then(() => {
-        setIsSubmitting(false);
+    console.log("Submitting Learning Path Data:", learningPathData);
+
+    try {
+      const response = await fetch("http://localhost:8080/api/learning-paths", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`, 
+        },
+        body: JSON.stringify(learningPathData),
+      });
+
+      if (response.ok) {
         navigate("/learning-paths");
-      })
-      .catch(() => setIsSubmitting(false));
+      } else {
+        console.error("Error saving learning path:", await response.text());
+      }
+    } catch (error) {
+      console.error("Failed to save:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleModuleToggle = (module) => {
@@ -75,6 +100,29 @@ export function CreateLearningPath() {
         prevSelected.some((mod) => mod.id === module.id)
           ? prevSelected.filter((mod) => mod.id !== module.id) // Remove if exists
           : [...prevSelected, module] // Add if not selected
+    );
+  };
+
+  const handleDragEnd = (result) => {
+    if (!result.destination) return;
+
+    console.log(
+      "Dragging from:",
+      result.source.index,
+      "to:",
+      result.destination.index
+    );
+
+    const updatedModules = Array.from(selectedModules);
+    const [movedItem] = updatedModules.splice(result.source.index, 1);
+    updatedModules.splice(result.destination.index, 0, movedItem);
+
+    // Save new order in state
+    setSelectedModules(updatedModules);
+
+    console.log(
+      "Updated order:",
+      updatedModules.map((mod, index) => ({ id: mod.id, order: index }))
     );
   };
 
@@ -176,12 +224,12 @@ export function CreateLearningPath() {
                         {/* Add / Remove Button */}
                         {isSelected ? (
                           <Button
-                            color="red"
+                            color="gray"
                             size="sm"
                             className="mt-2"
-                            onClick={() => handleModuleToggle(module)}
+                            disabled
                           >
-                            Remove
+                            Added
                           </Button>
                         ) : (
                           <Button
@@ -204,13 +252,50 @@ export function CreateLearningPath() {
                   <Typography variant="h6" color="blue-gray">
                     Selected Modules:
                   </Typography>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-2">
-                    {selectedModules.map((module) => (
-                      <div key={module.id} className="relative">
-                        <LearningMDCard moduleItem={module} />
-                      </div>
-                    ))}
-                  </div>
+
+                  <DragDropContext onDragEnd={handleDragEnd}>
+                    <Droppable
+                      droppableId="modules-list"
+                      direction="horizontal"
+                    >
+                      {(provided) => (
+                        <div
+                          {...provided.droppableProps}
+                          ref={provided.innerRef}
+                          // grid aspect is here:
+                          className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-2"
+                        >
+                          {selectedModules.map((module, index) => (
+                            <Draggable
+                              key={module.id}
+                              draggableId={String(module.id)}
+                              index={index}
+                            >
+                              {(provided) => (
+                                <div
+                                  {...provided.draggableProps}
+                                  {...provided.dragHandleProps}
+                                  ref={provided.innerRef}
+                                  className="relative bg-white p-2"
+                                >
+                                  <LearningMDCard moduleItem={module} />
+                                  <Button
+                                    color="red"
+                                    size="sm"
+                                    className="mt-2 w-full"
+                                    onClick={() => handleModuleToggle(module)}
+                                  >
+                                    Remove
+                                  </Button>
+                                </div>
+                              )}
+                            </Draggable>
+                          ))}
+                          {provided.placeholder}
+                        </div>
+                      )}
+                    </Droppable>
+                  </DragDropContext>
                 </div>
               )}
             </div>

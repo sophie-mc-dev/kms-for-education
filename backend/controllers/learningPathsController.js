@@ -8,7 +8,7 @@ const learningPathsController = {
       visibility,
       estimated_duration,
       ects,
-      modules, // Expecting an array of module IDs
+      modules, 
     } = req.body;
     const user_id = req.user.user_id;
 
@@ -36,15 +36,16 @@ const learningPathsController = {
 
       const learningPathId = learningPathResult.rows[0].id;
 
-      // Insert modules if provided
+      // Insert modules with correct order
       if (modules && modules.length > 0) {
         const values = modules
-          .map((_, index) => `($1, $${index + 2})`)
+          .map((_, index) => `($1, $${index + 2}, $${index + 2 + modules.length})`)
           .join(", ");
-        const queryParams = [learningPathId, ...modules];
+
+        const queryParams = [learningPathId, ...modules, ...modules.map((_, i) => i)];
 
         await client.query(
-          `INSERT INTO learning_path_modules (learning_path_id, module_id) VALUES ${values}`,
+          `INSERT INTO learning_path_modules (learning_path_id, module_id, module_order) VALUES ${values}`,
           queryParams
         );
       }
@@ -118,99 +119,60 @@ const learningPathsController = {
 
   updateLearningPath: async (req, res) => {
     const { id } = req.params;
-    const { title, description, visibility, estimated_duration, ects } =
-      req.body;
+    const { title, description, visibility, estimated_duration, ects, modules } = req.body;
 
-    if (
-      !title ||
-      !description ||
-      !visibility ||
-      !estimated_duration ||
-      ects === undefined
-    ) {
+    if (!title || !description || !visibility || !estimated_duration || ects === undefined) {
       return res.status(400).json({ error: "All fields are required" });
     }
 
+    const client = await pool.connect();
+
     try {
-      const result = await pool.query(
+      await client.query("BEGIN");
+
+      // Update Learning Path details
+      const result = await client.query(
         `UPDATE learning_paths 
          SET title = $1, description = $2, visibility = $3, estimated_duration = $4, ects = $5, updated_at = NOW()
          WHERE id = $6 RETURNING *`,
         [title, description, visibility, estimated_duration, ects, id]
       );
+
       if (result.rows.length === 0) {
+        await client.query("ROLLBACK");
         return res.status(404).json({ error: "Learning Path not found" });
       }
+
+      // If modules are provided, update their order
+      if (modules && modules.length > 0) {
+        // Delete existing module entries for the learning path
+        await client.query(`DELETE FROM learning_path_modules WHERE learning_path_id = $1`, [id]);
+
+        // Insert new module order
+        const values = modules
+          .map((_, index) => `($1, $${index + 2}, $${index + 2 + modules.length})`)
+          .join(", ");
+
+        const queryParams = [id, ...modules, ...modules.map((_, i) => i)];
+
+        await client.query(
+          `INSERT INTO learning_path_modules (learning_path_id, module_id, module_order) VALUES ${values}`,
+          queryParams
+        );
+      }
+
+      await client.query("COMMIT");
+
       res.json({
         message: "Learning Path updated",
         learningPath: result.rows[0],
       });
     } catch (err) {
+      await client.query("ROLLBACK");
       console.error("Error updating learning path:", err);
       res.status(500).json({ error: "Internal Server Error" });
-    }
-  },
-
-  addExistingModuleToLearningPath: async (req, res) => {
-    const { learning_path_id, module_id } = req.params;
-
-    if (!learning_path_id || !module_id) {
-      return res
-        .status(400)
-        .json({ error: "Learning path ID and module ID are required" });
-    }
-
-    try {
-      const learningPathCheck = await pool.query(
-        "SELECT * FROM learning_paths WHERE id = $1",
-        [learning_path_id]
-      );
-      if (learningPathCheck.rows.length === 0) {
-        return res.status(404).json({ error: "Learning path not found" });
-      }
-
-      const moduleCheck = await pool.query(
-        "SELECT * FROM modules WHERE id = $1",
-        [module_id]
-      );
-      if (moduleCheck.rows.length === 0) {
-        return res.status(404).json({ error: "Module not found" });
-      }
-
-      await pool.query(
-        `INSERT INTO learning_path_modules (learning_path_id, module_id) VALUES ($1, $2)`,
-        [learning_path_id, module_id]
-      );
-
-      res
-        .status(201)
-        .json({ message: "Module added to learning path successfully" });
-    } catch (err) {
-      console.error("Error adding module to learning path:", err);
-      res.status(500).json({ error: "Internal Server Error" });
-    }
-  },
-
-  // Remove a module from a learning path
-  removeModuleFromLearningPath: async (req, res) => {
-    const { learning_path_id, module_id } = req.params;
-
-    try {
-      const result = await pool.query(
-        "DELETE FROM learning_path_modules WHERE learning_path_id = $1 AND module_id = $2 RETURNING *",
-        [learning_path_id, module_id]
-      );
-
-      if (result.rows.length === 0) {
-        return res
-          .status(404)
-          .json({ error: "Module not found in the specified learning path" });
-      }
-
-      res.json({ message: "Module removed from learning path successfully" });
-    } catch (err) {
-      console.error("Error removing module from learning path:", err);
-      res.status(500).json({ error: "Internal Server Error" });
+    } finally {
+      client.release();
     }
   },
 
@@ -332,7 +294,9 @@ const learningPathsController = {
       );
 
       if (result.rows.length === 0) {
-        return res.status(404).json({ error: "Learning path not found or not started" });
+        return res
+          .status(404)
+          .json({ error: "Learning path not found or not started" });
       }
 
       res.json({
@@ -344,7 +308,6 @@ const learningPathsController = {
       res.status(500).json({ error: "Internal Server Error" });
     }
   },
-
 };
 
 module.exports = learningPathsController;

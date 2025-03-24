@@ -19,8 +19,6 @@ router.put("/:id", learningPathsController.updateLearningPath);
 router.delete("/:id", learningPathsController.removeLearningPath);
 
 // Adding an existing module to a learning path
-router.post("/:learning_path_id/modules/:module_id", learningPathsController.addExistingModuleToLearningPath);
-router.delete("/:learning_path_id/modules/:module_id", learningPathsController.removeModuleFromLearningPath);
 router.get("/:learning_path_id/modules", learningPathsController.getModulesByLearningPath);
 
 // Progress
