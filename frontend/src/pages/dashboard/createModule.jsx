@@ -59,7 +59,7 @@ export function CreateModule() {
           description,
           estimated_duration: Number(estimatedDuration),
           assessment: {
-            questions,
+            questions: questions.map((q) => q.question_text),
             answers: questions.map((q) => q.options),
             solution: questions.map((q) => q.correct_answer),
           },

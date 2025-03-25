@@ -54,7 +54,7 @@ const modulesController = {
     } catch (error) {
       await client.query("ROLLBACK");
       console.error("Error creating module:", error);
-      res.status(500).json({ error: error.message })
+      res.status(500).json({ error: error.message });
     } finally {
       client.release();
     }
@@ -189,69 +189,6 @@ const modulesController = {
     }
   },
 
-  addExistingResourceToModule: async (req, res) => {
-    const { module_id, resource_id } = req.params;
-
-    if (!module_id || !resource_id) {
-      return res
-        .status(400)
-        .json({ error: "Module ID and resource ID are required" });
-    }
-
-    try {
-      const moduleCheck = await pool.query(
-        "SELECT * FROM modules WHERE id = $1",
-        [module_id]
-      );
-      if (moduleCheck.rows.length === 0) {
-        return res.status(404).json({ error: "Module not found" });
-      }
-
-      const resourceCheck = await pool.query(
-        "SELECT * FROM resources WHERE id = $1",
-        [resource_id]
-      );
-      if (resourceCheck.rows.length === 0) {
-        return res.status(404).json({ error: "Resource not found" });
-      }
-
-      await pool.query(
-        `INSERT INTO module_resources (module_id, resource_id) VALUES ($1, $2)`,
-        [module_id, resource_id]
-      );
-
-      res
-        .status(201)
-        .json({ message: "Resource added to module successfully" });
-    } catch (err) {
-      console.error("Error adding resource to module:", err);
-      res.status(500).json({ error: "Internal Server Error" });
-    }
-  },
-
-  // Remove a resource from a module
-  removeResourceFromModule: async (req, res) => {
-    const { module_id, resource_id } = req.params;
-
-    try {
-      const result = await pool.query(
-        "DELETE FROM module_resources WHERE module_id = $1 AND resource_id = $2 RETURNING *",
-        [module_id, resource_id]
-      );
-
-      if (result.rows.length === 0) {
-        return res
-          .status(404)
-          .json({ error: "Resource not found in the specified module" });
-      }
-
-      res.json({ message: "Resource removed from module successfully" });
-    } catch (err) {
-      console.error("Error removing resource from module:", err);
-      res.status(500).json({ error: "Internal Server Error" });
-    }
-  },
-
   // Get resources by module ID
   getResourcesByModuleId: async (req, res) => {
     const { module_id } = req.params;
@@ -308,12 +245,12 @@ const modulesController = {
   },
 
   getAssessmentByModuleId: async (req, res) => {
-    const { moduleId } = req.params;
+    const { module_id } = req.params;
 
     try {
       const result = await pool.query(
         `SELECT * FROM assessments WHERE module_id = $1`,
-        [moduleId]
+        [module_id]
       );
 
       if (result.rows.length === 0) {
@@ -325,6 +262,142 @@ const modulesController = {
       res.json(result.rows[0]);
     } catch (error) {
       console.error("Error fetching assessment:", error);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  },
+
+  // Create new assessment results
+  createAssessmentResults: async (req, res) => {
+    const {
+      user_id,
+      assessment_id,
+      module_id,
+      score,
+      passed,
+      answers,
+    } = req.body;
+  
+    try {
+      // Get the current number of attempts for this assessment
+      const previousAttempts = await pool.query(
+        `SELECT COUNT(*) AS attempt_count FROM public.assessment_results 
+         WHERE user_id = $1 AND assessment_id = $2 AND module_id = $3`,
+        [user_id, assessment_id, module_id]
+      );
+  
+      // Calculate new attempt number (previous attempts + 1)
+      const newAttemptNumber = parseInt(previousAttempts.rows[0].attempt_count) + 1;
+  
+      // Insert a new record with incremented attempt number
+      const result = await pool.query(
+        `INSERT INTO public.assessment_results (user_id, assessment_id, module_id, score, passed, answers, num_attempts)
+         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+        [
+          user_id,
+          assessment_id,
+          module_id,
+          score,
+          passed,
+          JSON.stringify(answers),
+          newAttemptNumber, // Correctly tracks the attempt number
+        ]
+      );
+  
+      res.status(201).json(result.rows[0]);
+    } catch (error) {
+      console.error("Error saving assessment results:", error);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  },
+  
+
+  // Get assessment results by user_id, assessment_id, and module_id
+  getAssessmentResults: async (req, res) => {
+    const { user_id, assessment_id, module_id } = req.params;
+
+    try {
+      const result = await pool.query(
+        `SELECT id, user_id, assessment_id, module_id, score, passed, submission_time, answers, num_attempts
+      FROM public.assessment_results
+      WHERE user_id = $1 AND assessment_id = $2 AND module_id = $3`,
+        [user_id, assessment_id, module_id]
+      );
+
+      if (result.rows.length === 0) {
+        // return res.status(404).json({ error: "Assessment results not found" });
+        return res.json({ num_attempts: 0 });
+      }
+
+      // Return the assessment result in the response
+      res.json(result.rows[0]);
+    } catch (error) {
+      console.error("Error fetching assessment results:", error);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  },
+
+  // Get all assessment results (for admin use)
+  getAllAssessmentResults: async (req, res) => {
+    try {
+      const result = await pool.query(
+        "SELECT * FROM public.assessment_results"
+      );
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: "No assessment results found" });
+      }
+
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error fetching all assessment results:", error);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  },
+
+  // Update the number of attempts for a specific user and assessment
+  updateAssessmentAttempts: async (req, res) => {
+    const { user_id, assessment_id, module_id } = req.params;
+    const { num_attempts } = req.body;
+
+    try {
+      const result = await pool.query(
+        `UPDATE public.assessment_results
+      SET num_attempts = $1
+      WHERE user_id = $2 AND assessment_id = $3 AND module_id = $4
+      RETURNING *`,
+        [num_attempts, user_id, assessment_id, module_id]
+      );
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: "Assessment result not found" });
+      }
+
+      res.json(result.rows[0]); // Return the updated result
+    } catch (error) {
+      console.error("Error updating assessment attempts:", error);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  },
+
+  // Delete assessment results for a user, assessment, and module
+  deleteAssessmentResults: async (req, res) => {
+    const { user_id, assessment_id, module_id } = req.params;
+
+    try {
+      const result = await pool.query(
+        `DELETE FROM public.assessment_results
+      WHERE user_id = $1 AND assessment_id = $2 AND module_id = $3
+      RETURNING *`,
+        [user_id, assessment_id, module_id]
+      );
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: "Assessment results not found" });
+      }
+
+      res.json({ message: "Assessment results deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting assessment results:", error);
       res.status(500).json({ error: "Internal Server Error" });
     }
   },

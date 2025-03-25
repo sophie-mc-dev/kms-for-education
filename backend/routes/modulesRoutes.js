@@ -18,13 +18,18 @@ router.put("/:id", modulesController.updateModule);
 router.delete("/:id", modulesController.deleteModule);
 
 // Adding an existing resource to a module
-router.post("/:module_id/resources/:resource_id", modulesController.addExistingResourceToModule);
-router.delete("/:module_id/resources/:resource_id", modulesController.removeResourceFromModule);
 router.get("/:module_id/resources", modulesController.getResourcesByModuleId);
 router.get("/:module_id/resource_count", modulesController.getModuleResourceCount);
 router.get("/:resource_id/modules", modulesController.getModulesByResourceId);
 
 // Progress and Assessment
+router.get("/:module_id/assessment", modulesController.getAssessmentByModuleId);
+router.post("/:module_id/assessment/results/:user_id", modulesController.createAssessmentResults);
+router.get("/:module_id/assessment/results/:user_id", modulesController.getAssessmentResults);
+router.get("/assessment/results", modulesController.getAllAssessmentResults);
+router.put("/:module_id/assessment/results/:user_id", modulesController.updateAssessmentAttempts);
+router.delete("/:module_id/assessment/results/:user_id", modulesController.deleteAssessmentResults);
+
 router.post("/:module_id/complete", modulesController.completeModule);
 
 module.exports = router;

@@ -1,25 +1,43 @@
 import React, { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import {
   Card,
   CardBody,
   Typography,
   Button,
   Spinner,
+  Radio,
 } from "@material-tailwind/react";
-import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/solid";
 import { ResourceCard } from "@/widgets/cards/";
+import { useUser } from "@/context/userContext";
 
 export function ModuleDetails() {
+  const { userId } = useUser();
   const { moduleId } = useParams();
   const [module, setModule] = useState(null);
   const [resources, setResources] = useState([]);
+  const [assessment, setAssessment] = useState(null);
+  const [userAnswers, setUserAnswers] = useState({});
+  const [score, setScore] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const navigate = useNavigate();
+  const [assessmentError, setAssessmentError] = useState(null);
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [attempts, setAttempts] = useState(0);
   const cleanedModuleId = moduleId.replace("md_", "");
 
-  // Fetch module data
+  const formattedDate = module?.created_at
+    ? new Date(module.created_at).toLocaleString("en-US", {
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+        timeZone: "UTC",
+      })
+    : "N/A";
+
   useEffect(() => {
     const fetchModule = async () => {
       try {
@@ -37,11 +55,9 @@ export function ModuleDetails() {
         setLoading(false);
       }
     };
-
     fetchModule();
   }, []);
 
-  // Fetch modules data
   useEffect(() => {
     const fetchResources = async () => {
       try {
@@ -57,101 +73,262 @@ export function ModuleDetails() {
         setError(err.message);
       }
     };
-
     fetchResources();
-  }, []); // Fetch resources when the component mounts
+  }, []);
 
-  // Handle loading and error states
+  useEffect(() => {
+    const fetchAssessment = async () => {
+      try {
+        const response = await fetch(
+          `http://localhost:8080/api/modules/${cleanedModuleId}/assessment`
+        );
+        if (!response.ok) throw new Error("Failed to fetch assessment");
+        const data = await response.json();
+        setAssessment(data);
+      } catch (err) {
+        setAssessmentError(err.message);
+      }
+    };
+    fetchAssessment();
+  }, []);
+
+  useEffect(() => {
+    // Fetch the number of attempts for the user and assessment
+    const fetchAttempts = async () => {
+      try {
+        const response = await fetch(
+          `http://localhost:8080/api/modules/${cleanedModuleId}/assessment/results/${userId}`
+        );
+        if (!response.ok) {
+          throw new Error("Failed to fetch attempt count");
+        }
+        const data = await response.json();
+        console.log(data);
+        // Check if data contains num_attempts, if not, set it to 0
+        setAttempts(data.num_attempts || 0);
+      } catch (err) {
+        console.error("Error fetching attempt count:", err.message);
+        // Set attempts to 0 if there's an error
+        setAttempts(0);
+      }
+    };
+
+    if (assessment) {
+      fetchAttempts();
+    }
+  }, [assessment, cleanedModuleId, userId]);
+
+  const handleAnswerSelect = (questionIndex, answerIndex) => {
+    setUserAnswers((prev) => ({
+      ...prev,
+      [questionIndex]: answerIndex,
+    }));
+  };
+
+  const checkAnswers = async () => {
+    if (!assessment) return;
+
+    let correctCount = 0;
+    const answers = [];
+
+    assessment.questions.forEach((_, qIndex) => {
+      const correctAnswerIndex = assessment.solution[qIndex];
+      const userSelectedIndex = userAnswers[qIndex];
+      answers.push({
+        questionIndex: qIndex,
+        selectedAnswerIndex: userSelectedIndex,
+        correctAnswerIndex: correctAnswerIndex,
+      });
+
+      if (
+        userSelectedIndex !== undefined &&
+        userSelectedIndex === correctAnswerIndex
+      ) {
+        correctCount++;
+      }
+    });
+
+    setScore(correctCount);
+    setShowFeedback(true);
+
+    const passed = correctCount === 5;
+
+    // Prepare the data to save to the database
+    const assessmentResults = {
+      user_id: userId,
+      assessment_id: assessment.id,
+      module_id: cleanedModuleId,
+      score: correctCount,
+      passed: passed,
+      num_attempts: attempts + 1, // Incrementing attempt count
+      answers: JSON.stringify(answers),
+    };
+
+    try {
+      const response = await fetch(
+        `http://localhost:8080/api/modules/${cleanedModuleId}/assessment/results/${userId}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(assessmentResults),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to save assessment results");
+      }
+
+      const savedResult = await response.json();
+      console.log("Assessment results saved:", savedResult);
+
+      // Fetch updated attempts count after saving
+      const updatedAttemptsResponse = await fetch(
+        `http://localhost:8080/api/modules/${cleanedModuleId}/assessment/results/${userId}`
+      );
+
+      if (updatedAttemptsResponse.ok) {
+        const updatedData = await updatedAttemptsResponse.json();
+        setAttempts(updatedData.num_attempts || 0); 
+      }
+    } catch (err) {
+      console.error("Error saving results:", err.message);
+    }
+  };
+
   if (loading)
     return (
       <div className="flex justify-center items-center mt-12">
         <Spinner />
       </div>
     );
+
   if (error)
     return <div className="mt-12 text-center text-red-500">Error: {error}</div>;
+
   if (!module)
     return <div className="mt-12 text-center">No Module Data Available</div>;
 
   return (
     <div className="flex gap-4 mt-12 min-h-screen flex-col lg:flex-row">
-      {/* Left Section: Module Content */}
       <Card className="border border-blue-gray-100 shadow-sm p-4 flex-1 min-h-full flex flex-col">
         <CardBody className="flex-grow">
           <Typography variant="h4" color="blue-gray" className="font-semibold">
             {module.title}
           </Typography>
 
-          <div className="mt-4 flex items-center gap-x-6">
-            <div className="flex items-center gap-x-2">
-              <Typography className="text-xs font-semibold uppercase text-blue-gray-500">
-                Estimated Duration:
+          <div className="mb-6 flex items-center gap-x-4">
+            {/* Left Section: Date and Author */}
+            <div className="flex items-center gap-x-1">
+              <Typography className="block text-xs font-semibold uppercase text-blue-gray-500">
+                Published On:
               </Typography>
-              <Typography variant="small" className="text-blue-gray-600">
-                {module.estimated_duration} min
+              <Typography
+                variant="small"
+                className="font-normal text-blue-gray-500"
+              >
+                {formattedDate}
               </Typography>
             </div>
           </div>
 
-          <Typography className="mt-2 text-blue-gray-700">
-            {module.description}
-          </Typography>
+          <div className="mb-6 font-normal text-blue-gray-900">
+            <div
+              className="[&>ul]:list-disc [&>ul]:pl-5 [&>ol]:list-decimal"
+              dangerouslySetInnerHTML={{ __html: module.description }}
+            ></div>
+          </div>
 
-          {/* Divider */}
           <div className="border-t my-4"></div>
 
-          {/* Resources Section */}
-          <div className="mt-6">
-            <Typography variant="h6" color="blue-gray" className="mb-3">
-              Resources
-            </Typography>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {resources && resources.length > 0 ? (
-                resources.map((resource) => (
-                  <ResourceCard key={resource.id} resource={resource} />
-                ))
-              ) : (
-                <Typography className="text-blue-gray-600">
-                  No resources available for this module.
-                </Typography>
-              )}
-            </div>
+          <Typography variant="h6" color="blue-gray" className="mb-3">
+            Resources
+          </Typography>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {resources.length > 0 ? (
+              resources.map((resource) => (
+                <ResourceCard key={resource.id} resource={resource} />
+              ))
+            ) : (
+              <Typography className="text-blue-gray-600">
+                No resources available for this module.
+              </Typography>
+            )}
           </div>
-        </CardBody>
+          <div className="border-t my-4"></div>
 
-        {/* Navigation Buttons at the bottom */}
-        <div className="flex justify-center gap-4 mt-auto mb-6">
-          <Button
-            variant="outlined"
-            color="blue"
-            onClick={() =>
-              navigate(`/modules/md_${parseInt(cleanedModuleId) - 1}`)
-            }
-            disabled={parseInt(cleanedModuleId) <= 1}
-            className="flex items-center px-6 py-3 text-sm font-medium border-2 border-blue-600 rounded-lg hover:bg-blue-600 hover:text-white transition-colors duration-300 disabled:opacity-50"
-          >
-            <ChevronLeftIcon className="h-5 w-5 mr-2" />
-            Previous
-          </Button>
-          <Button
-            variant="outlined"
-            color="blue"
-            onClick={() =>
-              navigate(`/modules/md_${parseInt(cleanedModuleId) + 1}`)
-            }
-            disabled={parseInt(cleanedModuleId) >= module.totalModules}
-            className="flex items-center px-6 py-3 text-sm font-medium border-2 border-blue-600 rounded-lg hover:bg-blue-600 hover:text-white transition-colors duration-300 disabled:opacity-50"
-          >
-            Next
-            <ChevronRightIcon className="h-5 w-5 ml-2" />
-          </Button>
-        </div>
-      </Card>
+          <Typography variant="h6" color="blue-gray" className="mb-3">
+            Test Your Knowledge
+          </Typography>
 
-      {/* Right Sidebar: Learning Path Progress */}
-      <Card className="w-80 border border-blue-gray-100 shadow-sm">
-        <CardBody>
-          hey
+          {assessmentError ? (
+            <Typography className="text-red-500">
+              Error loading assessment: {assessmentError}
+            </Typography>
+          ) : assessment ? (
+            <div key={assessment.id} className="mb-6">
+              {assessment.questions.map((questionObj, qIndex) => {
+                const correctIndex = assessment.solution[qIndex];
+                const userSelectedIndex = userAnswers[qIndex];
+
+                return (
+                  <div key={qIndex} className="mb-4 p-4 rounded-md">
+                    <Typography className="mb-2 font-medium">
+                      Question {qIndex + 1}: {questionObj.question_text}
+                    </Typography>
+
+                    {assessment.answers[qIndex]?.map((answer, aIndex) => {
+                      const isCorrect = aIndex === correctIndex;
+                      const isSelected = aIndex === userSelectedIndex;
+
+                      return (
+                        <label key={aIndex} className="block">
+                          <div
+                            className={`p-2 rounded-md cursor-pointer flex items-center gap-2
+                    ${isSelected ? "border-2" : "border"}
+                    ${
+                      showFeedback && isSelected && isCorrect
+                        ? "border-green-500 bg-green-100"
+                        : ""
+                    }
+                    ${
+                      showFeedback && isSelected && !isCorrect
+                        ? "border-red-500 bg-red-100"
+                        : ""
+                    }
+                  `}
+                          >
+                            <Radio
+                              name={`question-${assessment.id}-${qIndex}`}
+                              value={aIndex}
+                              checked={isSelected}
+                              onChange={() =>
+                                handleAnswerSelect(qIndex, aIndex)
+                              }
+                            />
+                            {answer}
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <Typography>No assessment available.</Typography>
+          )}
+
+          <Button onClick={checkAnswers} className="mt-4">
+            Check Answers
+          </Button>
+
+          {score !== null && (
+            <Typography className="mt-2 text-blue-gray-700">
+              Score: {score} / {assessment?.questions.length}
+            </Typography>
+          )}
         </CardBody>
       </Card>
     </div>
