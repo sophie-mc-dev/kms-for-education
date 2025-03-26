@@ -45,23 +45,25 @@ export function StudentResources() {
   const getRecentlyViewedResources = () => {
     return JSON.parse(localStorage.getItem("recentlyViewed")) || [];
   };
-  
+
   useEffect(() => {
     const fetchData = async () => {
       const allResources = await getAllResources();
       const bookmarks = await getBookmarkedResources();
       const recentlyViewedData = getRecentlyViewedResources();
-  
+
       // Match recently viewed items with actual resources
       const recentResources = recentlyViewedData
         .map((recent) => allResources.find((res) => res.id === recent.id))
         .filter(Boolean);
-  
+
       setResources(allResources);
-      setBookmarkedResources(allResources.filter((res) => bookmarks.some((b) => b.id === res.id)));
+      setBookmarkedResources(
+        allResources.filter((res) => bookmarks.some((b) => b.id === res.id))
+      );
       setRecentlyViewed(recentResources);
     };
-  
+
     fetchData();
   }, []);
 
@@ -76,11 +78,15 @@ export function StudentResources() {
         resource.title.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
-    return resources.filter(
-      (resource) =>
-        resource.category?.toLowerCase() === category.toLowerCase() &&
+    return resources.filter((resource) => {
+      const resourceCategory = Array.isArray(resource.category)
+        ? resource.category.join(", ").toLowerCase() 
+        : resource.category?.toLowerCase(); 
+      return (
+        resourceCategory?.includes(category.toLowerCase()) &&
         resource.title.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+      );
+    });
   };
 
   return (

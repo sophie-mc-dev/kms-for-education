@@ -13,16 +13,25 @@ const syncData = async () => {
     console.log("Starting data synchronization...");
 
     // Sync Users
-    const users = await pgClient.query("SELECT user_id, first_name, last_name, user_role FROM users");
+    const users = await pgClient.query(
+      "SELECT user_id, first_name, last_name, user_role FROM users"
+    );
     for (let user of users.rows) {
       await neoSession.run(
         "MERGE (u:User {id: $id}) SET u.first_name = $first_name, u.last_name = $last_name, u.user_role = $user_role",
-        { id: user.user_id.toString(), first_name: user.first_name, last_name: user.last_name, user_role: user.user_role }
+        {
+          id: user.user_id.toString(),
+          first_name: user.first_name,
+          last_name: user.last_name,
+          user_role: user.user_role,
+        }
       );
     }
 
     // **Sync Resources**
-    const resources = await pgClient.query("SELECT id, title, description, category, type, tags FROM resources");
+    const resources = await pgClient.query(
+      "SELECT id, title, description, category, type, tags FROM resources"
+    );
 
     for (let resource of resources.rows) {
       // **Check if tags is an array** (PostgreSQL should return it as an array)
@@ -37,7 +46,7 @@ const syncData = async () => {
           title: resource.title,
           description: resource.description,
           category: resource.category,
-          type: resource.type
+          type: resource.type,
         }
       );
 
@@ -66,57 +75,145 @@ const syncData = async () => {
     }
 
     // Sync Modules
-    const modules = await pgClient.query("SELECT id, title, description, estimated_duration FROM modules");
+    const modules = await pgClient.query(
+      "SELECT id, title, description, estimated_duration FROM modules"
+    );
     for (let module of modules.rows) {
       await neoSession.run(
         "MERGE (m:Module {id: $id}) SET m.title = $title, m.description = $description, m.estimated_duration = $estimated_duration",
-        { id: module.id.toString(), title: module.title, description: module.description, estimated_duration: module.estimated_duration }
+        {
+          id: module.id.toString(),
+          title: module.title,
+          description: module.description,
+          estimated_duration: module.estimated_duration,
+        }
       );
     }
 
     // Sync Learning Paths
-    const learningPaths = await pgClient.query("SELECT id, title, description, difficulty_level FROM learning_paths");
+    const learningPaths = await pgClient.query(
+      "SELECT id, title, description, difficulty_level FROM learning_paths"
+    );
     for (let lp of learningPaths.rows) {
       await neoSession.run(
         "MERGE (lp:LearningPath {id: $id}) SET lp.title = $title, lp.description = $description, lp.difficulty_level = $difficulty_level",
-        { id: lp.id.toString(), title: lp.title, description: lp.description, difficulty_level: lp.difficulty_level }
+        {
+          id: lp.id.toString(),
+          title: lp.title,
+          description: lp.description,
+          difficulty_level: lp.difficulty_level,
+        }
       );
     }
 
     // Sync Relationships: Modules contain Resources
-    const moduleResources = await pgClient.query("SELECT module_id, resource_id FROM module_resources");
+    const moduleResources = await pgClient.query(
+      "SELECT module_id, resource_id FROM module_resources"
+    );
     for (let mr of moduleResources.rows) {
       await neoSession.run(
         "MATCH (m:Module {id: $module_id}), (r:Resource {id: $resource_id}) MERGE (m)-[:CONTAINS]->(r)",
-        { module_id: mr.module_id.toString(), resource_id: mr.resource_id.toString() }
+        {
+          module_id: mr.module_id.toString(),
+          resource_id: mr.resource_id.toString(),
+        }
       );
     }
 
     // Sync Relationships: Learning Paths include Modules
-    const learningPathModules = await pgClient.query("SELECT learning_path_id, module_id FROM learning_path_modules");
+    const learningPathModules = await pgClient.query(
+      "SELECT learning_path_id, module_id FROM learning_path_modules"
+    );
     for (let lpm of learningPathModules.rows) {
       await neoSession.run(
         "MATCH (lp:LearningPath {id: $learning_path_id}), (m:Module {id: $module_id}) MERGE (lp)-[:INCLUDES]->(m)",
-        { learning_path_id: lpm.learning_path_id.toString(), module_id: lpm.module_id.toString() }
+        {
+          learning_path_id: lpm.learning_path_id.toString(),
+          module_id: lpm.module_id.toString(),
+        }
       );
     }
 
     // Sync Bookmarks
-    const bookmarks = await pgClient.query("SELECT user_id, resource_id FROM bookmarks");
+    const bookmarks = await pgClient.query(
+      "SELECT user_id, resource_id FROM bookmarks"
+    );
     for (let bookmark of bookmarks.rows) {
       await neoSession.run(
         "MATCH (u:User {id: $user_id}), (r:Resource {id: $resource_id}) MERGE (u)-[:BOOKMARKED]->(r)",
-        { user_id: bookmark.user_id.toString(), resource_id: bookmark.resource_id.toString() }
+        {
+          user_id: bookmark.user_id.toString(),
+          resource_id: bookmark.resource_id.toString(),
+        }
       );
     }
 
     // Sync User Interactions
-    const userInteractions = await pgClient.query("SELECT user_id, resource_id, interaction_type FROM user_interactions");
+    // Sync User Interactions
+    const userInteractions = await pgClient.query(
+      "SELECT user_id, resource_id, module_id, learning_path_id, interaction_type FROM user_interactions"
+    );
+
     for (let interaction of userInteractions.rows) {
-      await neoSession.run(
-        "MATCH (u:User {id: $user_id}), (r:Resource {id: $resource_id}) MERGE (u)-[:INTERACTED_WITH {type: $interaction_type}]->(r)",
-        { user_id: interaction.user_id.toString(), resource_id: interaction.resource_id.toString(), interaction_type: interaction.interaction_type }
-      );
+      // Ensure that user_id and interaction_type are not null/undefined
+      if (interaction.user_id && interaction.interaction_type) {
+        let query = "MATCH (u:User {id: $user_id})";
+        let params = { user_id: interaction.user_id.toString() };
+
+        // Only add resource_id match if resource_id is not null
+        if (interaction.resource_id) {
+          query += ", (r:Resource {id: $resource_id})";
+          params.resource_id = interaction.resource_id.toString();
+        }
+
+        // Only add module_id match if module_id is not null
+        if (interaction.module_id) {
+          query += ", (m:Module {id: $module_id})";
+          params.module_id = interaction.module_id.toString();
+        }
+
+        // Only add learning_path_id match if learning_path_id is not null
+        if (interaction.learning_path_id) {
+          query += ", (lp:LearningPath {id: $learning_path_id})";
+          params.learning_path_id = interaction.learning_path_id.toString();
+        }
+
+        // Ensure we have an interaction with either resource, module, or learning path
+        if (
+          interaction.resource_id ||
+          interaction.module_id ||
+          interaction.learning_path_id
+        ) {
+          query += " MERGE (u)-[:INTERACTED_WITH {type: $interaction_type}]->";
+
+          // Add the appropriate node relationship based on the available ids
+          if (interaction.resource_id) {
+            query += "(r)";
+          } else if (interaction.module_id) {
+            query += "(m)";
+          } else if (interaction.learning_path_id) {
+            query += "(lp)";
+          }
+
+          // Run the final query with all parameters
+          await neoSession.run(query, {
+            ...params,
+            interaction_type: interaction.interaction_type,
+          });
+        } else {
+          console.log(
+            `Skipping interaction due to missing resource, module, or learning path: ${JSON.stringify(
+              interaction
+            )}`
+          );
+        }
+      } else {
+        console.log(
+          `Skipping interaction due to missing user_id or interaction_type: ${JSON.stringify(
+            interaction
+          )}`
+        );
+      }
     }
 
     console.log("Data synchronization completed successfully!");

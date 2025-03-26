@@ -3,17 +3,17 @@ const { driver } = require("../db/neo4j");
 
 const recommendationsController = {
   // Get user interactions from PostgreSQL
-  getUserInteractions: async (userId) => {
+  getUserInteractions: async (user_id) => {
     const query = `
         SELECT resource_id, module_id, learning_path_id, interaction_type 
         FROM user_interactions 
         WHERE user_id = $1
       `;
-    const { rows } = await db.query(query, [userId]);
+    const { rows } = await db.query(query, [user_id]);
     return rows;
   },
 
-  // Content-Based Filtering (Neo4j) - Find similar resources
+  // Content-Based Filtering (Neo4j) - Find similar resources based on shared tags
   getSimilarResources: async (resourceId) => {
     const session = neo4j.session();
     const query = `
@@ -32,55 +32,53 @@ const recommendationsController = {
   },
 
   // Collaborative Filtering (PostgreSQL) - Find resources interacted by similar users
-  getCollaborativeRecommendations: async (userId) => {
+  getCollaborativeRecommendations: async (user_id) => {
     const query = `
       SELECT ui.resource_id, COUNT(*) AS count
       FROM user_interactions ui
       JOIN user_interactions other_ui ON ui.resource_id = other_ui.resource_id
       WHERE other_ui.user_id = $1 AND ui.user_id != $1
+        AND ui.interaction_type IN ('bookmarked', 'completed_module', 'completed_learning_path')  
       GROUP BY ui.resource_id
       ORDER BY count DESC
       LIMIT 5
     `;
-    const { rows } = await db.query(query, [userId]);
+    const { rows } = await db.query(query, [user_id]);
     return rows.map((row) => row.resource_id);
-  },
+  },  
 
-  // Hybrid Recommendation Approach
   getRecommendations: async (req, res) => {
     try {
-      const { userId } = req.params;
-
+      const { user_id } = req.params;
+  
       // 1. Get user interactions
-      const interactions = await getUserInteractions(userId);
-      if (!interactions.length)
+      const interactions = await getUserInteractions(user_id);
+      if (!interactions.length) {
         return res.json({ message: "No interactions found." });
-
+      }
+  
       // 2. Get content-based recommendations (from the last interacted resource)
       const lastInteraction = interactions[0];
-      const contentBasedRecs = await getSimilarResources(
-        lastInteraction.resource_id
-      );
-
+      const contentBasedRecs = await getSimilarResources(lastInteraction.resource_id);
+  
       // 3. Get collaborative recommendations
-      const collaborativeRecs = await getCollaborativeRecommendations(userId);
-
-      // Combine recommendations and return
-      const recommendations = [
-        ...new Set([...contentBasedRecs, ...collaborativeRecs]),
-      ];
-      res.json({ recommendations });
+      const collaborativeRecs = await getCollaborativeRecommendations(user_id);
+  
+      // 4. Combine recommendations with weighting
+      const combinedRecs = [...new Set([...contentBasedRecs, ...collaborativeRecs])];
+        
+      // 5. Return final recommendations
+      res.json({ recommendations: combinedRecs });
     } catch (error) {
       console.error("Error fetching recommendations:", error);
       res.status(500).json({ error: "Internal Server Error" });
     }
   },
 
-  // get recommended learning paths
-  // get recommneded modules
-  // get recommended resources
-
-  // based on started learning paths, viewed and completed modules, viewed resources, etc...
+  // todo:
+  // add learning path recs
+  // add module recs
+  // based on completion/started
 };
 
 module.exports = recommendationsController;

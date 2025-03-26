@@ -249,14 +249,21 @@ export function ResourceDetails() {
                 color="blue-gray"
                 className="font-semibold capitalize"
               >
-                Category:
+                Categories:
               </Typography>
-              <Typography
-                variant="small"
-                className="font-normal text-blue-gray-500"
-              >
-                {resource.category}
-              </Typography>
+
+              <div className="flex flex-wrap gap-2">
+                {resource.category.map((category, index) => (
+                  <Typography
+                    key={`${category}-${index}`}
+                    variant="small"
+                    className="font-normal text-blue-gray-500"
+                  >
+                    {category}
+                    {index < resource.category.length - 1 && ","}{" "}
+                  </Typography>
+                ))}
+              </div>
             </div>
 
             <div className="mb-6">
@@ -333,7 +340,9 @@ export function ResourceDetails() {
             <div className="flex flex-col gap-3">
               {modules.length === 0 ? (
                 <p className="text-gray-500 text-sm">
-                  Loading related modules...
+                  {loading
+                    ? "Loading related modules..."
+                    : "No related modules found."}
                 </p>
               ) : (
                 modules.map((item) => (

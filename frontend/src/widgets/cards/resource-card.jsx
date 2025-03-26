@@ -27,20 +27,25 @@ export function ResourceCard({ resource, userId }) {
   const navigate = useNavigate();
   const [bookmarked, setBookmarked] = useState(false);
 
+  const resourceType = resourceTypes.find(
+    (type) => type.label === resource.type
+  );
   const resourceData =
-    resourceTypes.find((r) => r.name === resource.type) || {};
-  const { icon, color = "gray" } = resourceData;
+    resourceTypes.find((r) => r.label === resource.type) || {};
+  const { color = "gray" } = resourceData;
   const { bg, text } = colorMap[color];
 
   // Check if the resource is already bookmarked when the component mounts
   useEffect(() => {
     if (!userId || !resource.id) return;
-  
+
     const fetchBookmarks = async () => {
       try {
-        const res = await fetch(`http://localhost:8080/api/bookmarks/${userId}`);
+        const res = await fetch(
+          `http://localhost:8080/api/bookmarks/${userId}`
+        );
         if (!res.ok) throw new Error("Failed to fetch bookmarks");
-  
+
         const data = await res.json();
 
         // Check if the resource is in the fetched bookmarks
@@ -50,78 +55,88 @@ export function ResourceCard({ resource, userId }) {
         console.error("Error fetching bookmarks:", error);
       }
     };
-  
+
     fetchBookmarks();
   }, [userId, resource.id]);
 
   const handleBookmarkClick = async (e) => {
     e.stopPropagation();
-  
+
     try {
       let response;
-  
+
       if (bookmarked) {
         // Send DELETE request to remove the bookmark and interaction
-        response = await fetch(`http://localhost:8080/api/bookmarks/${userId}/${resource.id}`, {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-        });
+        response = await fetch(
+          `http://localhost:8080/api/bookmarks/${userId}/${resource.id}`,
+          {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+          }
+        );
       } else {
         // Send POST request to add the bookmark and interaction
-        response = await fetch(`http://localhost:8080/api/bookmarks/${userId}/${resource.id}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ user_id: userId, resource_id: resource.id }),
-        });
+        response = await fetch(
+          `http://localhost:8080/api/bookmarks/${userId}/${resource.id}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ user_id: userId, resource_id: resource.id }),
+          }
+        );
       }
-  
+
       if (!response.ok) throw new Error("Failed to update bookmark");
-  
+
       setBookmarked(!bookmarked);
     } catch (error) {
       console.error("Error updating bookmark:", error);
     }
   };
-  
+
   const handleResourceClick = async () => {
-    const viewedResources = JSON.parse(localStorage.getItem("recentlyViewed")) || [];
-  
+    const viewedResources =
+      JSON.parse(localStorage.getItem("recentlyViewed")) || [];
+
     // Prevent duplicates, keep max 3 recently viewed
     const updatedResources = [
       { id: resource.id, title: resource.title },
       ...viewedResources.filter((r) => r.id !== resource.id),
     ].slice(0, 3);
-  
+
     // Save updated recently viewed resources in localStorage
     localStorage.setItem("recentlyViewed", JSON.stringify(updatedResources));
-    
+
     try {
       await registerResourceView(userId, resource.id);
     } catch (error) {
       console.error("Error registering resource view:", error);
     }
-  
+
     // Navigate to the resource detail page
     navigate(`resources/${resource.id}`);
   };
 
   const registerResourceView = async (userId, resourceId) => {
     try {
-      const response = await fetch("http://localhost:8080/api/user-interactions/resource-view", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          user_id: userId,
-          resource_id: resourceId,
-        }),
-      });
-  
+      const response = await fetch(
+        "http://localhost:8080/api/user-interactions/resource-view",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            user_id: userId,
+            resource_id: resourceId,
+          }),
+        }
+      );
+
       if (!response.ok) {
         throw new Error("Failed to register resource view");
       }
-  
+
       const data = await response.json();
     } catch (error) {
       console.error("Error registering resource view:", error);
@@ -134,7 +149,10 @@ export function ResourceCard({ resource, userId }) {
       onClick={handleResourceClick}
     >
       {/* Bookmark Icon */}
-      <div className="absolute top-2 right-2" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="absolute top-2 right-2"
+        onClick={(e) => e.stopPropagation()}
+      >
         <IconButton
           variant="text"
           className="text-blue-gray-500 hover:text-blue-gray-700"
@@ -150,23 +168,43 @@ export function ResourceCard({ resource, userId }) {
 
       <CardBody className="flex flex-col h-full">
         {/* Resource Type */}
-        <div className={`inline-flex items-center mb-3 px-2 py-1 rounded-md w-fit ${bg}`}>
-          {React.cloneElement(icon, { className: `h-5 w-5 ${text}` })}
+        <div
+          className={`inline-flex items-center mb-3 px-2 py-1 rounded-md w-fit ${bg}`}
+        >
+          {
+            // Check if resourceType and icon exist
+            resourceType && resourceType.icon ? (
+              React.cloneElement(resourceType.icon, {
+                className: `h-5 w-5 ${text}`,
+              })
+            ) : (
+              <span className="h-5 w-5 text-gray-500">N/A</span> // Default fallback if no icon is available
+            )
+          }
           <Typography variant="small" className={`ml-2 font-medium ${text}`}>
             {resource.type}
           </Typography>
         </div>
 
         {/* Title and Description */}
-        <Typography variant="h6" color="blue-gray" className="mb-2 font-semibold">
+        <Typography
+          variant="h6"
+          color="blue-gray"
+          className="mb-2 font-semibold"
+        >
           {resource.title}
         </Typography>
-        <Typography variant="paragraph" color="blue-gray" className="mb-3 leading-relaxed">
+        <Typography
+          variant="paragraph"
+          color="blue-gray"
+          className="mb-3 leading-relaxed"
+        >
           <span
             dangerouslySetInnerHTML={{
-              __html: resource.description.length > 70
-                ? resource.description.substring(0, 70) + "..."
-                : resource.description,
+              __html:
+                resource.description.length > 70
+                  ? resource.description.substring(0, 70) + "..."
+                  : resource.description,
             }}
           ></span>
         </Typography>
@@ -175,10 +213,15 @@ export function ResourceCard({ resource, userId }) {
         <div className="mt-auto">
           <div className="flex flex-wrap gap-2 text-sm mb-2">
             <Typography variant="small" color="blue-gray">
-              <span className="font-semibold">Category:</span> {resource.category}
+              <span className="font-semibold">Categories:</span>{" "}
+              {resource.category.join(", ")}
             </Typography>
           </div>
-          <div className="flex flex-wrap gap-1" onClick={(e) => e.stopPropagation()}>
+
+          <div
+            className="flex flex-wrap gap-1"
+            onClick={(e) => e.stopPropagation()}
+          >
             {resource.tags?.map((tag) => (
               <Chip
                 key={tag}

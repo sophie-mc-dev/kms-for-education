@@ -7,11 +7,11 @@ import {
   CardFooter,
   Button,
   Input,
-  Select,
   Typography,
   Radio,
   Option,
 } from "@material-tailwind/react";
+import Select from "react-select";
 
 import { XMarkIcon, CloudArrowUpIcon } from "@heroicons/react/24/solid";
 import ReactQuill from "react-quill";
@@ -36,7 +36,7 @@ export function UploadResource() {
     description: "",
     url: "",
     type: "",
-    category: "",
+    category: [],
     tags: [],
     file: null,
     visibility: "public",
@@ -47,7 +47,7 @@ export function UploadResource() {
     const { name, value } = event.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: name === "estimatedTime" ? Number(value) || "" : value, 
+      [name]: name === "estimatedTime" ? Number(value) || "" : value,
     }));
   };
 
@@ -109,6 +109,7 @@ export function UploadResource() {
     const formattedData = {
       ...formData,
       tags: formData.tags,
+      category: formData.category,
     };
 
     if (validateForm()) {
@@ -125,17 +126,17 @@ export function UploadResource() {
     formDataToSend.append("description", formData.description);
     formDataToSend.append("url", formData.url);
     formDataToSend.append("type", formData.type);
-    formDataToSend.append("category", formData.category);
     formDataToSend.append("created_by", "Sample Author");
     formDataToSend.append("visibility", formData.visibility);
     formDataToSend.append("estimatedTime", Number(formData.estimatedTime));
-
     if (formData.file) {
       formDataToSend.append("file", formData.file);
     }
-
     formData.tags.forEach((tag) => {
       formDataToSend.append("tags[]", tag);
+    });
+    formData.category.forEach((cat) => {
+      formDataToSend.append("category[]", cat);
     });
 
     // Debugging: Log FormData contents
@@ -162,7 +163,7 @@ export function UploadResource() {
         description: "",
         url: "",
         type: "",
-        category: "",
+        category: [],
         tags: [],
         file: null,
         visibility: "public",
@@ -205,40 +206,49 @@ export function UploadResource() {
             )}
           </div>
 
-          <ReactQuill
-            theme="snow"
-            value={formData.description}
-            onChange={handleDescriptionChange}
-          />
-
-          <Input
-            label="URL"
-            name="url"
-            value={formData.url}
-            onChange={handleInputChange}
-          />
+          <div>
+            <label
+              htmlFor="type"
+              className="block text-sm font-medium text-gray-700"
+            >
+              Description
+            </label>
+            <ReactQuill
+              theme="snow"
+              value={formData.description}
+              onChange={handleDescriptionChange}
+            />
+          </div>
 
           <div className="flex gap-4">
             {/* Type Select */}
             <div className="flex-1">
-              <Select
-                label="Type"
-                name="type"
-                value={formData.type}
-                onChange={(value) =>
-                  setFormData((prev) => ({ ...prev, type: value }))
-                }
-                required
+              <label
+                htmlFor="type"
+                className="block text-sm font-medium text-gray-700"
               >
-                <Option value="" disabled>
-                  Select the resource format
-                </Option>
-                {resourceTypes.map((type) => (
-                  <Option key={type.id} value={type.name}>
-                    {type.name}
-                  </Option>
-                ))}
-              </Select>
+                Resource Type
+              </label>
+              <Select
+                name="type"
+                value={resourceTypes.find((t) => t.value === formData.type)}
+                onChange={(selectedOption) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    type: selectedOption.value,
+                  }))
+                }
+                options={resourceTypes}
+                getOptionLabel={(e) => (
+                  <div className="flex items-center">
+                    {e.icon}
+                    <span className="ml-2">{e.label}</span>
+                  </div>
+                )}
+                placeholder="Select the resource format"
+                className="basic-single-select"
+                classNamePrefix="select"
+              />
               {errors.type && (
                 <p className="text-red-500 text-sm mt-2">{errors.type}</p>
               )}
@@ -246,24 +256,28 @@ export function UploadResource() {
 
             {/* Category Select */}
             <div className="flex-1">
-              <Select
-                label="Category"
-                name="category"
-                value={formData.category}
-                onChange={(value) =>
-                  setFormData((prev) => ({ ...prev, category: value }))
-                }
-                required
+              <label
+                htmlFor="type"
+                className="block text-sm font-medium text-gray-700"
               >
-                <Option value="" disabled>
-                  Select a category
-                </Option>
-                {resourceCategories.map((category) => (
-                  <Option key={category.id} value={category.name}>
-                    {category.name}
-                  </Option>
-                ))}
-              </Select>
+                Category
+              </label>
+              <Select
+                name="categories"
+                value={resourceCategories.filter((c) =>
+                  formData.category.includes(c.value)
+                )}
+                onChange={(selectedOptions) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    category: selectedOptions.map((option) => option.name),
+                  }))
+                }
+                options={resourceCategories}
+                isMulti
+                className="basic-multi-select"
+                classNamePrefix="select"
+              />
               {errors.category && (
                 <p className="text-red-500 text-sm mt-2">{errors.category}</p>
               )}
@@ -271,6 +285,12 @@ export function UploadResource() {
           </div>
 
           <div>
+            <label
+              htmlFor="type"
+              className="block text-sm font-medium text-gray-700"
+            >
+              Tags
+            </label>
             <div className="border border-gray-300 p-2 rounded-md w-full flex flex-wrap gap-2">
               {formData.tags.map((tag, index) => (
                 <div
@@ -296,6 +316,13 @@ export function UploadResource() {
               />
             </div>
           </div>
+
+          <Input
+            label="URL"
+            name="url"
+            value={formData.url}
+            onChange={handleInputChange}
+          />
 
           <div>
             <input

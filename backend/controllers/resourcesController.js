@@ -11,6 +11,7 @@ const resourcesController = {
     const {
       title,
       description,
+      url,
       type,
       category,
       created_by,
@@ -30,12 +31,13 @@ const resourcesController = {
 
       // 1. Insert resource data into the database
       const result = await client.query(
-        `INSERT INTO resources (title, description, type, category, created_by, tags, visibility, estimated_time, format) 
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
+        `INSERT INTO resources (title, description, url, type, category, created_by, tags, visibility, estimated_time, format) 
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
           RETURNING *`,
         [
           title,
           description,
+          url,
           type,
           category,
           created_by,
@@ -304,9 +306,6 @@ const resourcesController = {
       res.status(500).json({ error: "Internal Server Error" });
     }
   },
-
-  // get resource views
-
 };
 
 module.exports = resourcesController;

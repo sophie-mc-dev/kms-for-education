@@ -1,42 +1,41 @@
 export const resourceCategories = [
-    // Core Informatics Topics
-    { id: 1, name: "Artificial Intelligence" },
-    { id: 2, name: "Machine Learning" },
-    { id: 3, name: "Deep Learning" },
-    { id: 4, name: "Natural Language Processing" },
-    { id: 5, name: "Computer Vision" },
-    { id: 6, name: "Big Data & Analytics" },
-    { id: 7, name: "Cloud Computing" },
-    { id: 8, name: "Quantum Computing" },
-    { id: 9, name: "Edge Computing" },
-    { id: 10, name: "Internet of Things (IoT)" },
-    
-    // Software & Development
-    { id: 11, name: "Software Engineering" },
-    { id: 12, name: "Agile & DevOps" },
-    { id: 13, name: "Full-Stack Development" },
-    { id: 14, name: "Mobile App Development" },
-    { id: 15, name: "Web Development" },
-    { id: 16, name: "Game Development" },
-    { id: 17, name: "Software Testing & QA" },
-  
-    // Security & Networks
-    { id: 18, name: "Cybersecurity" },
-    { id: 19, name: "Computer Networks" },
-    { id: 20, name: "Blockchain & Cryptography" },
-    { id: 21, name: "Digital Forensics" },
-  
-    // Databases & Knowledge Management
-    { id: 22, name: "Database Systems" },
-    { id: 23, name: "Semantic Web & Ontologies" },
-    { id: 24, name: "Knowledge Management Systems" },
-    { id: 25, name: "Information Retrieval" },
-  
-    // Engineering & Informatics Integration
-    { id: 26, name: "Embedded Systems" },
-    { id: 27, name: "Human-Computer Interaction" },
-    { id: 28, name: "Engineering Ethics" },
-    { id: 29, name: "Renewable Energy & Smart Grids" },
-    { id: 30, name: "Digital Twins & Simulation" },
-  ];
-  
+  // Core Informatics Topics
+  { value: "artificial_intelligence", label: "Artificial Intelligence" },
+  { value: "machine_learning", label: "Machine Learning" },
+  { value: "deep_learning", label: "Deep Learning" },
+  { value: "natural_language_processing", label: "Natural Language Processing" },
+  { value: "computer_vision", label: "Computer Vision" },
+  { value: "big_data_analytics", label: "Big Data & Analytics" },
+  { value: "cloud_computing", label: "Cloud Computing" },
+  { value: "quantum_computing", label: "Quantum Computing" },
+  { value: "edge_computing", label: "Edge Computing" },
+  { value: "internet_of_things", label: "Internet of Things (IoT)" },
+
+  // Software & Development
+  { value: "software_engineering", label: "Software Engineering" },
+  { value: "agile_devops", label: "Agile & DevOps" },
+  { value: "full_stack_development", label: "Full-Stack Development" },
+  { value: "mobile_app_development", label: "Mobile App Development" },
+  { value: "web_development", label: "Web Development" },
+  { value: "game_development", label: "Game Development" },
+  { value: "software_testing_qa", label: "Software Testing & QA" },
+
+  // Security & Networks
+  { value: "cybersecurity", label: "Cybersecurity" },
+  { value: "computer_networks", label: "Computer Networks" },
+  { value: "blockchain_cryptography", label: "Blockchain & Cryptography" },
+  { value: "digital_forensics", label: "Digital Forensics" },
+
+  // Databases & Knowledge Management
+  { value: "database_systems", label: "Database Systems" },
+  { value: "semantic_web_ontologies", label: "Semantic Web & Ontologies" },
+  { value: "knowledge_management_systems", label: "Knowledge Management Systems" },
+  { value: "information_retrieval", label: "Information Retrieval" },
+
+  // Engineering & Informatics Integration
+  { value: "embedded_systems", label: "Embedded Systems" },
+  { value: "human_computer_interaction", label: "Human-Computer Interaction" },
+  { value: "engineering_ethics", label: "Engineering Ethics" },
+  { value: "renewable_energy_smart_grids", label: "Renewable Energy & Smart Grids" },
+  { value: "digital_twins_simulation", label: "Digital Twins & Simulation" },
+];

@@ -22,7 +22,8 @@ export function Search() {
   const [typeFilter, setTypeFilter] = useState([]);
   const [tagFilter, setTagFilter] = useState([]);
 
-  const [expanded, setExpanded] = useState(false);
+  const [expandedTypes, setExpandedTypes] = useState(false);
+  const [expandedCategories, setExpandedCategories] = useState(false);
   const visibleLimit = 5;
 
   const getAllResources = async () => {
@@ -49,20 +50,21 @@ export function Search() {
 
   const filteredResources = resources.filter((resource) => {
     const searchMatch =
-      resource.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      resource.description.toLowerCase().includes(searchQuery.toLowerCase());
+      resource.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      resource.description?.toLowerCase().includes(searchQuery.toLowerCase());
 
     const typeMatch =
       typeFilter.length > 0 ? typeFilter.includes(resource.type) : true;
 
     const categoryMatch =
       categoryFilter.length > 0
-        ? categoryFilter.includes(resource.category)
+        ? resource.category?.some((cat) => categoryFilter.includes(cat)) ??
+          false
         : true;
 
     const tagMatch =
       tagFilter.length > 0
-        ? resource.tags?.some((tag) => tagFilter.includes(tag)) || false
+        ? resource.tags?.some((tag) => tagFilter.includes(tag)) ?? false
         : true;
 
     return searchMatch && categoryMatch && tagMatch && typeMatch;
@@ -132,7 +134,7 @@ export function Search() {
             Filters
           </Typography>
 
-          {/* TYPES */}
+          {/* RESOURCE TYPES */}
           <div className="mb-4">
             <Typography
               variant="small"
@@ -143,16 +145,17 @@ export function Search() {
             </Typography>
             <div>
               {[...resourceTypes]
-                .sort((a, b) => a.name.localeCompare(b.name))
-                .slice(0, expanded ? resourceTypes.length : visibleLimit)
+                .filter((type) => type.label)
+                .sort((a, b) => (a.value ?? "").localeCompare(b.value ?? ""))
+                .slice(0, expandedTypes ? resourceTypes.length : visibleLimit)
                 .map((type) => (
-                  <div key={type.id} className="flex items-center">
+                  <div key={type.value} className="flex items-center">
                     <Checkbox
-                      checked={typeFilter.includes(type.name)}
-                      onChange={() => toggleType(type.name)}
+                      checked={typeFilter.includes(type.label)}
+                      onChange={() => toggleType(type.label)}
                     />
                     <Typography variant="small" className="leading-none">
-                      {type.name}
+                      {type.label}
                     </Typography>
                   </div>
                 ))}
@@ -162,9 +165,9 @@ export function Search() {
                   variant="text"
                   size="sm"
                   className="font-normal underline text-blue-gray-500"
-                  onClick={() => setExpanded(!expanded)}
+                  onClick={() => setExpandedTypes(!expandedTypes)}
                 >
-                  {expanded ? "Show Less" : "Show More"}
+                  {expandedTypes ? "Show Less" : "Show More"}
                 </Button>
               )}
             </div>
@@ -181,16 +184,20 @@ export function Search() {
             </Typography>
             <div>
               {[...resourceCategories]
-                .sort((a, b) => a.name.localeCompare(b.name))
-                .slice(0, expanded ? resourceCategories.length : visibleLimit)
+                .filter((category) => category.label)
+                .sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""))
+                .slice(
+                  0,
+                  expandedCategories ? resourceCategories.length : visibleLimit
+                )
                 .map((category) => (
-                  <div key={category.id} className="flex items-center">
+                  <div key={category.value} className="flex items-center">
                     <Checkbox
-                      checked={categoryFilter.includes(category.name)}
-                      onChange={() => toggleCategory(category.name)}
+                      checked={categoryFilter.includes(category.label)}
+                      onChange={() => toggleCategory(category.label)}
                     />
                     <Typography variant="small" className="leading-none">
-                      {category.name}
+                      {category.label}
                     </Typography>
                   </div>
                 ))}
@@ -200,9 +207,9 @@ export function Search() {
                   variant="text"
                   size="sm"
                   className="font-normal underline text-blue-gray-500"
-                  onClick={() => setExpanded(!expanded)}
+                  onClick={() => setExpandedCategories(!expandedCategories)}
                 >
-                  {expanded ? "Show Less" : "Show More"}
+                  {expandedCategories ? "Show Less" : "Show More"}
                 </Button>
               )}
             </div>
