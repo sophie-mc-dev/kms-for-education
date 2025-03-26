@@ -103,7 +103,6 @@ export function ModuleDetails() {
           throw new Error("Failed to fetch attempt count");
         }
         const data = await response.json();
-        console.log(data);
         // Check if data contains num_attempts, if not, set it to 0
         setAttempts(data.num_attempts || 0);
       } catch (err) {

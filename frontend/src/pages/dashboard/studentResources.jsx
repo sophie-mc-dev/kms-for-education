@@ -7,10 +7,12 @@ export function StudentResources() {
   const { userId } = useUser();
   const [resources, setResources] = useState([]);
   const [bookmarkedResources, setBookmarkedResources] = useState([]);
+  const [recentlyViewed, setRecentlyViewed] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
 
   const collections = ["Recently Viewed", "Bookmarked", "Recommended"];
 
+  // Fetch all resources from the API
   const getAllResources = async () => {
     try {
       const response = await fetch("http://localhost:8080/api/resources");
@@ -23,6 +25,7 @@ export function StudentResources() {
     }
   };
 
+  // Fetch bookmarked resources for the user
   const getBookmarkedResources = async () => {
     if (!userId) return [];
     try {
@@ -38,23 +41,36 @@ export function StudentResources() {
     }
   };
 
+  // Load recently viewed resources from localStorage
+  const getRecentlyViewedResources = () => {
+    return JSON.parse(localStorage.getItem("recentlyViewed")) || [];
+  };
+  
   useEffect(() => {
     const fetchData = async () => {
       const allResources = await getAllResources();
       const bookmarks = await getBookmarkedResources();
-
-      const bookmarked = allResources.filter((resource) =>
-        bookmarks.some((b) => b.id === resource.id)
-      );
-
+      const recentlyViewedData = getRecentlyViewedResources();
+  
+      // Match recently viewed items with actual resources
+      const recentResources = recentlyViewedData
+        .map((recent) => allResources.find((res) => res.id === recent.id))
+        .filter(Boolean);
+  
       setResources(allResources);
-      setBookmarkedResources(bookmarked);
+      setBookmarkedResources(allResources.filter((res) => bookmarks.some((b) => b.id === res.id)));
+      setRecentlyViewed(recentResources);
     };
-
+  
     fetchData();
   }, []);
 
   const filteredResources = (category) => {
+    if (category === "Recently Viewed") {
+      return recentlyViewed.filter((resource) =>
+        resource.title.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
     if (category === "Bookmarked") {
       return bookmarkedResources.filter((resource) =>
         resource.title.toLowerCase().includes(searchQuery.toLowerCase())

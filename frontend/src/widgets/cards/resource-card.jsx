@@ -43,12 +43,9 @@ export function ResourceCard({ resource, userId }) {
   
         const data = await res.json();
 
-  
         // Check if the resource is in the fetched bookmarks
-        const isBookmarked = data.some((item) => {
-          return item.id === resource.id;
-        });
-          setBookmarked(isBookmarked);
+        const isBookmarked = data.some((item) => item.id === resource.id);
+        setBookmarked(isBookmarked);
       } catch (error) {
         console.error("Error fetching bookmarks:", error);
       }
@@ -56,19 +53,21 @@ export function ResourceCard({ resource, userId }) {
   
     fetchBookmarks();
   }, [userId, resource.id]);
-  
-  
+
   const handleBookmarkClick = async (e) => {
     e.stopPropagation();
   
     try {
       let response;
+  
       if (bookmarked) {
+        // Send DELETE request to remove the bookmark and interaction
         response = await fetch(`http://localhost:8080/api/bookmarks/${userId}/${resource.id}`, {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
         });
       } else {
+        // Send POST request to add the bookmark and interaction
         response = await fetch(`http://localhost:8080/api/bookmarks/${userId}/${resource.id}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -78,20 +77,61 @@ export function ResourceCard({ resource, userId }) {
   
       if (!response.ok) throw new Error("Failed to update bookmark");
   
-      // Only update the state if the API request was successful
       setBookmarked(!bookmarked);
-  
     } catch (error) {
       console.error("Error updating bookmark:", error);
     }
   };
   
+  const handleResourceClick = async () => {
+    const viewedResources = JSON.parse(localStorage.getItem("recentlyViewed")) || [];
   
+    // Prevent duplicates, keep max 3 recently viewed
+    const updatedResources = [
+      { id: resource.id, title: resource.title },
+      ...viewedResources.filter((r) => r.id !== resource.id),
+    ].slice(0, 3);
+  
+    // Save updated recently viewed resources in localStorage
+    localStorage.setItem("recentlyViewed", JSON.stringify(updatedResources));
+    
+    try {
+      await registerResourceView(userId, resource.id);
+    } catch (error) {
+      console.error("Error registering resource view:", error);
+    }
+  
+    // Navigate to the resource detail page
+    navigate(`resources/${resource.id}`);
+  };
+
+  const registerResourceView = async (userId, resourceId) => {
+    try {
+      const response = await fetch("http://localhost:8080/api/user-interactions/resource-view", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          user_id: userId,
+          resource_id: resourceId,
+        }),
+      });
+  
+      if (!response.ok) {
+        throw new Error("Failed to register resource view");
+      }
+  
+      const data = await response.json();
+    } catch (error) {
+      console.error("Error registering resource view:", error);
+    }
+  };
 
   return (
     <Card
       className="border border-blue-gray-100 shadow-sm cursor-pointer hover:shadow-md transition h-full min-h-[250px] flex flex-col"
-      onClick={() => navigate(`resources/${resource.id}`)}
+      onClick={handleResourceClick}
     >
       {/* Bookmark Icon */}
       <div className="absolute top-2 right-2" onClick={(e) => e.stopPropagation()}>

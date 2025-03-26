@@ -2,14 +2,50 @@ import React from "react";
 import { Card, CardBody, Typography, Progress } from "@material-tailwind/react";
 import { ClockIcon } from "@heroicons/react/24/outline";
 import { useNavigate } from "react-router-dom";
+import { useUser } from "@/context/UserContext";
 
 export function LearningMDCard({ moduleItem }) {
+  const { userId } = useUser();
   const navigate = useNavigate();
+  const cleanedModuleId = parseInt(moduleItem.id.replace('md_', ''), 10);
+
+  const handleModuleClick = async () => {
+    try {
+      await registerModuleView(userId, cleanedModuleId);
+    } catch (error) {
+      console.error("Error registering module view:", error);
+    }
+    navigate(`/dashboard/learning/module/${cleanedModuleId}`);
+  };
+
+  const registerModuleView = async (userId, moduleId) => {
+    try {
+  
+      const response = await fetch("http://localhost:8080/api/user-interactions/module-view", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          user_id: userId,
+          module_id: moduleId,
+        }),
+      });
+  
+      if (!response.ok) {
+        throw new Error("Failed to register module view");
+      }
+  
+      const data = await response.json();
+    } catch (error) {
+      console.error("Error registering module view:", error.message);
+    }
+  };
 
   return (
     <Card
       className="border border-blue-gray-100 shadow-sm cursor-pointer hover:shadow-md transition h-full min-h-[250px] flex flex-col"
-      onClick={() => navigate(`module/${moduleItem.id}`)}
+      onClick={handleModuleClick}
     >
       <CardBody className="flex flex-col h-full">
         {/* Type Badge */}

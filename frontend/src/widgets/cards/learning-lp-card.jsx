@@ -2,14 +2,54 @@ import React from "react";
 import { Card, CardBody, Typography, Progress } from "@material-tailwind/react";
 import { ClockIcon } from "@heroicons/react/24/outline";
 import { useNavigate } from "react-router-dom";
+import { useUser } from "@/context/UserContext";
 
 export function LearningLPCard({ learningItem }) {
+  const { userId } = useUser();
+
   const navigate = useNavigate();
+
+  const cleanedLearningPathId = parseInt(learningItem.id.replace("lp_", ""), 10);
+
+  const handleLearningPathClick = async () => {
+    try {
+      await registerLearningPathView(userId, cleanedLearningPathId);
+    } catch (error) {
+      console.error("Error registering learning path view:", error);
+    }
+    navigate(`/dashboard/learning/learning-path/${cleanedLearningPathId}`);
+  };
+
+  const registerLearningPathView = async (userId, learningPathId) => {
+    try {
+      const response = await fetch(
+        "http://localhost:8080/api/user-interactions/learning-path-view",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            user_id: userId,
+            learning_path_id: learningPathId,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to register learning path view");
+      }
+
+      const data = await response.json();
+    } catch (error) {
+      console.error("Error registering learning path view:", error.message);
+    }
+  };
 
   return (
     <Card
       className="border border-blue-gray-100 shadow-sm cursor-pointer hover:shadow-md transition h-full min-h-[250px] flex flex-col"
-      onClick={() => navigate(`learning-path/${learningItem.id}`)} // Navigate to the specific learning path
+      onClick={handleLearningPathClick} 
     >
       <CardBody className="flex flex-col h-full">
         {/* Type Badge */}
@@ -20,7 +60,11 @@ export function LearningLPCard({ learningItem }) {
         </div>
 
         {/* Title & Description */}
-        <Typography variant="h6" color="blue-gray" className="mb-2 font-semibold">
+        <Typography
+          variant="h6"
+          color="blue-gray"
+          className="mb-2 font-semibold"
+        >
           {learningItem.title}
         </Typography>
         <Typography
@@ -51,7 +95,10 @@ export function LearningLPCard({ learningItem }) {
         {/* Progress Section */}
         {learningItem.completion !== undefined && (
           <div className="mt-6">
-            <Typography variant="small" className="mb-1 text-xs font-medium text-blue-gray-600">
+            <Typography
+              variant="small"
+              className="mb-1 text-xs font-medium text-blue-gray-600"
+            >
               {learningItem.completion}% Completed
             </Typography>
             <Progress

@@ -8,10 +8,12 @@ import {
   Button,
 } from "@material-tailwind/react";
 import ReactMarkdown from "react-markdown";
+import { LearningMDCard } from "@/widgets/cards";
 
 export function ResourceDetails() {
   const { resourceId } = useParams();
   const [resource, setResource] = useState(null);
+  const [modules, setModules] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -36,6 +38,21 @@ export function ResourceDetails() {
 
     fetchResourceById();
   }, [resourceId]);
+
+  useEffect(() => {
+    const fetchModulesByResource = async () => {
+      try {
+        const response = await fetch(
+          `http://localhost:8080/api/modules/${resourceId}/modules`
+        );
+        const data = await response.json();
+        setModules(data);
+      } catch (error) {
+        console.error("Error fetching learning paths or modules:", error);
+      }
+    };
+    fetchModulesByResource();
+  }, []);
 
   const formattedDate = resource?.created_at
     ? new Date(resource.created_at).toLocaleString("en-US", {
@@ -146,14 +163,13 @@ export function ResourceDetails() {
     if (["txt", "md"].includes(format) && html_content) {
       // Extract content inside <pre> tags if present
       const extractedContent = html_content.replace(/<\/?pre>/g, "");
-    
+
       return format === "md" ? (
         <ReactMarkdown className="prose">{extractedContent}</ReactMarkdown>
       ) : (
         <div className="prose whitespace-pre-wrap">{extractedContent}</div>
       );
     }
-    
 
     return (
       <Button color="blue-gray" onClick={() => window.open(url, "_blank")}>
@@ -309,14 +325,26 @@ export function ResourceDetails() {
       </div>
 
       <div className="w-1/4">
-        <Card className="border border-blue-gray-100 p-4 h-full">
-          <CardBody>
-            <Typography variant="h6" className="font-semibold mb-2">
+        <Card className="border border-blue-gray-100 p-4 h-full shadow-md rounded-lg">
+          <CardBody className="space-y-4">
+            <Typography variant="h6" className="font-semibold text-gray-800">
               Related Modules
             </Typography>
-            <Typography variant="small" className="text-gray-600 italic">
-              Modules that include this resource will be displayed here.
-            </Typography>
+            <div className="flex flex-col gap-3">
+              {modules.length === 0 ? (
+                <p className="text-gray-500 text-sm">
+                  Loading related modules...
+                </p>
+              ) : (
+                modules.map((item) => (
+                  <LearningMDCard
+                    key={item.id}
+                    moduleItem={item}
+                    className="p-3 bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-200"
+                  />
+                ))
+              )}
+            </div>
           </CardBody>
         </Card>
       </div>

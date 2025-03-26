@@ -8,7 +8,7 @@ const learningPathsController = {
       visibility,
       estimated_duration,
       ects,
-      modules, 
+      modules,
     } = req.body;
     const user_id = req.user.user_id;
 
@@ -39,10 +39,16 @@ const learningPathsController = {
       // Insert modules with correct order
       if (modules && modules.length > 0) {
         const values = modules
-          .map((_, index) => `($1, $${index + 2}, $${index + 2 + modules.length})`)
+          .map(
+            (_, index) => `($1, $${index + 2}, $${index + 2 + modules.length})`
+          )
           .join(", ");
 
-        const queryParams = [learningPathId, ...modules, ...modules.map((_, i) => i)];
+        const queryParams = [
+          learningPathId,
+          ...modules,
+          ...modules.map((_, i) => i),
+        ];
 
         await client.query(
           `INSERT INTO learning_path_modules (learning_path_id, module_id, module_order) VALUES ${values}`,
@@ -119,9 +125,22 @@ const learningPathsController = {
 
   updateLearningPath: async (req, res) => {
     const { id } = req.params;
-    const { title, description, visibility, estimated_duration, ects, modules } = req.body;
+    const {
+      title,
+      description,
+      visibility,
+      estimated_duration,
+      ects,
+      modules,
+    } = req.body;
 
-    if (!title || !description || !visibility || !estimated_duration || ects === undefined) {
+    if (
+      !title ||
+      !description ||
+      !visibility ||
+      !estimated_duration ||
+      ects === undefined
+    ) {
       return res.status(400).json({ error: "All fields are required" });
     }
 
@@ -146,11 +165,16 @@ const learningPathsController = {
       // If modules are provided, update their order
       if (modules && modules.length > 0) {
         // Delete existing module entries for the learning path
-        await client.query(`DELETE FROM learning_path_modules WHERE learning_path_id = $1`, [id]);
+        await client.query(
+          `DELETE FROM learning_path_modules WHERE learning_path_id = $1`,
+          [id]
+        );
 
         // Insert new module order
         const values = modules
-          .map((_, index) => `($1, $${index + 2}, $${index + 2 + modules.length})`)
+          .map(
+            (_, index) => `($1, $${index + 2}, $${index + 2 + modules.length})`
+          )
           .join(", ");
 
         const queryParams = [id, ...modules, ...modules.map((_, i) => i)];
@@ -237,6 +261,13 @@ const learningPathsController = {
         `INSERT INTO learning_path_progress (user_id, learning_path_id, progress_percentage, started_at, status) 
          VALUES ($1, $2, 0, NOW(), 'in_progress')
          ON CONFLICT (user_id, learning_path_id) DO UPDATE SET started_at = NOW(), status = 'in_progress'`,
+        [user_id, learning_path_id]
+      );
+
+      // Log the interaction in the user_interactions table
+      await pool.query(
+        `INSERT INTO user_interactions (user_id, learning_path_id, interaction_type)
+        VALUES ($1, $2, 'started_learning_path')`,
         [user_id, learning_path_id]
       );
 

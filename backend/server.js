@@ -9,6 +9,7 @@ const resourcesRoutes = require("./routes/resourcesRoutes");
 const bookmarksRoutes = require("./routes/bookmarksRoutes");
 const learningPathsRoutes = require("./routes/learningPathsRoutes");
 const modulesRoutes = require("./routes/modulesRoutes");
+const userInteractionsRoutes = require("./routes/userInteractionsRoutes")
 const cors = require("cors");
 
 const app = express();
@@ -66,6 +67,7 @@ async function startServer() {
   app.use("/api/users", usersRoutes);
   app.use("/api/resources", resourcesRoutes);
   app.use("/api/bookmarks", bookmarksRoutes);
+  app.use("/api/user-interactions", userInteractionsRoutes);
   app.use("/api/learning-paths", learningPathsRoutes);
   app.use("/api/modules", modulesRoutes);
 

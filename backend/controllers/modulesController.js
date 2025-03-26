@@ -299,7 +299,7 @@ const modulesController = {
           score,
           passed,
           JSON.stringify(answers),
-          newAttemptNumber, // Correctly tracks the attempt number
+          newAttemptNumber, 
         ]
       );
   
@@ -309,7 +309,6 @@ const modulesController = {
       res.status(500).json({ error: "Internal Server Error" });
     }
   },
-  
 
   // Get assessment results by user_id, assessment_id, and module_id
   getAssessmentResults: async (req, res) => {
@@ -445,6 +444,13 @@ const modulesController = {
         `INSERT INTO user_module_progress (user_id, module_id, completed_at) 
         VALUES ($1, $2, NOW()) 
         ON CONFLICT (user_id, module_id) DO NOTHING`,
+        [user_id, module_id]
+      );
+
+      // Log the interaction in the user_interactions table
+      await pool.query(
+        `INSERT INTO user_interactions (user_id, module_id, interaction_type)
+               VALUES ($1, $2, 'completed_module')`,
         [user_id, module_id]
       );
 
