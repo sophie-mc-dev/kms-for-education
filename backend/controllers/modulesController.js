@@ -403,6 +403,7 @@ const modulesController = {
 
   // Mark Module as Complete
   completeModule: async (req, res) => {
+    // update backend to move current module id to the next one, add completed module to passed modules ids, unlock nest module (remove it from lcoked module ids)
     const { module_id } = req.params;
     const user_id = req.user.user_id;
 

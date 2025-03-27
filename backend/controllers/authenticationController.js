@@ -28,6 +28,8 @@ const authenticationController = {
 
   // User login
   signin: (req, res) => {
+    console.log(req.user);
+    console.log("Session Object:", req.session);
     const user = { ...req.user };
     delete user.password_hash;
     res.json({ user });

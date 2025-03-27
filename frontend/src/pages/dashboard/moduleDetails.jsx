@@ -10,6 +10,7 @@ import {
 } from "@material-tailwind/react";
 import { ResourceCard } from "@/widgets/cards/";
 import { useUser } from "@/context/userContext";
+import { Assessment } from "@/widgets/cards/";
 
 export function ModuleDetails() {
   const { userId } = useUser();
@@ -17,13 +18,8 @@ export function ModuleDetails() {
   const [module, setModule] = useState(null);
   const [resources, setResources] = useState([]);
   const [assessment, setAssessment] = useState(null);
-  const [userAnswers, setUserAnswers] = useState({});
-  const [score, setScore] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [assessmentError, setAssessmentError] = useState(null);
-  const [showFeedback, setShowFeedback] = useState(false);
-  const [attempts, setAttempts] = useState(0);
   const cleanedModuleId = moduleId.replace("md_", "");
 
   const formattedDate = module?.created_at
@@ -85,116 +81,13 @@ export function ModuleDetails() {
         if (!response.ok) throw new Error("Failed to fetch assessment");
         const data = await response.json();
         setAssessment(data);
+        console.log(data)
       } catch (err) {
-        setAssessmentError(err.message);
+        setError(err.message);
       }
     };
     fetchAssessment();
   }, []);
-
-  useEffect(() => {
-    // Fetch the number of attempts for the user and assessment
-    const fetchAttempts = async () => {
-      try {
-        const response = await fetch(
-          `http://localhost:8080/api/modules/${cleanedModuleId}/assessment/results/${userId}`
-        );
-        if (!response.ok) {
-          throw new Error("Failed to fetch attempt count");
-        }
-        const data = await response.json();
-        // Check if data contains num_attempts, if not, set it to 0
-        setAttempts(data.num_attempts || 0);
-      } catch (err) {
-        console.error("Error fetching attempt count:", err.message);
-        // Set attempts to 0 if there's an error
-        setAttempts(0);
-      }
-    };
-
-    if (assessment) {
-      fetchAttempts();
-    }
-  }, [assessment, cleanedModuleId, userId]);
-
-  const handleAnswerSelect = (questionIndex, answerIndex) => {
-    setUserAnswers((prev) => ({
-      ...prev,
-      [questionIndex]: answerIndex,
-    }));
-  };
-
-  const checkAnswers = async () => {
-    if (!assessment) return;
-
-    let correctCount = 0;
-    const answers = [];
-
-    assessment.questions.forEach((_, qIndex) => {
-      const correctAnswerIndex = assessment.solution[qIndex];
-      const userSelectedIndex = userAnswers[qIndex];
-      answers.push({
-        questionIndex: qIndex,
-        selectedAnswerIndex: userSelectedIndex,
-        correctAnswerIndex: correctAnswerIndex,
-      });
-
-      if (
-        userSelectedIndex !== undefined &&
-        userSelectedIndex === correctAnswerIndex
-      ) {
-        correctCount++;
-      }
-    });
-
-    setScore(correctCount);
-    setShowFeedback(true);
-
-    const passed = correctCount === 5;
-
-    // Prepare the data to save to the database
-    const assessmentResults = {
-      user_id: userId,
-      assessment_id: assessment.id,
-      module_id: cleanedModuleId,
-      score: correctCount,
-      passed: passed,
-      num_attempts: attempts + 1, // Incrementing attempt count
-      answers: JSON.stringify(answers),
-    };
-
-    try {
-      const response = await fetch(
-        `http://localhost:8080/api/modules/${cleanedModuleId}/assessment/results/${userId}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(assessmentResults),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to save assessment results");
-      }
-
-      const savedResult = await response.json();
-      console.log("Assessment results saved:", savedResult);
-
-      // Fetch updated attempts count after saving
-      const updatedAttemptsResponse = await fetch(
-        `http://localhost:8080/api/modules/${cleanedModuleId}/assessment/results/${userId}`
-      );
-
-      if (updatedAttemptsResponse.ok) {
-        const updatedData = await updatedAttemptsResponse.json();
-        setAttempts(updatedData.num_attempts || 0); 
-      }
-    } catch (err) {
-      console.error("Error saving results:", err.message);
-    }
-  };
 
   if (loading)
     return (
@@ -261,73 +154,7 @@ export function ModuleDetails() {
             Test Your Knowledge
           </Typography>
 
-          {assessmentError ? (
-            <Typography className="text-red-500">
-              Error loading assessment: {assessmentError}
-            </Typography>
-          ) : assessment ? (
-            <div key={assessment.id} className="mb-6">
-              {assessment.questions.map((questionObj, qIndex) => {
-                const correctIndex = assessment.solution[qIndex];
-                const userSelectedIndex = userAnswers[qIndex];
-
-                return (
-                  <div key={qIndex} className="mb-4 p-4 rounded-md">
-                    <Typography className="mb-2 font-medium">
-                      Question {qIndex + 1}: {questionObj.question_text}
-                    </Typography>
-
-                    {assessment.answers[qIndex]?.map((answer, aIndex) => {
-                      const isCorrect = aIndex === correctIndex;
-                      const isSelected = aIndex === userSelectedIndex;
-
-                      return (
-                        <label key={aIndex} className="block">
-                          <div
-                            className={`p-2 rounded-md cursor-pointer flex items-center gap-2
-                    ${isSelected ? "border-2" : "border"}
-                    ${
-                      showFeedback && isSelected && isCorrect
-                        ? "border-green-500 bg-green-100"
-                        : ""
-                    }
-                    ${
-                      showFeedback && isSelected && !isCorrect
-                        ? "border-red-500 bg-red-100"
-                        : ""
-                    }
-                  `}
-                          >
-                            <Radio
-                              name={`question-${assessment.id}-${qIndex}`}
-                              value={aIndex}
-                              checked={isSelected}
-                              onChange={() =>
-                                handleAnswerSelect(qIndex, aIndex)
-                              }
-                            />
-                            {answer}
-                          </div>
-                        </label>
-                      );
-                    })}
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <Typography>No assessment available.</Typography>
-          )}
-
-          <Button onClick={checkAnswers} className="mt-4">
-            Check Answers
-          </Button>
-
-          {score !== null && (
-            <Typography className="mt-2 text-blue-gray-700">
-              Score: {score} / {assessment?.questions.length}
-            </Typography>
-          )}
+            <Assessment userId={userId} moduleId={cleanedModuleId} assessment={assessment}></Assessment>
         </CardBody>
       </Card>
     </div>

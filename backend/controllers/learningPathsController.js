@@ -234,8 +234,7 @@ const learningPathsController = {
 
   // Start Learning Path for a User
   startLearningPath: async (req, res) => {
-    const { learning_path_id } = req.params;
-    const user_id = req.user.user_id;
+    const { learning_path_id, user_id } = req.body;
 
     try {
       // Check if Learning Path exists
@@ -256,12 +255,32 @@ const learningPathsController = {
         return res.status(400).json({ error: "Learning path already started" });
       }
 
-      // Insert progress entry
+      // Get all modules ordered by module_order
+      const modulesQuery = await pool.query(
+        `SELECT module_id FROM learning_path_modules 
+        WHERE learning_path_id = $1 
+        ORDER BY module_order ASC`,
+        [learning_path_id]
+      );
+
+      if (modulesQuery.rows.length === 0) {
+        return res
+          .status(400)
+          .json({ error: "No modules found in this learning path" });
+      }
+
+      const allModules = modulesQuery.rows.map((row) => row.module_id);
+      const firstModuleId = allModules[0];
+
+      // Lock all modules except the first one
+      const lockedModules = allModules.slice(1);
+
+      // Insert new progress entry
       await pool.query(
-        `INSERT INTO learning_path_progress (user_id, learning_path_id, progress_percentage, started_at, status) 
-         VALUES ($1, $2, 0, NOW(), 'in_progress')
-         ON CONFLICT (user_id, learning_path_id) DO UPDATE SET started_at = NOW(), status = 'in_progress'`,
-        [user_id, learning_path_id]
+        `INSERT INTO learning_path_progress 
+          (user_id, learning_path_id, current_module_id, completed_module_ids, passed_modules_ids, locked_module_ids, progress_percentage, status, started_at) 
+          VALUES ($1, $2, $3, '{}', '{}', $4, 0.00, 'in_progress', NOW())`,
+        [user_id, learning_path_id, firstModuleId, lockedModules]
       );
 
       // Log the interaction in the user_interactions table
@@ -271,7 +290,11 @@ const learningPathsController = {
         [user_id, learning_path_id]
       );
 
-      res.status(201).json({ message: "Learning Path started successfully" });
+      res.status(201).json({
+        message: "Learning path started successfully",
+        current_module_id: firstModuleId,
+        locked_modules: lockedModules,
+      });
     } catch (err) {
       console.error("Error starting learning path:", err);
       res.status(500).json({ error: "Internal Server Error" });
@@ -280,26 +303,39 @@ const learningPathsController = {
 
   // Get User's Learning Path Progress
   getLearningPathProgress: async (req, res) => {
-    const { learning_path_id } = req.params;
-    const user_id = req.user.user_id;
-
+    const { learning_path_id, user_id } = req.params;
+  
+    if (!learning_path_id || !user_id) {
+      return res.status(400).json({
+        error: "Missing required parameters: learning_path_id or user_id",
+      });
+    }
+  
     try {
       const result = await pool.query(
-        `SELECT * FROM learning_path_progress 
+        `SELECT user_id, learning_path_id, current_module_id, completed_module_ids,
+                progress_percentage, last_accessed, time_spent, passed_modules_ids, status, locked_module_ids
+         FROM learning_path_progress 
          WHERE user_id = $1 AND learning_path_id = $2`,
         [user_id, learning_path_id]
       );
+  
       if (result.rows.length === 0) {
-        return res
-          .status(404)
-          .json({ error: "Progress not found for this learning path" });
+        return res.status(404).json({ error: "Progress not found for this learning path" });
       }
+  
+      // Check for locked_module_ids and handle empty array or null
+      const progress = result.rows[0];
+      if (!progress.locked_module_ids) {
+        progress.locked_module_ids = [];
+      }
+  
       res.json(result.rows[0]);
     } catch (err) {
       console.error("Error fetching learning path progress:", err);
       res.status(500).json({ error: "Internal Server Error" });
     }
-  },
+  },  
 
   // Update Learning Path Progress
   updateLearningPathProgress: async (req, res) => {

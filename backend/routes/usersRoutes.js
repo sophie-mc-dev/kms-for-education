@@ -4,16 +4,6 @@ const passport = require("passport");
 
 const usersController = require("../controllers/usersController");
 
-// Register user
-router.post("/sign-up", usersController.signup);
-
-// Login user
-router.post(
-  "/sign-in",
-  passport.authenticate("local", { failureMessage: true }),
-  usersController.signin
-);
-
 // Get all users
 router.get("/", usersController.getAllUsers);
 

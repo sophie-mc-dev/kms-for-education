@@ -4,12 +4,15 @@ const learningPathsController = require("../controllers/learningPathsController"
 const passport = require("passport");
 
 const isAuthenticated = (req, res, next) => {
+  console.log("User is authenticated: ", req.isAuthenticated())
   if (req.isAuthenticated()) {
-    return next();
+    return res.json({ message: 'Authenticated', user: req.user });
   } else {
-    return res.status(401).json({ error: "User not authenticated" });
+    return res.status(401).json({ error: "User is not authenticated" });
   }
 };
+
+
 
 // CRUD for Learning Paths
 router.post("/", isAuthenticated, learningPathsController.addLearningPath);
@@ -22,8 +25,8 @@ router.delete("/:id", learningPathsController.removeLearningPath);
 router.get("/:learning_path_id/modules", learningPathsController.getModulesByLearningPath);
 
 // Progress
+// Ensure authentication middleware runs first
 router.post("/:learning_path_id/start", learningPathsController.startLearningPath);
 router.get("/:learning_path_id/progress/:user_id", learningPathsController.getLearningPathProgress);
-router.post("/:learning_path_id/complete", learningPathsController.startLearningPath);
 
 module.exports = router;
