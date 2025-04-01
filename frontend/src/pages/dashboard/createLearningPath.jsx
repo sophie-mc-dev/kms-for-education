@@ -17,11 +17,14 @@ import "react-quill/dist/quill.snow.css";
 import { LearningMDCard } from "@/widgets/cards";
 import { DragDropContext, Draggable } from "react-beautiful-dnd";
 import { StrictModeDroppable as Droppable } from "@/helpers/StrictModeDroppable";
+import { useUser } from "@/context/UserContext";
 
 export function CreateLearningPath() {
+  const { userId } = useUser();
   const [step, setStep] = useState(1);
   const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
+  const [summary, setSummary] = useState("");
+  const [objectives, setObjectives] = useState("");
   const [visibility, setVisibility] = useState("public");
   const [estimatedDuration, setEstimatedDuration] = useState("");
   const [ects, setEcts] = useState("");
@@ -48,26 +51,20 @@ export function CreateLearningPath() {
     e.preventDefault();
     setIsSubmitting(true);
 
-    const token = localStorage.getItem("token"); 
-    console.log("Retrieved token:", token);
-
-    if (!token) {
-      console.error("No authentication token found!");
-      return;
-    }
-
     const modulesWithOrder = selectedModules.map((module, index) => ({
       module_id: module.id,
-      order_index: index,
+      module_order: index,
     }));
 
     const learningPathData = {
       title,
-      description,
+      summary,
       visibility,
-      estimatedDuration,
-      ects,
+      estimatedDuration: parseInt(estimatedDuration, 10),
+      ects: parseInt(ects, 10),
       modules: modulesWithOrder,
+      user_id: userId,
+      objectives: objectives
     };
 
     console.log("Submitting Learning Path Data:", learningPathData);
@@ -77,7 +74,6 @@ export function CreateLearningPath() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`, 
         },
         body: JSON.stringify(learningPathData),
       });
@@ -150,9 +146,14 @@ export function CreateLearningPath() {
                 required
               />
               <ReactQuill
-                value={description}
-                onChange={setDescription}
-                placeholder="Describe the learning path"
+                value={summary}
+                onChange={setSummary}
+                placeholder="Overview of the learning paths"
+              />
+              <ReactQuill
+                value={objectives}
+                onChange={setObjectives}
+                placeholder="Describe the learning path objectives"
               />
               <div className="flex gap-4">
                 <Input

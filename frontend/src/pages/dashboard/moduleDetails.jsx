@@ -81,7 +81,6 @@ export function ModuleDetails() {
         if (!response.ok) throw new Error("Failed to fetch assessment");
         const data = await response.json();
         setAssessment(data);
-        console.log(data)
       } catch (err) {
         setError(err.message);
       }
@@ -128,7 +127,7 @@ export function ModuleDetails() {
           <div className="mb-6 font-normal text-blue-gray-900">
             <div
               className="[&>ul]:list-disc [&>ul]:pl-5 [&>ol]:list-decimal"
-              dangerouslySetInnerHTML={{ __html: module.description }}
+              dangerouslySetInnerHTML={{ __html: module.summary }}
             ></div>
           </div>
 

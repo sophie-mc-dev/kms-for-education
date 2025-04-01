@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Card, CardBody, Typography, Button } from "@material-tailwind/react";
-import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
 import { ModuleCard } from "@/widgets/cards";
 import { useUser } from "@/context/UserContext";
 
 export function LearningPathDetails() {
   const { userId } = useUser();
+  const { userRole } = useUser();
   const { learningPathId } = useParams();
   const [learningPath, setLearningPath] = useState(null);
   const [modules, setModules] = useState([]);
@@ -58,23 +58,31 @@ export function LearningPathDetails() {
     fetchModules();
   }, []);
 
-  // Fetch user progress
+  // Fetch user progress (only for students)
   useEffect(() => {
     const fetchUserProgress = async () => {
+      console.log("Learning Path ID:", cleanedLearningPathId);
+      console.log("User ID:", userId);
+
+      if (!cleanedLearningPathId || !userId || userRole === "educator") {
+        return;
+      }
+
       try {
         const response = await fetch(
           `http://localhost:8080/api/learning-paths/${cleanedLearningPathId}/progress/${userId}`
         );
         if (!response.ok) throw new Error("Failed to fetch user progress");
         const data = await response.json();
+        console.log("Fetched data:", data);
         setUserProgress(data);
       } catch (err) {
-        setError(err.message);
+        console.error("Error fetching progress:", err.message);
       }
     };
 
     fetchUserProgress();
-  }, []);
+  }, [cleanedLearningPathId, userId, userRole]);
 
   const refreshUserProgress = async () => {
     try {
@@ -113,25 +121,17 @@ export function LearningPathDetails() {
     }
   };
 
-  const isLearningPathStarted = userProgress && userProgress.status === "in_progress";
+  const isLearningPathStarted =
+    userProgress && userProgress.status === "in_progress";
 
   if (loading) return <div>Loading...</div>;
   if (error) return <div>Error: {error}</div>;
   if (!learningPath) return <div>No Learning Path Data</div>;
 
-  const isModuleUnlocked = (moduleId) => {
-    return (
-      userProgress?.passed_modules_ids?.includes(moduleId) ||
-      userProgress?.current_module_id === moduleId ||
-      !userProgress?.locked_module_ids?.includes(moduleId)
-    );
-  };
-
   return (
     <div className="mt-12 flex gap-4 h-full">
       <Card className="w-screen h-screen border border-blue-gray-100 shadow-sm p-6 flex flex-col relative">
         <CardBody className="flex-1 overflow-auto">
-          {/* Learning Path Header (Title + Button) */}
           <div className="flex items-center justify-between">
             <Typography
               variant="h4"
@@ -140,9 +140,13 @@ export function LearningPathDetails() {
             >
               {learningPath.title}
             </Typography>
-
-            <Button onClick={handleStartLearningPath} disabled={isLearningPathStarted}>
-              {isLearningPathStarted ? "Learning Path Started" : "Start Learning Path"}
+            <Button
+              onClick={handleStartLearningPath}
+              disabled={isLearningPathStarted}
+            >
+              {isLearningPathStarted
+                ? "Learning Path Started"
+                : "Start Learning Path"}
             </Button>
           </div>
 
@@ -155,7 +159,6 @@ export function LearningPathDetails() {
                 {learningPath.estimated_duration} minutes
               </Typography>
             </div>
-
             <div className="flex items-center gap-x-2">
               <Typography className="text-xs font-semibold uppercase text-blue-gray-500">
                 ECTS:
@@ -167,13 +170,11 @@ export function LearningPathDetails() {
           </div>
 
           <Typography className="mt-2 text-blue-gray-700">
-            {learningPath.description}
+            {learningPath.summary}
           </Typography>
 
-          {/* Divider */}
           <div className="border-t my-4"></div>
 
-          {/* Modules List */}
           <Typography
             variant="h5"
             color="blue-gray"
@@ -185,14 +186,21 @@ export function LearningPathDetails() {
           <div className="flex flex-col gap-2">
             {modules.map((module, index) => (
               <ModuleCard
-              key={module.id}
-              userId={userId}
-              module={module}
-              isUnlocked={isLearningPathStarted && (index === 0 || userProgress?.completed_modules?.includes(modules[index - 1]?.id))}
-              isPassed={userProgress?.completed_modules?.includes(module.id)}
-              isCurrent={userProgress?.current_module === module.id}
-              index={index}
-            />
+                key={module.id}
+                userId={userId}
+                learningPathId={learningPathId}
+                module={module}
+                isUnlocked={
+                  isLearningPathStarted &&
+                  (index === 0 ||
+                    userProgress?.completed_modules?.includes(
+                      modules[index - 1]?.id
+                    ))
+                }
+                isPassed={userProgress?.completed_modules?.includes(module.id)}
+                isCurrent={userProgress?.current_module === module.id}
+                index={index}
+              />
             ))}
           </div>
         </CardBody>

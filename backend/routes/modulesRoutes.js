@@ -30,6 +30,8 @@ router.get("/assessment/results", modulesController.getAllAssessmentResults);
 router.put("/:module_id/assessment/results/:user_id", modulesController.updateAssessmentAttempts);
 router.delete("/:module_id/assessment/results/:user_id", modulesController.deleteAssessmentResults);
 
+router.post("/:module_id/start", modulesController.startModule);
+router.get("/:module_id/status", modulesController.getModuleStatus);
 router.post("/:module_id/complete", modulesController.completeModule);
 
 module.exports = router;

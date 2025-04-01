@@ -59,7 +59,7 @@ export function LearningLPCard({ learningItem }) {
           </Typography>
         </div>
 
-        {/* Title & Description */}
+        {/* Title & Summary */}
         <Typography
           variant="h6"
           color="blue-gray"
@@ -75,9 +75,9 @@ export function LearningLPCard({ learningItem }) {
           <span
             dangerouslySetInnerHTML={{
               __html:
-                learningItem.description.length > 70
-                  ? learningItem.description.substring(0, 70) + "..."
-                  : learningItem.description,
+                learningItem.summary.length > 70
+                  ? learningItem.summary.substring(0, 70) + "..."
+                  : learningItem.summary,
             }}
           ></span>
         </Typography>

@@ -15,7 +15,7 @@ const isAuthenticated = (req, res, next) => {
 
 
 // CRUD for Learning Paths
-router.post("/", isAuthenticated, learningPathsController.addLearningPath);
+router.post("/", learningPathsController.addLearningPath);
 router.get("/", learningPathsController.getLearningPaths);
 router.get("/:id", learningPathsController.getLearningPathById);
 router.put("/:id", learningPathsController.updateLearningPath);
@@ -27,6 +27,7 @@ router.get("/:learning_path_id/modules", learningPathsController.getModulesByLea
 // Progress
 // Ensure authentication middleware runs first
 router.post("/:learning_path_id/start", learningPathsController.startLearningPath);
+router.get("/in-progress/:user_id", learningPathsController.getStartedLearningPaths);
 router.get("/:learning_path_id/progress/:user_id", learningPathsController.getLearningPathProgress);
 
 module.exports = router;

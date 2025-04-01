@@ -6,6 +6,7 @@ import { Assessment } from "@/widgets/cards/";
 
 export function ModuleCard({
   userId,
+  learningPathId,
   module,
   isUnlocked,
   isPassed,
@@ -16,6 +17,7 @@ export function ModuleCard({
   const [assessment, setAssessment] = useState([]);
   const [resourceCount, setResourceCount] = useState(null);
   const [isOpen, setIsOpen] = useState(false);
+  const [moduleStatus, setModuleStatus] = useState("");
 
   useEffect(() => {
     if (isPassed) {
@@ -23,9 +25,60 @@ export function ModuleCard({
     }
   }, [isPassed]);
 
-  const handleModuleStart = () => {
-    if (isUnlocked && !isPassed) {
+  useEffect(() => {
+    const fetchModuleStatus = async () => {
+      try {
+        const response = await fetch(
+          `http://localhost:8080/api/modules/${module.id}/status?user_id=${userId}&learning_path_id=${learningPathId}`
+        );
+        if (!response.ok) {
+          throw new Error("Failed to fetch module status");
+        }
+        const data = await response.json();
+        setModuleStatus(data.status);
+        if (data.status === "in_progress" || data.status === "completed") {
+          setIsOpen(true);
+        }
+      } catch (err) {
+        console.error("Error fetching module status:", err);
+      }
+    };
+
+    if (module.id && userId && learningPathId) {
+      fetchModuleStatus();
+    }
+  }, [module.id, userId, learningPathId]);
+
+  const handleModuleStart = async () => {
+    if (
+      isUnlocked &&
+      moduleStatus !== "completed" &&
+      moduleStatus !== "in_progress"
+    ) {
+      setModuleStatus("in_progress");
       setIsOpen(true);
+      try {
+        const response = await fetch(
+          `http://localhost:8080/api/modules/${module.id}/start`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              user_id: userId,
+              module_id: module.id,
+              learning_path_id: learningPathId,
+            }),
+          }
+        );
+        if (!response.ok) {
+          throw new Error("Failed to start module");
+        }
+        console.log("Module started successfully");
+      } catch (err) {
+        console.error("Error starting module:", err);
+      }
     }
   };
 
@@ -84,19 +137,23 @@ export function ModuleCard({
   }, []);
 
   return (
-    <Card className="border border-blue-gray-200 rounded-lg mt-2 cursor-pointer transition">
+    <Card className="border rounded-md mt-2 cursor-pointer transition">
       <CardBody className="w-full">
         <div className="flex flex-col w-full gap-2">
-          {/* Wrapper for Chevron, Title, Resource Count, Estimated Time */}
           <div className="flex items-start justify-between gap-4">
-            {/* Chevron Icons */}
             <div
               onClick={() => {
-                if (isUnlocked && (module.status === "in_progress" || module.status === "completed")) {
+                if (
+                  isUnlocked &&
+                  (module.status === "in_progress" ||
+                    module.status === "completed")
+                ) {
                   setIsOpen(!isOpen);
                 }
               }}
-              className={`${!isUnlocked ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
+              className={`${
+                !isUnlocked ? "cursor-not-allowed opacity-50" : "cursor-pointer"
+              }`}
             >
               {isOpen ? (
                 <ChevronDownIcon className="w-5 h-5 text-blue-gray-500" />
@@ -105,21 +162,17 @@ export function ModuleCard({
               )}
             </div>
 
-            {/* Module Title, Resource Count, and Estimated Time */}
             <div className="flex flex-col gap-2">
-              {/* Module Title */}
               <Typography variant="h6" className="text-blue-gray-700">
                 {`Module ${index + 1}: ${module.title}`}
               </Typography>
 
-              {/* Resource Count and Estimated Time */}
               <div className="flex gap-4">
                 <div className="flex flex-col items-start pr-4 border-r border-blue-gray-300">
                   <Typography variant="small" className="text-blue-gray-500">
                     {resourceCount} resources
                   </Typography>
                 </div>
-
                 <div className="flex flex-col items-start">
                   <Typography variant="small" className="text-blue-gray-500">
                     {module.estimated_duration} min
@@ -128,45 +181,42 @@ export function ModuleCard({
               </div>
             </div>
 
-            {/* Start Button */}
             <div className="ml-auto">
               <Button
                 size="sm"
                 disabled={
                   !isUnlocked ||
-                  module.status === "in_progress" ||
-                  module.status === "completed"
+                  moduleStatus === "in_progress" ||
+                  moduleStatus === "completed"
                 }
                 onClick={handleModuleStart}
                 className={`text-white transition ${
                   !isUnlocked
                     ? "bg-gray-300 cursor-not-allowed"
-                    : module.status === "in_progress"
+                    : moduleStatus === "in_progress"
                     ? "bg-blue-500 cursor-not-allowed"
-                    : module.status === "completed"
+                    : moduleStatus === "completed"
                     ? "bg-green-500 cursor-not-allowed"
                     : "bg-blue-500 hover:bg-blue-600"
                 }`}
               >
                 {!isUnlocked
                   ? "Start Module"
-                  : module.status === "in_progress"
+                  : moduleStatus === "in_progress"
                   ? "In Progress"
-                  : module.status === "completed"
+                  : moduleStatus === "completed"
                   ? "Completed"
                   : "Start Module"}
               </Button>
             </div>
           </div>
 
-          {/* Expanded View */}
           {isOpen && (
             <div className="mt-4 p-4 rounded-lg w-full">
               <Typography className="text-blue-gray-700">
-                {module.description}
+                {module.summary}
               </Typography>
 
-              {/* Resources */}
               <Typography variant="h6" className="mt-4">
                 Resources
               </Typography>
@@ -182,13 +232,8 @@ export function ModuleCard({
                 )}
               </div>
 
-              {/* Assessment */}
               <div className="mt-10">
                 <Typography variant="h6">Test Your Knowledge</Typography>
-                <Typography variant="small">
-                  You must score 5/5 correct answers on this quiz to unlock the
-                  next module.
-                </Typography>
                 <Assessment
                   userId={userId}
                   moduleId={module.id}

@@ -8,6 +8,9 @@ import {
   Input,
   Typography,
   Radio,
+  Popover,
+  PopoverHandler,
+  PopoverContent,
 } from "@material-tailwind/react";
 
 import ReactQuill from "react-quill";
@@ -18,20 +21,24 @@ import { useNavigate } from "react-router-dom";
 export function CreateModule() {
   const [step, setStep] = useState(1);
   const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
+  const [summary, setSummary] = useState("");
   const [estimatedDuration, setEstimatedDuration] = useState("");
+  const [objectives, setObjectives] = useState("");
+  const [ects, setEcts] = useState("");
   const [resources, setResources] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedResources, setSelectedResources] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const { userId } = useUser();
   const [questions, setQuestions] = useState(
-    Array.from({ length: 5 }, () => ({
+    Array.from({ length: 3 }, () => ({
       question_text: "",
       options: ["", "", "", ""],
       correct_answer: null,
     }))
   );
+  const [passingPercentage, setPassingPercentage] = useState(70);
+  const [questionCount, setQuestionCount] = useState(3);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -56,9 +63,10 @@ export function CreateModule() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title,
-          description,
+          summary,
           estimated_duration: Number(estimatedDuration),
           assessment: {
+            passing_percentage: passingPercentage,
             questions: questions.map((q) => q.question_text),
             answers: questions.map((q) => q.options),
             solution: questions.map((q) => q.correct_answer),
@@ -66,6 +74,7 @@ export function CreateModule() {
           resources: selectedResources.map((res) => res.id),
         }),
       });
+      console.log("Submitting Learning Path Data:", response);
       if (response.ok) navigate("/learning");
       else alert("Error creating module");
     } catch (error) {
@@ -85,6 +94,133 @@ export function CreateModule() {
     );
   };
 
+  const handleQuestionCountChange = (event) => {
+    const count = parseInt(event.target.value);
+    if (count <= 5 && count >= 1) {
+      setQuestionCount(count);
+      setQuestions(
+        Array.from({ length: count }, () => ({
+          question_text: "",
+          options: ["", "", "", ""],
+          correct_answer: null,
+        }))
+      );
+    }
+  };
+
+  const handleExportQuestions = (type) => {
+    if (type === "xml") {
+      // Convert questions to XML format
+      const xmlData = `
+      <quiz>
+        ${questions
+          .map((q) => {
+            // Ensure correct_answer is treated as an array
+            const correctAnswer = Array.isArray(q.correct_answer)
+              ? q.correct_answer
+              : [q.correct_answer];
+
+            return `
+          <question>
+            <question_text>${q.question_text}</question_text>
+            <answers>
+              ${q.options
+                .map(
+                  (opt, index) => `<answer index="${index + 1}">${opt}</answer>`
+                )
+                .join("")}
+            </answers>
+            <solution>${correctAnswer.join(
+              ","
+            )}</solution>
+          </question>`;
+          })
+          .join("")}
+      </quiz>
+      `;
+      const blob = new Blob([xmlData], { type: "application/xml" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "quiz.xml";
+      a.click();
+      URL.revokeObjectURL(url);
+    } else if (type === "json") {
+      const jsonData = JSON.stringify(questions, null, 2);
+      const blob = new Blob([jsonData], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "quiz.json";
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+  };
+
+  const handleImportQuestions = (event, type) => {
+    const file = event.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+  
+      reader.onload = (e) => {
+        if ((type === "xml" && (file.type === "application/xml" || file.type === "text/xml"))) {
+          const xmlData = e.target.result;
+  
+          const parser = new DOMParser();
+          const xmlDoc = parser.parseFromString(xmlData, "text/xml");
+  
+          const questionsXml = xmlDoc.getElementsByTagName("question");
+  
+          const newQuestions = Array.from(questionsXml).map((question) => {
+            const question_text = question.getElementsByTagName("question_text")[0]?.textContent;
+            const options = Array.from(question.getElementsByTagName("answer")).map((opt) => opt.textContent);
+            const correct_answer = parseInt(
+              question.getElementsByTagName("solution")[0]?.textContent
+            );
+  
+            return {
+              question_text,
+              options,
+              correct_answer,
+            };
+          });
+  
+          setQuestions(newQuestions);
+        } else if (type === "json" && file.type === "application/json") {
+          const jsonData = JSON.parse(e.target.result);
+          setQuestions(jsonData);
+        }
+      };
+  
+      reader.readAsText(file);
+    }
+  };
+  
+  // Validate required fields for each step
+  const canGoToNextStep = () => {
+    if (step === 1) {
+      return (
+        title.trim() !== "" &&
+        summary.trim() !== "" &&
+        objectives.trim() !== "" &&
+        estimatedDuration.trim() !== "" &&
+        ects.trim() !== ""
+      );
+    }
+    if (step === 2) {
+      return selectedResources.length > 0;
+    }
+    if (step === 3) {
+      return questions.every(
+        (q) =>
+          q.question_text.trim() !== "" &&
+          q.options.every((opt) => opt.trim() !== "") &&
+          q.correct_answer !== null
+      );
+    }
+    return true;
+  };
+
   return (
     <div className="mt-12 flex justify-center h-screen">
       <Card className="w-full h-full border border-gray-300 shadow-md rounded-lg flex flex-col">
@@ -102,6 +238,7 @@ export function CreateModule() {
         </CardHeader>
 
         <CardBody className="p-6 flex-1 overflow-auto">
+          {/* Step 1: Add Module Details */}
           {step === 1 && (
             <div className="space-y-6">
               <Input
@@ -111,21 +248,37 @@ export function CreateModule() {
                 required
               />
               <ReactQuill
-                value={description}
-                onChange={setDescription}
-                placeholder="Describe the module"
+                value={summary}
+                onChange={setSummary}
+                placeholder="Overview of the module"
                 required
               />
-              <Input
-                label="Estimated Duration (minutes)"
-                value={estimatedDuration}
-                onChange={(e) => setEstimatedDuration(e.target.value)}
-                type="number"
+              <ReactQuill
+                value={objectives}
+                onChange={setObjectives}
+                placeholder="Describe the objectives of the module"
                 required
               />
+              <div className="flex gap-4">
+                <Input
+                  label="Estimated Duration (minutes)"
+                  type="number"
+                  value={estimatedDuration}
+                  onChange={(e) => setEstimatedDuration(e.target.value)}
+                  required
+                />
+                <Input
+                  label="ECTS"
+                  type="number"
+                  value={ects}
+                  onChange={(e) => setEcts(e.target.value)}
+                  required
+                />
+              </div>
             </div>
           )}
 
+          {/* Step 2: Add Resources */}
           {step === 2 && (
             <div className="space-y-6">
               <Input
@@ -200,10 +353,117 @@ export function CreateModule() {
             </div>
           )}
 
+          {/* Step 3: Add Assessment */}
           {step === 3 && (
             <div className="space-y-6">
+              {/* Add Import/Export buttons for Quiz */}
+              <div className="col-span-4 flex justify-end py-2 px-4 gap-4">
+                {/* Import Popover */}
+                <Popover placement="bottom-end">
+                  <PopoverHandler>
+                    <Button
+                      variant="filled"
+                      size="sm"
+                      className="flex items-center gap-2"
+                    >
+                      Import
+                    </Button>
+                  </PopoverHandler>
+                  <PopoverContent className="p-2 border rounded-lg shadow-lg bg-white w-48">
+                    <Button
+                      variant="text"
+                      fullWidth
+                      className="text-left"
+                      onClick={() =>
+                        document.getElementById("importXml").click()
+                      }
+                    >
+                      Import XML
+                    </Button>
+                    <Button
+                      variant="text"
+                      fullWidth
+                      className="text-left mt-1"
+                      onClick={() =>
+                        document.getElementById("importJson").click()
+                      }
+                    >
+                      Import JSON
+                    </Button>
+
+                    {/* Hidden file inputs for importing XML and JSON */}
+                    <input
+                      type="file"
+                      accept=".xml"
+                      onChange={(e) => handleImportQuestions(e, "xml")}
+                      style={{ display: "none" }}
+                      id="importXml"
+                    />
+                    <input
+                      type="file"
+                      accept=".json"
+                      onChange={(e) => handleImportQuestions(e, "json")}
+                      style={{ display: "none" }}
+                      id="importJson"
+                    />
+                  </PopoverContent>
+                </Popover>
+
+                {/* Export Popover */}
+                <Popover placement="bottom-end">
+                  <PopoverHandler>
+                    <Button
+                      variant="filled"
+                      size="sm"
+                      className="flex items-center gap-2"
+                    >
+                      Export
+                    </Button>
+                  </PopoverHandler>
+                  <PopoverContent className="p-2 border rounded-lg shadow-lg bg-white w-48">
+                    <Button
+                      variant="text"
+                      fullWidth
+                      className="text-left"
+                      onClick={() => handleExportQuestions("xml")}
+                    >
+                      Export XML
+                    </Button>
+                    <Button
+                      variant="text"
+                      fullWidth
+                      className="text-left mt-1"
+                      onClick={() => handleExportQuestions("json")}
+                    >
+                      Export JSON
+                    </Button>
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              <div className="flex items-center gap-4">
+                <Input
+                  label="Passing Percentage"
+                  type="number"
+                  value={passingPercentage}
+                  onChange={(e) => setPassingPercentage(e.target.value)}
+                  min="60"
+                  max="100"
+                  required
+                />
+                <Input
+                  label="Number of Questions"
+                  type="number"
+                  value={questionCount}
+                  onChange={handleQuestionCountChange}
+                  min="3"
+                  max="5"
+                  required
+                />
+              </div>
+
               {questions.map((q, index) => (
-                <div key={index} className="space-y-2 border p-4 rounded-md">
+                <div key={index} className="space-y-2 p-4 rounded-md">
                   <Input
                     label={`Question ${index + 1}`}
                     value={q.question_text}
@@ -254,7 +514,16 @@ export function CreateModule() {
             {step === 1 ? "Cancel" : "Back"}
           </Button>
           {step < 3 ? (
-            <Button variant="filled" onClick={() => setStep(step + 1)}>
+            <Button
+              variant="filled"
+              onClick={() => {
+                if (canGoToNextStep()) {
+                  setStep(step + 1);
+                } else {
+                  alert("Please fill in all required fields");
+                }
+              }}
+            >
               Next
             </Button>
           ) : (

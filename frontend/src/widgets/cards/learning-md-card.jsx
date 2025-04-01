@@ -65,7 +65,7 @@ export function LearningMDCard({ moduleItem }) {
           </Typography>
         </div>
 
-        {/* Title & Description */}
+        {/* Title & Summary */}
         <Typography
           variant="h6"
           color="blue-gray"
@@ -81,9 +81,9 @@ export function LearningMDCard({ moduleItem }) {
           <span
             dangerouslySetInnerHTML={{
               __html:
-                moduleItem.description.length > 70
-                  ? moduleItem.description.substring(0, 70) + "..."
-                  : moduleItem.description,
+                moduleItem.summary.length > 70
+                  ? moduleItem.summary.substring(0, 70) + "..."
+                  : moduleItem.summary,
             }}
           ></span>
         </Typography>

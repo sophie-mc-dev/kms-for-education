@@ -4,20 +4,24 @@ const learningPathsController = {
   addLearningPath: async (req, res) => {
     const {
       title,
-      description,
+      summary,
       visibility,
-      estimated_duration,
+      estimatedDuration,
       ects,
       modules,
+      objectives,
+      user_id,
     } = req.body;
-    const user_id = req.user.user_id;
 
+    // Validate required fields
     if (
       !title ||
-      !description ||
+      !summary ||
       !visibility ||
-      !estimated_duration ||
-      ects === undefined
+      !estimatedDuration ||
+      ects === undefined ||
+      !objectives ||
+      !user_id
     ) {
       return res.status(400).json({ error: "All fields are required" });
     }
@@ -29,31 +33,32 @@ const learningPathsController = {
 
       // Insert Learning Path
       const learningPathResult = await client.query(
-        `INSERT INTO learning_paths (title, description, user_id, visibility, estimated_duration, ects, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW()) RETURNING id`,
-        [title, description, user_id, visibility, estimated_duration, ects]
+        `INSERT INTO learning_paths (title, summary, user_id, visibility, estimated_duration, ects, objectives, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW()) RETURNING id`,
+        [
+          title,
+          summary,
+          user_id,
+          visibility,
+          estimatedDuration,
+          ects,
+          objectives,
+        ]
       );
 
       const learningPathId = learningPathResult.rows[0].id;
 
-      // Insert modules with correct order
-      if (modules && modules.length > 0) {
-        const values = modules
-          .map(
-            (_, index) => `($1, $${index + 2}, $${index + 2 + modules.length})`
-          )
-          .join(", ");
-
-        const queryParams = [
+      // Insert modules into the learning_path_modules table
+      const insertModuleQuery = `
+    INSERT INTO public.learning_path_modules (learning_path_id, module_id, module_order)
+    VALUES ($1, $2, $3);
+  `;
+      for (const { module_id, module_order } of modules) {
+        await client.query(insertModuleQuery, [
           learningPathId,
-          ...modules,
-          ...modules.map((_, i) => i),
-        ];
-
-        await client.query(
-          `INSERT INTO learning_path_modules (learning_path_id, module_id, module_order) VALUES ${values}`,
-          queryParams
-        );
+          module_id,
+          module_order,
+        ]);
       }
 
       await client.query("COMMIT");
@@ -125,18 +130,12 @@ const learningPathsController = {
 
   updateLearningPath: async (req, res) => {
     const { id } = req.params;
-    const {
-      title,
-      description,
-      visibility,
-      estimated_duration,
-      ects,
-      modules,
-    } = req.body;
+    const { title, summary, visibility, estimated_duration, ects, modules } =
+      req.body;
 
     if (
       !title ||
-      !description ||
+      !summary ||
       !visibility ||
       !estimated_duration ||
       ects === undefined
@@ -152,9 +151,9 @@ const learningPathsController = {
       // Update Learning Path details
       const result = await client.query(
         `UPDATE learning_paths 
-         SET title = $1, description = $2, visibility = $3, estimated_duration = $4, ects = $5, updated_at = NOW()
+         SET title = $1, summary = $2, visibility = $3, estimated_duration = $4, ects = $5, updated_at = NOW()
          WHERE id = $6 RETURNING *`,
-        [title, description, visibility, estimated_duration, ects, id]
+        [title, summary, visibility, estimated_duration, ects, id]
       );
 
       if (result.rows.length === 0) {
@@ -219,13 +218,7 @@ const learningPathsController = {
           .json({ error: "No modules found for this learning path" });
       }
 
-      // Adding order_index dynamically based on the order of modules fetched
-      const modulesWithOrderIndex = result.rows.map((module, index) => {
-        module.order_index = index + 1; // Start the order index from 1
-        return module;
-      });
-
-      res.status(200).json(modulesWithOrderIndex);
+      res.json(result.rows);
     } catch (err) {
       console.error("Error fetching modules for learning path:", err);
       res.status(500).json({ error: "Internal Server Error" });
@@ -301,16 +294,50 @@ const learningPathsController = {
     }
   },
 
+  getStartedLearningPaths: async (req, res) => {
+    const { user_id } = req.params;
+
+    if (!user_id) {
+      return res
+        .status(400)
+        .json({ error: "Missing required parameter: user_id" });
+    }
+
+    try {
+      // Fetch learning paths that the user has started
+      const result = await pool.query(
+        `SELECT lp.id AS learning_path_id, lp.title, lp.summary, lp.estimated_duration, lp.created_at, lp.updated_at,
+                lpp.current_module_id, lpp.progress_percentage, lpp.status, lpp.started_at
+         FROM learning_paths lp
+         JOIN learning_path_progress lpp ON lp.id = lpp.learning_path_id
+         WHERE lpp.user_id = $1 AND lpp.status = 'in_progress' 
+         ORDER BY lpp.started_at DESC`,
+        [user_id]
+      );
+
+      if (result.rows.length === 0) {
+        return res
+          .status(404)
+          .json({ error: "No learning paths found for this user" });
+      }
+
+      res.json(result.rows);
+    } catch (err) {
+      console.error("Error fetching started learning paths:", err);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  },
+
   // Get User's Learning Path Progress
   getLearningPathProgress: async (req, res) => {
     const { learning_path_id, user_id } = req.params;
-  
+
     if (!learning_path_id || !user_id) {
       return res.status(400).json({
         error: "Missing required parameters: learning_path_id or user_id",
       });
     }
-  
+
     try {
       const result = await pool.query(
         `SELECT user_id, learning_path_id, current_module_id, completed_module_ids,
@@ -319,23 +346,25 @@ const learningPathsController = {
          WHERE user_id = $1 AND learning_path_id = $2`,
         [user_id, learning_path_id]
       );
-  
+
       if (result.rows.length === 0) {
-        return res.status(404).json({ error: "Progress not found for this learning path" });
+        return res
+          .status(404)
+          .json({ error: "Progress not found for this learning path" });
       }
-  
+
       // Check for locked_module_ids and handle empty array or null
       const progress = result.rows[0];
       if (!progress.locked_module_ids) {
         progress.locked_module_ids = [];
       }
-  
+
       res.json(result.rows[0]);
     } catch (err) {
       console.error("Error fetching learning path progress:", err);
       res.status(500).json({ error: "Internal Server Error" });
     }
-  },  
+  },
 
   // Update Learning Path Progress
   updateLearningPathProgress: async (req, res) => {

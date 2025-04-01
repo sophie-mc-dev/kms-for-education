@@ -2,15 +2,22 @@ import React, { useState, useEffect } from "react";
 import { Input, Card, CardBody, Typography } from "@material-tailwind/react";
 import { useUser } from "@/context/UserContext";
 import { ResourceCard } from "@/widgets/cards/";
+import { LearningLPCard } from "@/widgets/cards/";
 
 export function StudentResources() {
   const { userId } = useUser();
   const [resources, setResources] = useState([]);
   const [bookmarkedResources, setBookmarkedResources] = useState([]);
   const [recentlyViewed, setRecentlyViewed] = useState([]);
+  const [learningPaths, setLearningPaths] = useState([]); // New state for learning paths
   const [searchQuery, setSearchQuery] = useState("");
 
-  const collections = ["Recently Viewed", "Bookmarked", "Recommended"];
+  const collections = [
+    "Learning Paths in Progress",
+    "Recently Viewed",
+    "Bookmarked",
+    "Recommended",
+  ];
 
   // Fetch all resources from the API
   const getAllResources = async () => {
@@ -41,6 +48,22 @@ export function StudentResources() {
     }
   };
 
+  // Fetch learning paths in progress for the user
+  const getLearningPathsInProgress = async () => {
+    if (!userId) return [];
+    try {
+      const response = await fetch(
+        `http://localhost:8080/api/learning-paths/in-progress/${userId}`
+      );
+      if (!response.ok) throw new Error("Failed to fetch learning paths");
+
+      return await response.json();
+    } catch (error) {
+      console.error("Error fetching learning paths:", error);
+      return [];
+    }
+  };
+
   // Load recently viewed resources from localStorage
   const getRecentlyViewedResources = () => {
     return JSON.parse(localStorage.getItem("recentlyViewed")) || [];
@@ -50,6 +73,7 @@ export function StudentResources() {
     const fetchData = async () => {
       const allResources = await getAllResources();
       const bookmarks = await getBookmarkedResources();
+      const learningPathsInProgress = await getLearningPathsInProgress();
       const recentlyViewedData = getRecentlyViewedResources();
 
       // Match recently viewed items with actual resources
@@ -62,6 +86,7 @@ export function StudentResources() {
         allResources.filter((res) => bookmarks.some((b) => b.id === res.id))
       );
       setRecentlyViewed(recentResources);
+      setLearningPaths(learningPathsInProgress);
     };
 
     fetchData();
@@ -78,10 +103,15 @@ export function StudentResources() {
         resource.title.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
+    if (category === "Learning Paths in Progress") {
+      return learningPaths.filter((lp) =>
+        lp.title.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
     return resources.filter((resource) => {
       const resourceCategory = Array.isArray(resource.category)
-        ? resource.category.join(", ").toLowerCase() 
-        : resource.category?.toLowerCase(); 
+        ? resource.category.join(", ").toLowerCase()
+        : resource.category?.toLowerCase();
       return (
         resourceCategory?.includes(category.toLowerCase()) &&
         resource.title.toLowerCase().includes(searchQuery.toLowerCase())
@@ -111,20 +141,25 @@ export function StudentResources() {
               </Typography>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                 {filtered.length > 0 ? (
-                  filtered.map((resource) => (
-                    <ResourceCard
-                      key={resource.id}
-                      resource={resource}
-                      userId={userId}
-                      isBookmarked={bookmarkedResources.some(
-                        (r) => r.id === resource.id
-                      )}
-                      setBookmarkedResources={setBookmarkedResources}
-                    />
-                  ))
+                  filtered.map((item) =>
+                    category === "Learning Paths in Progress" ? (
+                      <p key={item.learning_path_id}>{item.title}</p>
+                      // todo add learningpath card accordingly...
+                    ) : (
+                      <ResourceCard
+                        key={item.id}
+                        resource={item}
+                        userId={userId}
+                        isBookmarked={bookmarkedResources.some(
+                          (r) => r.id === item.id
+                        )}
+                        setBookmarkedResources={setBookmarkedResources}
+                      />
+                    )
+                  )
                 ) : (
                   <Typography variant="small" color="gray">
-                    No resources found.
+                    No data found.
                   </Typography>
                 )}
               </div>

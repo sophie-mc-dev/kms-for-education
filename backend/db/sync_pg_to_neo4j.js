@@ -76,15 +76,15 @@ const syncData = async () => {
 
     // Sync Modules
     const modules = await pgClient.query(
-      "SELECT id, title, description, estimated_duration FROM modules"
+      "SELECT id, title, summary, estimated_duration FROM modules"
     );
     for (let module of modules.rows) {
       await neoSession.run(
-        "MERGE (m:Module {id: $id}) SET m.title = $title, m.description = $description, m.estimated_duration = $estimated_duration",
+        "MERGE (m:Module {id: $id}) SET m.title = $title, m.summary = $summary, m.estimated_duration = $estimated_duration",
         {
           id: module.id.toString(),
           title: module.title,
-          description: module.description,
+          summary: module.summary,
           estimated_duration: module.estimated_duration,
         }
       );
@@ -92,15 +92,15 @@ const syncData = async () => {
 
     // Sync Learning Paths
     const learningPaths = await pgClient.query(
-      "SELECT id, title, description, difficulty_level FROM learning_paths"
+      "SELECT id, title, summary, difficulty_level FROM learning_paths"
     );
     for (let lp of learningPaths.rows) {
       await neoSession.run(
-        "MERGE (lp:LearningPath {id: $id}) SET lp.title = $title, lp.description = $description, lp.difficulty_level = $difficulty_level",
+        "MERGE (lp:LearningPath {id: $id}) SET lp.title = $title, lp.summary = $summary, lp.difficulty_level = $difficulty_level",
         {
           id: lp.id.toString(),
           title: lp.title,
-          description: lp.description,
+          summary: lp.summary,
           difficulty_level: lp.difficulty_level,
         }
       );
