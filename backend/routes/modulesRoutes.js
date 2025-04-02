@@ -24,14 +24,17 @@ router.get("/:resource_id/modules", modulesController.getModulesByResourceId);
 
 // Progress and Assessment
 router.get("/:module_id/assessment", modulesController.getAssessmentByModuleId);
-router.post("/:module_id/assessment/results/:user_id", modulesController.createAssessmentResults);
 router.get("/:module_id/assessment/results/:user_id", modulesController.getAssessmentResults);
 router.get("/assessment/results", modulesController.getAllAssessmentResults);
+
 router.put("/:module_id/assessment/results/:user_id", modulesController.updateAssessmentAttempts);
+router.put("/:module_id/assessment/status/:user_id", modulesController.updateAssessmentStatus);
+router.get("/:module_id/assessment/status/:user_id", modulesController.getAssessmentStatus);
+
 router.delete("/:module_id/assessment/results/:user_id", modulesController.deleteAssessmentResults);
 
 router.post("/:module_id/start", modulesController.startModule);
+router.put("/:module_id/complete/:user_id", modulesController.updateStandaloneModuleCompletion);
 router.get("/:module_id/status", modulesController.getModuleStatus);
-router.post("/:module_id/complete", modulesController.completeModule);
 
 module.exports = router;

@@ -30,4 +30,6 @@ router.post("/:learning_path_id/start", learningPathsController.startLearningPat
 router.get("/in-progress/:user_id", learningPathsController.getStartedLearningPaths);
 router.get("/:learning_path_id/progress/:user_id", learningPathsController.getLearningPathProgress);
 
+router.put("/:learning_path_id/module/:module_id/complete/:user_id", learningPathsController.updateLearningPathModuleCompletion);
+
 module.exports = router;

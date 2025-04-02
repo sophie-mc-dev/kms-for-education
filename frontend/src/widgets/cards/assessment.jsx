@@ -1,14 +1,18 @@
 import { Typography, Button, Radio } from "@material-tailwind/react";
 import React, { useEffect, useState } from "react";
 
-export function Assessment({ userId, moduleId, assessment }) {
+export function Assessment({
+  userId,
+  moduleId,
+  assessment = { questions: [] },
+}) {
   const [userAnswers, setUserAnswers] = useState({});
   const [showFeedback, setShowFeedback] = useState(false);
   const [score, setScore] = useState(null);
   const [attempts, setAttempts] = useState(0);
+  const [isAnswerChanged, setIsAnswerChanged] = useState(false);
 
   useEffect(() => {
-    // Fetch the number of attempts for the user and assessment
     const fetchAttempts = async () => {
       try {
         const response = await fetch(
@@ -35,23 +39,30 @@ export function Assessment({ userId, moduleId, assessment }) {
       ...prev,
       [questionIndex]: answerIndex,
     }));
+    setIsAnswerChanged(true);
   };
 
   const checkAnswers = async () => {
-    if (!assessment) return;
+    if (!assessment || !assessment.questions || !assessment.solution) {
+      console.error("Invalid assessment data.");
+      return;
+    }
 
     let correctCount = 0;
     const answers = [];
 
+    // Evaluate the answers
     assessment.questions.forEach((_, qIndex) => {
       const correctAnswerIndex = assessment.solution[qIndex];
       const userSelectedIndex = userAnswers[qIndex];
+
       answers.push({
         questionIndex: qIndex,
         selectedAnswerIndex: userSelectedIndex,
         correctAnswerIndex: correctAnswerIndex,
       });
 
+      // Increment the correct count if the user's answer matches the correct one
       if (
         userSelectedIndex !== undefined &&
         userSelectedIndex === correctAnswerIndex
@@ -60,25 +71,28 @@ export function Assessment({ userId, moduleId, assessment }) {
       }
     });
 
-    setScore(correctCount);
+    const totalQuestions = assessment.questions.length;
+    const scorePercentage = Math.round((correctCount / totalQuestions) * 100);
+    setScore(scorePercentage);
     setShowFeedback(true);
+    setIsAnswerChanged(false);
 
-    const passed = correctCount === 5;
+    const passed = scorePercentage >= assessment.passing_percentage;
 
-    // Prepare the data to save to the database
     const assessmentResults = {
       user_id: userId,
       assessment_id: assessment.id,
       module_id: moduleId,
-      score: correctCount,
+      score: scorePercentage,
       passed: passed,
-      num_attempts: attempts + 1, // Incrementing attempt count
+      num_attempts: attempts + 1,
       answers: JSON.stringify(answers),
     };
 
     try {
-      const response = await fetch(
-        `http://localhost:8080/api/modules/${moduleId}/assessment/results/${userId}`,
+      // Submit the assessment results
+      const submitResponse = await fetch(
+        `http://localhost:8080/api/modules/${moduleId}/complete/${userId}`,
         {
           method: "POST",
           headers: {
@@ -88,14 +102,13 @@ export function Assessment({ userId, moduleId, assessment }) {
         }
       );
 
-      if (!response.ok) {
+      if (!submitResponse.ok) {
         throw new Error("Failed to save assessment results");
       }
 
-      const savedResult = await response.json();
-      console.log("Assessment results saved:", savedResult);
+      console.log("Assessment results saved successfully.");
 
-      // Fetch updated attempts count after saving
+      // Fetch the updated number of attempts
       const updatedAttemptsResponse = await fetch(
         `http://localhost:8080/api/modules/${moduleId}/assessment/results/${userId}`
       );
@@ -103,6 +116,8 @@ export function Assessment({ userId, moduleId, assessment }) {
       if (updatedAttemptsResponse.ok) {
         const updatedData = await updatedAttemptsResponse.json();
         setAttempts(updatedData.num_attempts || 0);
+      } else {
+        console.error("Failed to fetch updated attempts.");
       }
     } catch (err) {
       console.error("Error saving results:", err.message);
@@ -116,49 +131,63 @@ export function Assessment({ userId, moduleId, assessment }) {
           No assessment available for this module.
         </Typography>
       ) : (
-        <div key={assessment.id} className="mb-6">
-          {assessment.questions.map((questionObj, qIndex) => {
-            const correctIndex = assessment.solution[qIndex];
-            const userSelectedIndex = userAnswers[qIndex];
+        <div key={assessment?.id} className="mb-6">
+          {assessment?.questions?.length > 0 ? (
+            assessment.questions.map((questionObj, qIndex) => {
+              const correctIndex = assessment?.solution?.[qIndex];
+              const userSelectedIndex = userAnswers[qIndex];
 
-            return (
-              <div key={qIndex} className="mb-4 p-4 rounded-md">
-                <Typography className="mb-2 font-medium">
-                  Question {qIndex + 1}: {questionObj.question_text}
-                </Typography>
+              return (
+                <div key={qIndex} className="mb-4 p-4 rounded-md">
+                  <Typography className="mb-2 font-medium">
+                    Question {qIndex + 1}: {questionObj.question_text}
+                  </Typography>
 
-                {assessment.answers[qIndex]?.map((answer, aIndex) => {
-                  const isCorrect = aIndex === correctIndex;
-                  const isSelected = aIndex === userSelectedIndex;
+                  {assessment?.answers?.[qIndex]?.length > 0 ? (
+                    assessment.answers[qIndex].map((answer, aIndex) => {
+                      const isCorrect = aIndex === correctIndex;
+                      const isSelected = aIndex === userSelectedIndex;
 
-                  return (
-                    <label key={aIndex} className="block">
-                      <div
-                        className={`p-2 rounded-md cursor-pointer flex items-center gap-2 border 
-                          ${isSelected ? "border-2" : "border"}
-                          ${
-                            showFeedback && isSelected
-                              ? isCorrect
-                                ? "border-green-500 bg-green-100"
-                                : "border-red-500 bg-red-100"
-                              : ""
-                          }
-                        `}
-                      >
-                        <Radio
-                          name={`question-${assessment.id}-${qIndex}`}
-                          value={aIndex}
-                          checked={isSelected}
-                          onChange={() => handleAnswerSelect(qIndex, aIndex)}
-                        />
-                        {answer}
-                      </div>
-                    </label>
-                  );
-                })}
-              </div>
-            );
-          })}
+                      return (
+                        <label key={aIndex} className="block">
+                          <div
+                            className={`p-2 rounded-md cursor-pointer flex items-center gap-2 border 
+                              ${isSelected ? "border-2" : "border"}
+                              ${
+                                showFeedback && isSelected && !isAnswerChanged
+                                  ? isCorrect
+                                    ? "border-green-500 bg-green-100"
+                                    : "border-red-500 bg-red-100"
+                                  : ""
+                              }
+                            `}
+                          >
+                            <Radio
+                              name={`question-${assessment?.id}-${qIndex}`}
+                              value={aIndex}
+                              checked={isSelected}
+                              onChange={() =>
+                                handleAnswerSelect(qIndex, aIndex)
+                              }
+                            />
+                            {answer}
+                          </div>
+                        </label>
+                      );
+                    })
+                  ) : (
+                    <Typography className="text-red-500">
+                      No answers available
+                    </Typography>
+                  )}
+                </div>
+              );
+            })
+          ) : (
+            <Typography className="text-blue-gray-500">
+              No questions available
+            </Typography>
+          )}
         </div>
       )}
 
@@ -172,7 +201,7 @@ export function Assessment({ userId, moduleId, assessment }) {
       {/* Score Display */}
       {score !== null && (
         <Typography className="mt-2 text-blue-gray-700">
-          Score: {score} / {assessment?.questions.length}
+          Score: {score} / 100
         </Typography>
       )}
     </div>

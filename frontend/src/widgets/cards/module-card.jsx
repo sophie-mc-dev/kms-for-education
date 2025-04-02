@@ -14,7 +14,8 @@ export function ModuleCard({
   index,
 }) {
   const [resources, setResources] = useState([]);
-  const [assessment, setAssessment] = useState([]);
+  const [assessment, setAssessment] = useState(null);
+  const [assessmentStatus, setAssessmentStatus] = useState(null);
   const [resourceCount, setResourceCount] = useState(null);
   const [isOpen, setIsOpen] = useState(false);
   const [moduleStatus, setModuleStatus] = useState("");
@@ -31,9 +32,16 @@ export function ModuleCard({
         const response = await fetch(
           `http://localhost:8080/api/modules/${module.id}/status?user_id=${userId}&learning_path_id=${learningPathId}`
         );
+
+        if (response.status === 404) {
+          setModuleStatus("not_started");
+          return;
+        }
+
         if (!response.ok) {
           throw new Error("Failed to fetch module status");
         }
+
         const data = await response.json();
         setModuleStatus(data.status);
         if (data.status === "in_progress" || data.status === "completed") {
@@ -48,39 +56,6 @@ export function ModuleCard({
       fetchModuleStatus();
     }
   }, [module.id, userId, learningPathId]);
-
-  const handleModuleStart = async () => {
-    if (
-      isUnlocked &&
-      moduleStatus !== "completed" &&
-      moduleStatus !== "in_progress"
-    ) {
-      setModuleStatus("in_progress");
-      setIsOpen(true);
-      try {
-        const response = await fetch(
-          `http://localhost:8080/api/modules/${module.id}/start`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              user_id: userId,
-              module_id: module.id,
-              learning_path_id: learningPathId,
-            }),
-          }
-        );
-        if (!response.ok) {
-          throw new Error("Failed to start module");
-        }
-        console.log("Module started successfully");
-      } catch (err) {
-        console.error("Error starting module:", err);
-      }
-    }
-  };
 
   useEffect(() => {
     const fetchResources = async () => {
@@ -135,6 +110,86 @@ export function ModuleCard({
     };
     fetchAssessment();
   }, []);
+
+  useEffect(() => {
+    const fetchAssessmentStatus = async () => {
+      try {
+        const response = await fetch(
+          `http://localhost:8080/api/modules/${module.id}/assessment/status/${userId}?learning_path_id=${learningPathId}`
+        );
+        if (!response.ok) {
+          setAssessmentStatus("not_started");
+        } else {
+          const data = await response.json();
+          setAssessmentStatus(data.assessmentStatus || "not_started");
+        }
+      } catch (err) {
+        console.error("Error fetching assessment status:", err);
+        setAssessmentStatus("not_started");
+      }
+    };
+  
+    if (module.id && userId && learningPathId) {
+      fetchAssessmentStatus();
+    }
+  }, [userId, module.id, learningPathId]); 
+  
+
+  const handleStartAssessment = async () => {
+    try {
+      const response = await fetch(
+        `http://localhost:8080/api/modules/${module.id}/assessment/status/${userId}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            assessment_status: "in_progress",
+            learning_path_id: learningPathId,
+          }),
+        }
+      );
+
+      if (!response.ok) throw new Error("Failed to update assessment status");
+      setAssessmentStatus("in_progress");
+    } catch (err) {
+      console.error("Error starting module:", err);
+    }
+  };
+
+  const handleModuleStart = async () => {
+    if (
+      isUnlocked &&
+      moduleStatus !== "completed" &&
+      moduleStatus !== "in_progress"
+    ) {
+      setModuleStatus("in_progress");
+      setIsOpen(true);
+      try {
+        const response = await fetch(
+          `http://localhost:8080/api/modules/${module.id}/start`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              user_id: userId,
+              module_id: module.id,
+              learning_path_id: learningPathId,
+            }),
+          }
+        );
+        if (!response.ok) {
+          throw new Error("Failed to start module");
+        }
+        console.log("Module started successfully");
+      } catch (err) {
+        console.error("Error starting module:", err);
+      }
+    }
+  };
 
   return (
     <Card className="border rounded-md mt-2 cursor-pointer transition">
@@ -233,12 +288,25 @@ export function ModuleCard({
               </div>
 
               <div className="mt-10">
-                <Typography variant="h6">Test Your Knowledge</Typography>
-                <Assessment
-                  userId={userId}
-                  moduleId={module.id}
-                  assessment={assessment}
-                />
+                <Typography variant="h6" className="mb-3">
+                  Test Your Knowledge
+                </Typography>
+                {assessmentStatus === "not_started" ? (
+                  <Button
+                    onClick={handleStartAssessment}
+                    color="blue"
+                    className="mb-4"
+                    
+                  >
+                    Start Assessment
+                  </Button>
+                ) : (
+                  <Assessment
+                    userId={userId}
+                    moduleId={module.id}
+                    assessment={assessment}
+                  />
+                )}
               </div>
             </div>
           )}

@@ -123,14 +123,8 @@ const modulesController = {
   // Update a module
   updateModule: async (req, res) => {
     const { id } = req.params;
-    const {
-      title,
-      summary,
-      estimated_duration,
-      assessment,
-      objectives,
-      ects,
-    } = req.body;
+    const { title, summary, estimated_duration, assessment, objectives, ects } =
+      req.body;
 
     const client = await pool.connect();
     try {
@@ -412,6 +406,130 @@ const modulesController = {
     }
   },
 
+  updateAssessmentStatus: async (req, res) => {
+    const { assessment_status, learning_path_id } = req.body; // Get learning_path_id from the body
+    const { user_id, module_id } = req.params;
+
+    if (!user_id || !module_id) {
+      return res
+        .status(400)
+        .json({ error: "Missing required parameters (user_id, module_id)" });
+    }
+
+    const validStatuses = ["not_started", "in_progress", "passed", "failed"];
+    if (!assessment_status || !validStatuses.includes(assessment_status)) {
+      return res
+        .status(400)
+        .json({ error: "Invalid or missing assessment status" });
+    }
+
+    try {
+      // Construct query and params based on learning_path_id
+      let query, queryParams;
+
+      if (learning_path_id) {
+        // Check if user progress exists for a specific learning path
+        query = `
+          SELECT * FROM user_module_progress 
+          WHERE user_id = $1 AND module_id = $2 AND learning_path_id = $3
+        `;
+        queryParams = [user_id, module_id, learning_path_id];
+      } else {
+        // Check if user progress exists for standalone module
+        query = `
+          SELECT * FROM user_module_progress 
+          WHERE user_id = $1 AND module_id = $2 AND learning_path_id IS NULL
+        `;
+        queryParams = [user_id, module_id];
+      }
+
+      const result = await pool.query(query, queryParams);
+
+      if (result.rows.length === 0) {
+        // If no entry exists, insert a new progress entry
+        query = `
+          INSERT INTO user_module_progress (user_id, module_id, learning_path_id, status, assessment_status)
+          VALUES ($1, $2, $3, 'in_progress', $4)
+        `;
+        queryParams = [
+          user_id,
+          module_id,
+          learning_path_id || null,
+          assessment_status,
+        ];
+        await pool.query(query, queryParams);
+      } else {
+        // Otherwise, update the existing progress entry's assessment_status
+        query = `
+          UPDATE user_module_progress 
+          SET assessment_status = $1 
+          WHERE user_id = $2 AND module_id = $3 AND learning_path_id ${
+            learning_path_id ? "= $4" : "IS NULL"
+          }
+        `;
+        queryParams = learning_path_id
+          ? [assessment_status, user_id, module_id, learning_path_id]
+          : [assessment_status, user_id, module_id];
+
+        await pool.query(query, queryParams);
+      }
+
+      res.json({ message: "Assessment status updated successfully" });
+    } catch (error) {
+      console.error("Error updating assessment status:", error);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  },
+
+  getAssessmentStatus: async (req, res) => {
+    const { user_id, module_id } = req.params;
+    const { learning_path_id } = req.query;
+
+    // Validate input parameters
+    if (!user_id || !module_id) {
+      return res.status(400).json({ error: "Missing required parameters" });
+    }
+
+    try {
+      let query;
+      let queryParams = [user_id, module_id];
+
+      // Check if learning_path_id is provided and not null
+      if (learning_path_id && learning_path_id !== "null") {
+        query = `
+          SELECT assessment_status
+            FROM user_module_progress
+           WHERE user_id = $1
+             AND module_id = $2
+             AND learning_path_id = $3
+        `;
+        queryParams.push(learning_path_id);
+      } else {
+        // If learning_path_id is null or not provided, look for the standalone module
+        query = `
+          SELECT assessment_status
+            FROM user_module_progress
+           WHERE user_id = $1
+             AND module_id = $2
+             AND learning_path_id IS NULL
+        `;
+      }
+
+      const result = await pool.query(query, queryParams);
+
+      if (result.rows.length === 0) {
+        return res.json({ assessmentStatus: "not_started" });
+      }
+
+      // Return the assessment status
+      const assessmentStatus = result.rows[0].assessment_status;
+      res.json({ assessmentStatus });
+    } catch (error) {
+      console.error("Error fetching assessment status:", error);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  },
+
   // Delete assessment results for a user, assessment, and module
   deleteAssessmentResults: async (req, res) => {
     const { user_id, assessment_id, module_id } = req.params;
@@ -491,8 +609,8 @@ const modulesController = {
       // Insert new progress entry for the module
       await pool.query(
         `INSERT INTO user_module_progress 
-        (user_id, module_id, learning_path_id, status, assessment_started) 
-        VALUES ($1, $2, $3, 'in_progress', false)`,
+        (user_id, module_id, learning_path_id, status, assessment_status) 
+        VALUES ($1, $2, $3, 'in_progress', 'not_started')`,
         [user_id, module_id, learning_path_id]
       );
 
@@ -535,7 +653,7 @@ const modulesController = {
     try {
       // Check if Learning Path exists
       const lpCheck = await pool.query(
-        "SELECT * FROM learning_paths WHERE id = $1",
+        "SELECT id FROM learning_paths WHERE id = $1",
         [learning_path_id]
       );
       if (lpCheck.rows.length === 0) {
@@ -544,7 +662,7 @@ const modulesController = {
 
       // Check if Module exists
       const moduleCheck = await pool.query(
-        "SELECT * FROM modules WHERE id = $1",
+        "SELECT id FROM modules WHERE id = $1",
         [module_id]
       );
       if (moduleCheck.rows.length === 0) {
@@ -559,7 +677,11 @@ const modulesController = {
       );
 
       if (userModuleProgressQuery.rows.length === 0) {
-        return res.status(404).json({ error: "Module progress not found" });
+        // Instead of 404, return a default response
+        return res.status(200).json({
+          status: "not_started", // Default status
+          message: "No progress found for this module",
+        });
       }
 
       const userModuleProgress = userModuleProgressQuery.rows[0];
@@ -575,159 +697,83 @@ const modulesController = {
     }
   },
 
-  // Mark Module as Complete
-  completeModule: async (req, res) => {
-    // update backend to move current module id to the next one, add completed module to passed modules ids, unlock nest module (remove it from lcoked module ids)
-    const { module_id } = req.params;
-    const user_id = req.user.user_id;
+  // Complete
+  updateStandaloneModuleCompletion: async (req, res) => {
+    const { learningPathId } = req.params; // LearningPathId will be null for standalone modules
+    const {
+      user_id,
+      assessment_id,
+      score,
+      passed,
+      answers,
+      module_id,
+      num_attempts,
+    } = req.body;
 
     try {
-      // Check if the module has an associated assessment
-      const moduleResult = await pool.query(
-        `SELECT assessment_id FROM modules WHERE id = $1`,
-        [module_id]
+      // Step 1: Store the assessment results
+      const result = await pool.query(
+        `INSERT INTO assessment_results (user_id, assessment_id, module_id, score, passed, submission_time, answers, num_attempts) 
+             VALUES ($1, $2, $3, $4, $5, NOW(), $6, $7) 
+             RETURNING *`,
+        [
+          user_id,
+          assessment_id,
+          module_id,
+          score,
+          passed,
+          JSON.stringify(answers),
+          num_attempts + 1,
+        ]
       );
 
-      if (moduleResult.rows.length === 0) {
-        return res.status(404).json({ error: "Module not found" });
+      // Step 2: Define the status based on the assessment result
+      const assessmentStatus = passed ? "passed" : "failed";
+      const moduleStatus = passed ? "completed" : "in_progress";
+
+      // Step 3: Update the user progress based on whether it's a learning path or a standalone module
+      let updateQuery;
+      let updateValues;
+
+      if (learningPathId) {
+        // Update for learning path modules
+        updateQuery = `
+                UPDATE user_module_progress 
+                SET assessment_status = $1, 
+                    status = $2
+                WHERE user_id = $3 AND module_id = $4 AND learning_path_id = $5
+            `;
+        updateValues = [
+          assessmentStatus,
+          moduleStatus,
+          user_id,
+          module_id,
+          learningPathId,
+        ];
+      } else {
+        // Update for standalone modules
+        updateQuery = `
+                UPDATE user_module_progress 
+                SET assessment_status = $1, 
+                    status = $2, 
+                    completed_at = NOW()
+                WHERE user_id = $3 AND module_id = $4 AND learning_path_id IS NULL
+            `;
+        updateValues = [assessmentStatus, moduleStatus, user_id, module_id];
       }
 
-      const { assessment_id } = moduleResult.rows[0];
+      // Execute the update query
+      await pool.query(updateQuery, updateValues);
 
-      // If the module has an assessment, check if the user has passed it
-      if (assessment_id) {
-        const assessmentResult = await pool.query(
-          `SELECT passed FROM assessment_results 
-           WHERE user_id = $1 AND assessment_id = $2 
-           ORDER BY submission_time DESC 
-           LIMIT 1`,
-          [user_id, assessment_id]
-        );
-
-        if (
-          assessmentResult.rows.length === 0 ||
-          !assessmentResult.rows[0].passed
-        ) {
-          return res.status(400).json({
-            error: "User must pass the assessment before completing the module",
-          });
-        }
-      }
-
-      // Insert into user_module_progress
-      await pool.query(
-        `INSERT INTO user_module_progress (user_id, module_id, completed_at) 
-        VALUES ($1, $2, NOW()) 
-        ON CONFLICT (user_id, module_id) DO NOTHING`,
-        [user_id, module_id]
-      );
-
-      // Log the interaction in the user_interactions table
-      await pool.query(
-        `INSERT INTO user_interactions (user_id, module_id, interaction_type)
-               VALUES ($1, $2, 'completed_module')`,
-        [user_id, module_id]
-      );
-
-      res.json({ message: "Module marked as completed" });
-    } catch (err) {
-      console.error("Error marking module complete:", err);
-      res.status(500).json({ error: "Internal Server Error" });
-    }
-  },
-
-  submitAssessment: async (req, res) => {
-    const { assessment_id } = req.params;
-    const user_id = req.user.user_id;
-    const { answers } = req.body;
-
-    try {
-      // Fetch correct answers and passing percentage from the database
-      const assessment = await pool.query(
-        `SELECT solution, passing_percentage FROM assessments WHERE id = $1`,
-        [assessment_id]
-      );
-
-      if (assessment.rows.length === 0) {
-        return res.status(404).json({ error: "Assessment not found" });
-      }
-
-      const correctAnswers = assessment.rows[0].solution;
-      const passingPercentage = assessment.rows[0].passing_percentage || 70;
-
-      // Evaluate score
-      let score = 0;
-      let totalQuestions = Object.keys(correctAnswers).length;
-
-      for (let questionId in correctAnswers) {
-        if (correctAnswers[questionId] === answers[questionId]) {
-          score++;
-        }
-      }
-
-      let percentage = (score / totalQuestions) * 100;
-      let passed = percentage >= passingPercentage;
-
-      // Insert into assessment_results
-      await pool.query(
-        `INSERT INTO assessment_results (user_id, assessment_id, module_id, score, passed, submission_time, answers) 
-            VALUES ($1, $2, (SELECT module_id FROM assessments WHERE id = $2), $3, $4, NOW(), $5) 
-            RETURNING *`,
-        [user_id, assessment_id, score, passed, answers]
-      );
-
+      // Step 4: Send back the response with updated attempt count
       res.json({
         message: "Assessment submitted successfully",
         score,
         passed,
-        percentage,
-        passingPercentage,
+        num_attempts: num_attempts + 1,
       });
     } catch (err) {
       console.error("Error submitting assessment:", err);
-      res.status(500).json({ error: "Internal Server Error" });
-    }
-  },
-
-  // Lock/unlock modules based on assessment results
-  unlockModule: async (req, res) => {
-    const { module_id } = req.params;
-    const user_id = req.user.user_id;
-
-    try {
-      // Check if the module has an associated assessment
-      const assessmentCheck = await pool.query(
-        `SELECT assessment_id FROM modules WHERE id = $1`,
-        [module_id]
-      );
-
-      if (
-        assessmentCheck.rows.length === 0 ||
-        !assessmentCheck.rows[0].assessment_id
-      ) {
-        return res
-          .status(400)
-          .json({ error: "Module has no assessment requirement" });
-      }
-
-      const assessment_id = assessmentCheck.rows[0].assessment_id;
-
-      // Check if the user has passed the assessment
-      const assessmentResult = await pool.query(
-        `SELECT * FROM assessment_results 
-       WHERE user_id = $1 AND assessment_id = $2 AND passed = true`,
-        [user_id, assessment_id]
-      );
-
-      if (assessmentResult.rows.length === 0) {
-        return res
-          .status(403)
-          .json({ error: "Assessment not passed. Module remains locked." });
-      }
-
-      res.json({ message: "Module unlocked!" });
-    } catch (err) {
-      console.error("Error unlocking module:", err);
       res.status(500).json({ error: "Internal Server Error" });
     }
   },

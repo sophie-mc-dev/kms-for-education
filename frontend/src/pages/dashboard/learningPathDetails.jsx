@@ -60,21 +60,22 @@ export function LearningPathDetails() {
 
   // Fetch user progress (only for students)
   useEffect(() => {
-    const fetchUserProgress = async () => {
-      console.log("Learning Path ID:", cleanedLearningPathId);
-      console.log("User ID:", userId);
-
+    const fetchUserProgress = async () => {    
       if (!cleanedLearningPathId || !userId || userRole === "educator") {
         return;
       }
-
+    
       try {
         const response = await fetch(
           `http://localhost:8080/api/learning-paths/${cleanedLearningPathId}/progress/${userId}`
         );
-        if (!response.ok) throw new Error("Failed to fetch user progress");
+    
+        if (response.status === 404) {
+          setUserProgress({ status: "not_started", completed_modules: [] });
+          return;
+        }
+        
         const data = await response.json();
-        console.log("Fetched data:", data);
         setUserProgress(data);
       } catch (err) {
         console.error("Error fetching progress:", err.message);

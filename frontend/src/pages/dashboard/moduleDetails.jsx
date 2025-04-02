@@ -6,7 +6,6 @@ import {
   Typography,
   Button,
   Spinner,
-  Radio,
 } from "@material-tailwind/react";
 import { ResourceCard } from "@/widgets/cards/";
 import { useUser } from "@/context/userContext";
@@ -18,6 +17,7 @@ export function ModuleDetails() {
   const [module, setModule] = useState(null);
   const [resources, setResources] = useState([]);
   const [assessment, setAssessment] = useState(null);
+  const [assessmentStatus, setAssessmentStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const cleanedModuleId = moduleId.replace("md_", "");
@@ -88,6 +88,47 @@ export function ModuleDetails() {
     fetchAssessment();
   }, []);
 
+  useEffect(() => {
+    const fetchAssessmentStatus = async () => {
+      try {
+        const response = await fetch(
+          `http://localhost:8080/api/modules/${cleanedModuleId}/assessment/status/${userId}`
+        );
+        if (!response.ok) {
+          setAssessmentStatus("not_started"); 
+        } else {
+          const data = await response.json();
+          setAssessmentStatus(data.assessmentStatus || "not_started");
+        }
+      } catch (err) {
+        setError(err.message);
+      }
+    };
+    fetchAssessmentStatus();
+  }, [userId, cleanedModuleId]);
+
+  const handleStartAssessment = async () => {
+    try {
+      const response = await fetch(
+        `http://localhost:8080/api/modules/${cleanedModuleId}/assessment/status/${userId}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            assessment_status: "in_progress",
+          }),
+        }
+      );
+
+      if (!response.ok) throw new Error("Failed to update assessment status");
+      setAssessmentStatus("in_progress");
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
   if (loading)
     return (
       <div className="flex justify-center items-center mt-12">
@@ -108,7 +149,6 @@ export function ModuleDetails() {
           <Typography variant="h4" color="blue-gray" className="font-semibold">
             {module.title}
           </Typography>
-
           <div className="mb-6 flex items-center gap-x-4">
             {/* Left Section: Date and Author */}
             <div className="flex items-center gap-x-1">
@@ -123,16 +163,13 @@ export function ModuleDetails() {
               </Typography>
             </div>
           </div>
-
           <div className="mb-6 font-normal text-blue-gray-900">
             <div
               className="[&>ul]:list-disc [&>ul]:pl-5 [&>ol]:list-decimal"
               dangerouslySetInnerHTML={{ __html: module.summary }}
             ></div>
           </div>
-
           <div className="border-t my-4"></div>
-
           <Typography variant="h6" color="blue-gray" className="mb-3">
             Resources
           </Typography>
@@ -148,12 +185,24 @@ export function ModuleDetails() {
             )}
           </div>
           <div className="border-t my-4"></div>
-
           <Typography variant="h6" color="blue-gray" className="mb-3">
             Test Your Knowledge
           </Typography>
-
-            <Assessment userId={userId} moduleId={cleanedModuleId} assessment={assessment}></Assessment>
+          {assessmentStatus === "not_started" ? (
+            <Button
+              onClick={handleStartAssessment}
+              color="blue"
+              className="mb-4"
+            >
+              Start Assessment 
+            </Button>
+          ) : (
+            <Assessment
+              userId={userId}
+              moduleId={cleanedModuleId}
+              assessment={assessment}
+            />
+          )}
         </CardBody>
       </Card>
     </div>

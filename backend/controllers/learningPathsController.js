@@ -271,8 +271,8 @@ const learningPathsController = {
       // Insert new progress entry
       await pool.query(
         `INSERT INTO learning_path_progress 
-          (user_id, learning_path_id, current_module_id, completed_module_ids, passed_modules_ids, locked_module_ids, progress_percentage, status, started_at) 
-          VALUES ($1, $2, $3, '{}', '{}', $4, 0.00, 'in_progress', NOW())`,
+          (user_id, learning_path_id, current_module_id, completed_module_ids, locked_module_ids, progress_percentage, status, started_at) 
+          VALUES ($1, $2, $3, '{}', $4, 0.00, 'in_progress', NOW())`,
         [user_id, learning_path_id, firstModuleId, lockedModules]
       );
 
@@ -341,25 +341,33 @@ const learningPathsController = {
     try {
       const result = await pool.query(
         `SELECT user_id, learning_path_id, current_module_id, completed_module_ids,
-                progress_percentage, last_accessed, time_spent, passed_modules_ids, status, locked_module_ids
+                progress_percentage, last_accessed, time_spent, status, locked_module_ids
          FROM learning_path_progress 
          WHERE user_id = $1 AND learning_path_id = $2`,
         [user_id, learning_path_id]
       );
 
       if (result.rows.length === 0) {
-        return res
-          .status(404)
-          .json({ error: "Progress not found for this learning path" });
+        // Return default progress instead of 404
+        return res.status(200).json({
+          user_id,
+          learning_path_id,
+          current_module_id: null,
+          completed_module_ids: [],
+          progress_percentage: 0,
+          last_accessed: null,
+          time_spent: 0,
+          status: "not_started",
+          locked_module_ids: [],
+          message: "No progress found for this learning path",
+        });
       }
 
-      // Check for locked_module_ids and handle empty array or null
+      // Ensure locked_module_ids is always an array
       const progress = result.rows[0];
-      if (!progress.locked_module_ids) {
-        progress.locked_module_ids = [];
-      }
+      progress.locked_module_ids = progress.locked_module_ids || [];
 
-      res.json(result.rows[0]);
+      res.json(progress);
     } catch (err) {
       console.error("Error fetching learning path progress:", err);
       res.status(500).json({ error: "Internal Server Error" });
@@ -402,6 +410,107 @@ const learningPathsController = {
     } catch (err) {
       console.error("Error updating learning path progress:", err);
       res.status(500).json({ error: "Internal Server Error" });
+    }
+  },
+
+  // Mark Module as Complete
+  updateLearningPathModuleCompletion: async (req, res) => {
+    const { learning_path_id, module_id, user_id } = req.params;
+
+    try {
+      // Step 1: Update user module progress (mark module as completed)
+      const updateUserModuleProgressQuery = `
+        UPDATE public.user_module_progress
+        SET status = 'completed',
+            completed_at = NOW()
+        WHERE user_id = $1 AND module_id = $2 AND learning_path_id = $3
+        RETURNING *;
+      `;
+
+      const userModuleProgressResult = await pool.query(
+        updateUserModuleProgressQuery,
+        [user_id, module_id, learning_path_id]
+      );
+
+      if (userModuleProgressResult.rows.length === 0) {
+        return res
+          .status(404)
+          .json({ message: "User module progress not found." });
+      }
+
+      // Step 2: Update learning path progress (move to next module, update progress)
+      const currentLearningPathProgressQuery = `
+        SELECT * FROM public.learning_path_progress
+        WHERE user_id = $1 AND learning_path_id = $2;
+      `;
+
+      const learningPathProgressResult = await pool.query(
+        currentLearningPathProgressQuery,
+        [user_id, learning_path_id]
+      );
+
+      if (learningPathProgressResult.rows.length === 0) {
+        return res
+          .status(404)
+          .json({ message: "Learning path progress not found." });
+      }
+
+      const learningPathProgress = learningPathProgressResult.rows[0];
+
+      // Add current module to completed modules
+      const completedModuleIds = [
+        ...learningPathProgress.completed_module_ids,
+        module_id,
+      ];
+
+      // Move to next module
+      const nextModuleQuery = `
+        SELECT id FROM public.modules
+        WHERE learning_path_id = $1 AND id > $2
+        ORDER BY id ASC LIMIT 1;
+      `;
+
+      const nextModuleResult = await pool.query(nextModuleQuery, [
+        learning_path_id,
+        module_id,
+      ]);
+      const nextModuleId =
+        nextModuleResult.rows.length > 0 ? nextModuleResult.rows[0].id : null;
+
+      // Update learning path progress
+      const updateLearningPathProgressQuery = `
+        UPDATE public.learning_path_progress
+        SET current_module_id = $1,
+            completed_module_ids = $2,
+            progress_percentage = (array_length($2, 1) * 100) / (SELECT COUNT(*) FROM public.modules WHERE learning_path_id = $3),
+            last_accessed = NOW()
+        WHERE user_id = $4 AND learning_path_id = $5
+        RETURNING *;
+      `;
+
+      const updatedLearningPathProgress = await pool.query(
+        updateLearningPathProgressQuery,
+        [
+          nextModuleId,
+          completedModuleIds,
+          learning_path_id,
+          user_id,
+          learning_path_id,
+        ]
+      );
+
+      return res.status(200).json({
+        message:
+          "Module marked as completed and learning path progress updated.",
+        data: updatedLearningPathProgress.rows[0],
+      });
+    } catch (err) {
+      console.error("Error updating module completion:", err);
+      return res
+        .status(500)
+        .json({
+          message: "An error occurred while updating module completion.",
+        });
     }
   },
 };
