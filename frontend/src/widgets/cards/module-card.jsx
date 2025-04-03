@@ -5,13 +5,13 @@ import { ResourceCard } from "@/widgets/cards/";
 import { Assessment } from "@/widgets/cards/";
 
 export function ModuleCard({
-  userId,
-  learningPathId,
   module,
+  learningPathId,
+  userId,
   isUnlocked,
   isPassed,
-  isCurrent,
   index,
+  refreshUserProgress,
 }) {
   const [resources, setResources] = useState([]);
   const [assessment, setAssessment] = useState(null);
@@ -44,7 +44,7 @@ export function ModuleCard({
 
         const data = await response.json();
         setModuleStatus(data.status);
-        if (data.status === "in_progress" || data.status === "completed") {
+        if (data.status === "in_progress") {
           setIsOpen(true);
         }
       } catch (err) {
@@ -128,12 +128,11 @@ export function ModuleCard({
         setAssessmentStatus("not_started");
       }
     };
-  
+
     if (module.id && userId && learningPathId) {
       fetchAssessmentStatus();
     }
-  }, [userId, module.id, learningPathId]); 
-  
+  }, [userId, module.id, learningPathId]);
 
   const handleStartAssessment = async () => {
     try {
@@ -185,6 +184,8 @@ export function ModuleCard({
           throw new Error("Failed to start module");
         }
         console.log("Module started successfully");
+
+        refreshUserProgress();
       } catch (err) {
         console.error("Error starting module:", err);
       }
@@ -200,8 +201,8 @@ export function ModuleCard({
               onClick={() => {
                 if (
                   isUnlocked &&
-                  (module.status === "in_progress" ||
-                    module.status === "completed")
+                  (moduleStatus === "in_progress" ||
+                    moduleStatus === "completed")
                 ) {
                   setIsOpen(!isOpen);
                 }
@@ -296,15 +297,15 @@ export function ModuleCard({
                     onClick={handleStartAssessment}
                     color="blue"
                     className="mb-4"
-                    
                   >
                     Start Assessment
                   </Button>
                 ) : (
                   <Assessment
-                    userId={userId}
-                    moduleId={module.id}
                     assessment={assessment}
+                    moduleId={module.id}
+                    learningPathId={learningPathId}
+                    userId={userId}
                   />
                 )}
               </div>

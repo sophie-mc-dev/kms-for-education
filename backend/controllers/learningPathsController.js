@@ -262,18 +262,14 @@ const learningPathsController = {
           .json({ error: "No modules found in this learning path" });
       }
 
-      const allModules = modulesQuery.rows.map((row) => row.module_id);
-      const firstModuleId = allModules[0];
-
-      // Lock all modules except the first one
-      const lockedModules = allModules.slice(1);
+      const lockedModules = modulesQuery.rows.map((row) => row.module_id);
 
       // Insert new progress entry
       await pool.query(
         `INSERT INTO learning_path_progress 
-          (user_id, learning_path_id, current_module_id, completed_module_ids, locked_module_ids, progress_percentage, status, started_at) 
-          VALUES ($1, $2, $3, '{}', $4, 0.00, 'in_progress', NOW())`,
-        [user_id, learning_path_id, firstModuleId, lockedModules]
+          (user_id, learning_path_id, completed_module_ids, locked_module_ids, progress_percentage, status, started_at) 
+          VALUES ($1, $2, '{}', $3, 0.00, 'in_progress', NOW())`,
+        [user_id, learning_path_id, lockedModules]
       );
 
       // Log the interaction in the user_interactions table
@@ -285,7 +281,6 @@ const learningPathsController = {
 
       res.status(201).json({
         message: "Learning path started successfully",
-        current_module_id: firstModuleId,
         locked_modules: lockedModules,
       });
     } catch (err) {
@@ -354,7 +349,7 @@ const learningPathsController = {
           learning_path_id,
           current_module_id: null,
           completed_module_ids: [],
-          progress_percentage: 0,
+          progress_percentage: 0.0,
           last_accessed: null,
           time_spent: 0,
           status: "not_started",
@@ -416,103 +411,116 @@ const learningPathsController = {
   // Mark Module as Complete
   updateLearningPathModuleCompletion: async (req, res) => {
     const { learning_path_id, module_id, user_id } = req.params;
-
+    const { assessment_id, score, passed, answers, num_attempts } = req.body;
+  
     try {
-      // Step 1: Update user module progress (mark module as completed)
-      const updateUserModuleProgressQuery = `
-        UPDATE public.user_module_progress
-        SET status = 'completed',
-            completed_at = NOW()
-        WHERE user_id = $1 AND module_id = $2 AND learning_path_id = $3
-        RETURNING *;
-      `;
-
-      const userModuleProgressResult = await pool.query(
-        updateUserModuleProgressQuery,
-        [user_id, module_id, learning_path_id]
+      // Step 1: Store the assessment results
+      const result = await pool.query(
+        `INSERT INTO assessment_results (user_id, assessment_id, module_id, score, passed, submission_time, answers, num_attempts) 
+             VALUES ($1, $2, $3, $4, $5, NOW(), $6, $7) 
+             RETURNING *`,
+        [
+          user_id,
+          assessment_id,
+          module_id,
+          score,
+          passed,
+          JSON.stringify(answers),
+          num_attempts + 1,
+        ]
       );
-
-      if (userModuleProgressResult.rows.length === 0) {
-        return res
-          .status(404)
-          .json({ message: "User module progress not found." });
-      }
-
-      // Step 2: Update learning path progress (move to next module, update progress)
-      const currentLearningPathProgressQuery = `
-        SELECT * FROM public.learning_path_progress
-        WHERE user_id = $1 AND learning_path_id = $2;
-      `;
-
-      const learningPathProgressResult = await pool.query(
-        currentLearningPathProgressQuery,
+  
+      // Step 2: Define the status based on the assessment result
+      const assessmentStatus = passed ? "passed" : "failed";
+      const moduleStatus = passed ? "completed" : "in_progress";
+  
+      // Step 3: Update the user progress in user_module_progress
+      let updateQuery = `
+                UPDATE user_module_progress 
+                SET assessment_status = $1, 
+                    status = $2,
+                    completed_at = NOW()
+                WHERE user_id = $3 AND module_id = $4 AND learning_path_id = $5
+            `;
+      let updateValues = [
+        assessmentStatus,
+        moduleStatus,
+        user_id,
+        module_id,
+        learning_path_id,
+      ];
+  
+      // Execute the update query for module progress
+      await pool.query(updateQuery, updateValues);
+  
+      // Step 4: Fetch all the modules in the learning path
+      const learningPathModulesResult = await pool.query(
+        `SELECT module_id FROM learning_path_modules WHERE learning_path_id = $1`,
+        [learning_path_id]
+      );
+      const learningPathModules = learningPathModulesResult.rows;
+  
+      // Step 5: Calculate progress
+      const userModulesResult = await pool.query(
+        `SELECT module_id, status FROM user_module_progress WHERE user_id = $1 AND learning_path_id = $2`,
         [user_id, learning_path_id]
       );
-
-      if (learningPathProgressResult.rows.length === 0) {
-        return res
-          .status(404)
-          .json({ message: "Learning path progress not found." });
+      const userModules = userModulesResult.rows;
+  
+      const completedModules = userModules.filter(module => module.status === 'completed');
+      const lockedModules = userModules.filter(module => module.status === 'locked');
+      const inProgressModules = userModules.filter(module => module.status === 'in_progress');
+  
+      const totalModules = learningPathModules.length;
+      const progressPercentage = Math.round((completedModules.length / totalModules) * 100);
+  
+      // Step 6: Update current module id based on locked modules
+      let currentModuleId = null;
+      if (lockedModules.length === 0 && completedModules.length === totalModules) {
+        // If no locked modules and all modules are completed, set learning path as completed
+        await pool.query(
+          `UPDATE learning_path_progress
+           SET status = 'completed'
+           WHERE user_id = $1 AND learning_path_id = $2`,
+          [user_id, learning_path_id]
+        );
+      } else {
+        // If there are still locked modules, update the status as in-progress
+        currentModuleId = inProgressModules.length > 0 ? inProgressModules[0].module_id : null;
       }
-
-      const learningPathProgress = learningPathProgressResult.rows[0];
-
-      // Add current module to completed modules
-      const completedModuleIds = [
-        ...learningPathProgress.completed_module_ids,
-        module_id,
-      ];
-
-      // Move to next module
-      const nextModuleQuery = `
-        SELECT id FROM public.modules
-        WHERE learning_path_id = $1 AND id > $2
-        ORDER BY id ASC LIMIT 1;
-      `;
-
-      const nextModuleResult = await pool.query(nextModuleQuery, [
-        learning_path_id,
-        module_id,
-      ]);
-      const nextModuleId =
-        nextModuleResult.rows.length > 0 ? nextModuleResult.rows[0].id : null;
-
-      // Update learning path progress
-      const updateLearningPathProgressQuery = `
-        UPDATE public.learning_path_progress
-        SET current_module_id = $1,
-            completed_module_ids = $2,
-            progress_percentage = (array_length($2, 1) * 100) / (SELECT COUNT(*) FROM public.modules WHERE learning_path_id = $3),
-            last_accessed = NOW()
-        WHERE user_id = $4 AND learning_path_id = $5
-        RETURNING *;
-      `;
-
-      const updatedLearningPathProgress = await pool.query(
-        updateLearningPathProgressQuery,
+  
+      // Step 7: Update learning path progress table
+      await pool.query(
+        `UPDATE learning_path_progress
+         SET current_module_id = $1,
+             completed_module_ids = $2,
+             progress_percentage = $3,
+             locked_module_ids = $4
+         WHERE user_id = $5 AND learning_path_id = $6`,
         [
-          nextModuleId,
-          completedModuleIds,
-          learning_path_id,
+          currentModuleId,
+          completedModules.map(module => module.module_id),
+          progressPercentage,
+          lockedModules.map(module => module.module_id),
           user_id,
           learning_path_id,
         ]
       );
-
-      return res.status(200).json({
-        message:
-          "Module marked as completed and learning path progress updated.",
-        data: updatedLearningPathProgress.rows[0],
+  
+      // Step 8: Send response back
+      res.json({
+        message: "Assessment submitted and learning path progress updated successfully",
+        progressPercentage,
+        completedModules: completedModules.length,
+        currentModuleId,
       });
     } catch (err) {
-      console.error("Error updating module completion:", err);
-      return res
-        .status(500)
-        .json({
-          message: "An error occurred while updating module completion.",
-        });
+      console.error("Error submitting assessment and updating learning path progress:", err);
+      res.status(500).json({ error: "Internal Server Error" });
     }
   },
+  
+
 };
 
 module.exports = learningPathsController;

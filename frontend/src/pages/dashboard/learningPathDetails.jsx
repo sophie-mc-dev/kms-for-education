@@ -1,6 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { Card, CardBody, Typography, Button } from "@material-tailwind/react";
+import {
+  Card,
+  CardBody,
+  Typography,
+  Button,
+  Progress,
+} from "@material-tailwind/react";
 import { ModuleCard } from "@/widgets/cards";
 import { useUser } from "@/context/UserContext";
 
@@ -13,6 +19,7 @@ export function LearningPathDetails() {
   const [userProgress, setUserProgress] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const completion = Number(userProgress?.progress_percentage) || 0;
 
   const cleanedLearningPathId = learningPathId.replace("lp_", "");
 
@@ -60,21 +67,21 @@ export function LearningPathDetails() {
 
   // Fetch user progress (only for students)
   useEffect(() => {
-    const fetchUserProgress = async () => {    
+    const fetchUserProgress = async () => {
       if (!cleanedLearningPathId || !userId || userRole === "educator") {
         return;
       }
-    
+
       try {
         const response = await fetch(
           `http://localhost:8080/api/learning-paths/${cleanedLearningPathId}/progress/${userId}`
         );
-    
+
         if (response.status === 404) {
           setUserProgress({ status: "not_started", completed_modules: [] });
           return;
         }
-        
+
         const data = await response.json();
         setUserProgress(data);
       } catch (err) {
@@ -125,6 +132,9 @@ export function LearningPathDetails() {
   const isLearningPathStarted =
     userProgress && userProgress.status === "in_progress";
 
+  const isLearningPathCompleted =
+    userProgress && userProgress.status === "completed";
+
   if (loading) return <div>Loading...</div>;
   if (error) return <div>Error: {error}</div>;
   if (!learningPath) return <div>No Learning Path Data</div>;
@@ -143,9 +153,14 @@ export function LearningPathDetails() {
             </Typography>
             <Button
               onClick={handleStartLearningPath}
-              disabled={isLearningPathStarted}
+              disabled={isLearningPathStarted || isLearningPathCompleted}
+              className={`${
+                isLearningPathCompleted ? "bg-green-500" : "bg-blue-500"
+              }`}
             >
-              {isLearningPathStarted
+              {isLearningPathCompleted
+                ? "Learning Path Completed"
+                : isLearningPathStarted
                 ? "Learning Path Started"
                 : "Start Learning Path"}
             </Button>
@@ -170,9 +185,25 @@ export function LearningPathDetails() {
             </div>
           </div>
 
-          <Typography className="mt-2 text-blue-gray-700">
-            {learningPath.summary}
-          </Typography>
+          <div
+            className="[&>ul]:list-disc [&>ul]:pl-5 [&>ol]:list-decimal mt-2 text-blue-gray-700"
+            dangerouslySetInnerHTML={{ __html: learningPath.summary }}
+          ></div>
+
+          {/* Progress Bar Section */}
+          {userProgress && (
+            <div className="mt-4">
+              <Typography className="text-xs font-semibold uppercase text-blue-gray-500">
+                Progress: {completion}%
+              </Typography>
+              <Progress
+                value={completion}
+                variant="gradient"
+                color={completion === 100 ? "green" : "blue"}
+                className="h-1"
+              />
+            </div>
+          )}
 
           <div className="border-t my-4"></div>
 
@@ -189,18 +220,18 @@ export function LearningPathDetails() {
               <ModuleCard
                 key={module.id}
                 userId={userId}
-                learningPathId={learningPathId}
                 module={module}
+                learningPathId={learningPathId}
                 isUnlocked={
-                  isLearningPathStarted &&
+                  (isLearningPathStarted || isLearningPathCompleted) &&
                   (index === 0 ||
-                    userProgress?.completed_modules?.includes(
+                    userProgress?.completed_module_ids?.includes(
                       modules[index - 1]?.id
                     ))
                 }
-                isPassed={userProgress?.completed_modules?.includes(module.id)}
-                isCurrent={userProgress?.current_module === module.id}
+                isPassed={userProgress?.completed_module_ids?.includes(module.id)}
                 index={index}
+                refreshUserProgress={refreshUserProgress}
               />
             ))}
           </div>

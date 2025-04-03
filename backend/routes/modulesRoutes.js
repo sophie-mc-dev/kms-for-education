@@ -34,7 +34,7 @@ router.get("/:module_id/assessment/status/:user_id", modulesController.getAssess
 router.delete("/:module_id/assessment/results/:user_id", modulesController.deleteAssessmentResults);
 
 router.post("/:module_id/start", modulesController.startModule);
-router.put("/:module_id/complete/:user_id", modulesController.updateStandaloneModuleCompletion);
+router.post("/:module_id/complete/:user_id", modulesController.updateStandaloneModuleCompletion);
 router.get("/:module_id/status", modulesController.getModuleStatus);
 
 module.exports = router;

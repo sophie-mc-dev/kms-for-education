@@ -5,6 +5,7 @@ export function Assessment({
   userId,
   moduleId,
   assessment = { questions: [] },
+  learningPathId = null,
 }) {
   const [userAnswers, setUserAnswers] = useState({});
   const [showFeedback, setShowFeedback] = useState(false);
@@ -82,25 +83,29 @@ export function Assessment({
     const assessmentResults = {
       user_id: userId,
       assessment_id: assessment.id,
-      module_id: moduleId,
+      module_id: parseInt(moduleId, 10),
       score: scorePercentage,
       passed: passed,
       num_attempts: attempts + 1,
       answers: JSON.stringify(answers),
+      learning_path_id: parseInt(learningPathId, 10)
     };
 
+    // Change the API endpoint dynamically (for standalone modules or modules in a LP)
+    const endpoint = learningPathId
+      ? `http://localhost:8080/api/learning-paths/${learningPathId}/modules/${moduleId}/complete/${userId}`
+      : `http://localhost:8080/api/modules/${moduleId}/complete/${userId}?learning_path_id=${learningPathId}`;
+
     try {
-      // Submit the assessment results
-      const submitResponse = await fetch(
-        `http://localhost:8080/api/modules/${moduleId}/complete/${userId}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(assessmentResults),
-        }
-      );
+      const submitResponse = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(assessmentResults),
+      });
+
+      console.log(assessmentResults)
 
       if (!submitResponse.ok) {
         throw new Error("Failed to save assessment results");

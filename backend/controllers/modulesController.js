@@ -601,9 +601,15 @@ const modulesController = {
       const userProgress = userProgressQuery.rows[0];
       const lockedModules = userProgress.locked_module_ids || [];
 
-      // Ensure the module is not locked
-      if (lockedModules.includes(module_id)) {
-        return res.status(403).json({ error: "This module is locked" });
+      // If the current module is null, set it to the first locked module
+      if (!userProgress.current_module_id && lockedModules.length > 0) {
+        const firstLockedModule = lockedModules[0];
+        await pool.query(
+          `UPDATE learning_path_progress 
+         SET current_module_id = $1, status = 'in_progress', last_accessed = NOW() 
+         WHERE user_id = $2 AND learning_path_id = $3`,
+          [firstLockedModule, user_id, learning_path_id]
+        );
       }
 
       // Insert new progress entry for the module
@@ -612,14 +618,6 @@ const modulesController = {
         (user_id, module_id, learning_path_id, status, assessment_status) 
         VALUES ($1, $2, $3, 'in_progress', 'not_started')`,
         [user_id, module_id, learning_path_id]
-      );
-
-      // Update current module in learning_path_progress
-      await pool.query(
-        `UPDATE learning_path_progress 
-       SET current_module_id = $1, status = 'in_progress', last_accessed = NOW() 
-       WHERE user_id = $2 AND learning_path_id = $3`,
-        [module_id, user_id, learning_path_id]
       );
 
       // Log the interaction in the user_interactions table
@@ -679,7 +677,7 @@ const modulesController = {
       if (userModuleProgressQuery.rows.length === 0) {
         // Instead of 404, return a default response
         return res.status(200).json({
-          status: "not_started", // Default status
+          status: "not_started",
           message: "No progress found for this module",
         });
       }
@@ -699,16 +697,8 @@ const modulesController = {
 
   // Complete
   updateStandaloneModuleCompletion: async (req, res) => {
-    const { learningPathId } = req.params; // LearningPathId will be null for standalone modules
-    const {
-      user_id,
-      assessment_id,
-      score,
-      passed,
-      answers,
-      module_id,
-      num_attempts,
-    } = req.body;
+    const { user_id, module_id } = req.params;
+    const { assessment_id, score, passed, answers, num_attempts } = req.body;
 
     try {
       // Step 1: Store the assessment results
@@ -735,32 +725,15 @@ const modulesController = {
       let updateQuery;
       let updateValues;
 
-      if (learningPathId) {
-        // Update for learning path modules
-        updateQuery = `
-                UPDATE user_module_progress 
-                SET assessment_status = $1, 
-                    status = $2
-                WHERE user_id = $3 AND module_id = $4 AND learning_path_id = $5
-            `;
-        updateValues = [
-          assessmentStatus,
-          moduleStatus,
-          user_id,
-          module_id,
-          learningPathId,
-        ];
-      } else {
-        // Update for standalone modules
-        updateQuery = `
+      // Update for standalone modules
+      updateQuery = `
                 UPDATE user_module_progress 
                 SET assessment_status = $1, 
                     status = $2, 
                     completed_at = NOW()
                 WHERE user_id = $3 AND module_id = $4 AND learning_path_id IS NULL
             `;
-        updateValues = [assessmentStatus, moduleStatus, user_id, module_id];
-      }
+      updateValues = [assessmentStatus, moduleStatus, user_id, module_id];
 
       // Execute the update query
       await pool.query(updateQuery, updateValues);
