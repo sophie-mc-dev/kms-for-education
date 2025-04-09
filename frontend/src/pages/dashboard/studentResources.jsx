@@ -14,9 +14,9 @@ export function StudentResources() {
   const [searchQuery, setSearchQuery] = useState("");
 
   const collections = [
+    "Recently Viewed",
     "In Progress",
     "Completed",
-    "Recently Viewed",
     "Bookmarked",
     "Recommended",
   ];
@@ -39,7 +39,7 @@ export function StudentResources() {
     if (!userId) return [];
     try {
       const response = await fetch(
-        `http://localhost:8080/api/bookmarks/${userId}`
+        ` http://localhost:8080/api/bookmarks/${userId}`
       );
       if (!response.ok) throw new Error("Failed to fetch bookmarks");
 
@@ -55,7 +55,7 @@ export function StudentResources() {
     if (!userId) return [];
     try {
       const response = await fetch(
-        `http://localhost:8080/api/learning-paths/in-progress/${userId}`
+        ` http://localhost:8080/api/learning-paths/in-progress/${userId}`
       );
       if (!response.ok) throw new Error("Failed to fetch learning paths");
 
@@ -86,28 +86,28 @@ export function StudentResources() {
     return JSON.parse(localStorage.getItem("recentlyViewed")) || [];
   };
 
+  // Fetch all resources, bookmarks, learning paths, etc.
+  const fetchData = async () => {
+    const allResources = await getAllResources();
+    const bookmarks = await getBookmarkedResources();
+    const lpInProgress = await getLearningPathsInProgress();
+    const lpCompleted = await getCompletedLearningPaths();
+    const recentlyViewedData = getRecentlyViewedResources();
+
+    const recentResources = recentlyViewedData
+      .map((recent) => allResources.find((res) => res.id === recent.id))
+      .filter(Boolean);
+
+    setResources(allResources);
+    setBookmarkedResources(
+      allResources.filter((res) => bookmarks.some((b) => b.id === res.id))
+    );
+    setRecentlyViewed(recentResources);
+    setLearningPathsInProgress(lpInProgress);
+    setLearningPathsCompleted(lpCompleted);
+  };
+
   useEffect(() => {
-    const fetchData = async () => {
-      const allResources = await getAllResources();
-      const bookmarks = await getBookmarkedResources();
-      const lpInProgress = await getLearningPathsInProgress();
-      const lpCompleted = await getCompletedLearningPaths();
-      const recentlyViewedData = getRecentlyViewedResources();
-
-      // Match recently viewed items with actual resources
-      const recentResources = recentlyViewedData
-        .map((recent) => allResources.find((res) => res.id === recent.id))
-        .filter(Boolean);
-
-      setResources(allResources);
-      setBookmarkedResources(
-        allResources.filter((res) => bookmarks.some((b) => b.id === res.id))
-      );
-      setRecentlyViewed(recentResources);
-      setLearningPathsInProgress(lpInProgress);
-      setLearningPathsCompleted(lpCompleted);
-    };
-
     fetchData();
   }, []);
 
@@ -132,15 +132,9 @@ export function StudentResources() {
         lp.title.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
-    return resources.filter((resource) => {
-      const resourceCategory = Array.isArray(resource.category)
-        ? resource.category.join(", ").toLowerCase()
-        : resource.category?.toLowerCase();
-      return (
-        resourceCategory?.includes(category.toLowerCase()) &&
-        resource.title.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    });
+    return resources.filter((resource) =>
+      resource.title.toLowerCase().includes(searchQuery.toLowerCase())
+    );
   };
 
   return (
@@ -153,7 +147,11 @@ export function StudentResources() {
       />
 
       {collections.map((category) => {
-        const filtered = filteredResources(category);
+        const filtered =
+          category === "Recently Viewed"
+            ? recentlyViewed 
+            : filteredResources(category); 
+
         return (
           <Card
             key={category}
@@ -167,11 +165,14 @@ export function StudentResources() {
                 {filtered.length > 0 ? (
                   filtered.map((item) =>
                     category === "In Progress" || category === "Completed" ? (
-                      <p key={item.learning_path_id}>{item.title}</p>
-                    ) : // todo add learning path card accordingly...
-                    category === "Bookmarked" ? (
+                      <LearningLPCard
+                        key={item.learning_path_id}
+                        learningItem={item}
+                      />
+                    ) : category === "Bookmarked" ||
+                      category === "Recently Viewed" ? (
                       <ResourceCard
-                        key={item.id}
+                        key={item.id} // Use the item ID for key
                         resource={item}
                         userId={userId}
                         isBookmarked={bookmarkedResources.some(
@@ -180,7 +181,6 @@ export function StudentResources() {
                         setBookmarkedResources={setBookmarkedResources}
                       />
                     ) : (
-                      // Add any other condition for additional categories if needed
                       <Typography variant="small" color="gray" key={item.id}>
                         No data found for this category.
                       </Typography>

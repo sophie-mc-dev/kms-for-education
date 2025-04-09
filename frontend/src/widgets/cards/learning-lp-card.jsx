@@ -10,10 +10,10 @@ export function LearningLPCard({ learningItem }) {
 
   const navigate = useNavigate();
 
-  const cleanedLearningPathId = parseInt(
-    learningItem.id.replace("lp_", ""),
-    10
-  );
+  const cleanedLearningPathId = learningItem.id
+  ? parseInt(learningItem.id.replace("lp_", ""), 10)
+  : null;
+
 
   const handleLearningPathClick = async () => {
     try {
