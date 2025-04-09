@@ -1,10 +1,7 @@
-version: '3.8'
-
 services:
   postgres:
-    image: postgres:latest
-    container_name: kms-db-container
-    restart: always
+    container_name: container-pg
+    image: postgres
     ports:
       - "5432:5432"
     environment:
@@ -12,49 +9,61 @@ services:
       POSTGRES_PASSWORD: kms-user123
       POSTGRES_DB: kms-db
     volumes:
-      - pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U kms-user -d kms-db"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      - postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  neo4j:
+    container_name: container-neo4j
+    image: neo4j:5.12
+    ports:
+      - "7474:7474"   # HTTP Browser
+      - "7687:7687"   # Bolt protocol
+    environment:
+      NEO4J_AUTH: neo4j/password
+    volumes:
+      - neo4j-data:/data
+    restart: unless-stopped
 
   backend:
+    container_name: container-backend
     build:
-      context: ./backend  
-    container_name: kms-backend-container
-    depends_on:
-      postgres:
-        condition: service_healthy  # Ensures PostgreSQL is ready before starting
+      context: ./backend
     ports:
       - "8080:8080"
+    depends_on:
+      - postgres
+      - neo4j
+    environment:
+      DB_HOST: host.docker.internal
+      DB_PORT: 5432
+      DB_USER: kms-user
+      DB_PASSWORD: kms-user123
+      DB_NAME: kms-db
+      NEO4J_URI: bolt://neo4j:7687
+      NEO4J_USER: neo4j
+      NEO4J_PASSWORD: password
     volumes:
       - ./backend:/backend
       - /backend/node_modules
-    environment:
-      - DB_HOST=postgres  # Matches PostgreSQL service name
-      - DB_USER=kms-user
-      - DB_PASSWORD=kms-user123
-      - DB_NAME=kms-db
-      - DB_PORT=5432
-    command: npm run dev  
-    restart: always
+    restart: unless-stopped
+    command: /bin/sh -c "npm install && npm run dev"
 
   frontend:
+    container_name: container-frontend
     build:
-      context: ./frontend  
-    container_name: kms-frontend-container
-    depends_on:
-      - backend  # Ensures backend starts first
+      context: ./frontend
     ports:
-      - "5173:5173"  # Use default Vite port
+      - "5173:5173" 
+    depends_on:
+      - backend
+    environment:
+      VITE_API_URL: "http://backend:8080"
     volumes:
       - ./frontend:/frontend
-      - /frontend/node_modules  # Keep isolated node_modules
-    environment:
-      - CHOKIDAR_USEPOLLING=true
-    command: npm run dev
-    restart: always
+      - /frontend/node_modules
+    restart: unless-stopped
+    command: /bin/sh -c "npm install && npm run dev"
 
 volumes:
-  pgdata:
+  postgres-data:
+  neo4j-data:

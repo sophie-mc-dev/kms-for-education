@@ -9,7 +9,7 @@ const resourcesRoutes = require("./routes/resourcesRoutes");
 const bookmarksRoutes = require("./routes/bookmarksRoutes");
 const learningPathsRoutes = require("./routes/learningPathsRoutes");
 const modulesRoutes = require("./routes/modulesRoutes");
-const userInteractionsRoutes = require("./routes/userInteractionsRoutes")
+const userInteractionsRoutes = require("./routes/userInteractionsRoutes");
 const cors = require("cors");
 
 const app = express();
@@ -20,7 +20,7 @@ const { testNeo4jConnection } = require("./db/neo4j"); // Neo4j
 const { syncData } = require("./db/sync_pg_to_neo4j");
 
 async function startServer() {
-  const isPostgresConnected  = await testPostgresConnection();
+  const isPostgresConnected = await testPostgresConnection();
   const isNeo4jConnected = await testNeo4jConnection();
 
   if (!isPostgresConnected || !isNeo4jConnected) {
@@ -28,14 +28,20 @@ async function startServer() {
     process.exit(1);
   }
 
-  // **Sync data from PostgreSQL to Neo4j**
-  console.log("Syncing data from PostgreSQL to Neo4j...");
-  await syncData(); // Call sync function
+  try {
+    console.log("🔄 Syncing data from PostgreSQL to Neo4j...");
+    await syncData();
+    console.log("✅ Data sync completed.");
+  } catch (error) {
+    console.error("⚠️ Error syncing data:", error.message);
+    process.exit(1); 
+  }
 
   // CORS Configuration
   app.use(
     cors({
-      origin: "http://localhost:5173",
+      // origin: "http://localhost:5173",
+      origin: "*",
       credentials: true,
     })
   );
