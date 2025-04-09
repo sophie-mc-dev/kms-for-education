@@ -30,7 +30,7 @@ export const educatorRoutes = [
       },
       {
         icon: <BookOpenIcon {...icon} />,
-        name: "my resources",
+        name: "resources",
         path: "/resources",
         element: <EducatorResources />,
       },

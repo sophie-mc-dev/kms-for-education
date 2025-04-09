@@ -738,6 +738,13 @@ const modulesController = {
       // Execute the update query
       await pool.query(updateQuery, updateValues);
 
+      // Log the interaction in the user_interactions table
+      await pool.query(
+        `INSERT INTO user_interactions (user_id, module_id, interaction_type)
+       VALUES ($1, $2, 'completed_module')`,
+        [user_id, module_id]
+      );
+
       // Step 4: Send back the response with updated attempt count
       res.json({
         message: "Assessment submitted successfully",

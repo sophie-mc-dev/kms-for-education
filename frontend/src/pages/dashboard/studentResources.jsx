@@ -9,11 +9,13 @@ export function StudentResources() {
   const [resources, setResources] = useState([]);
   const [bookmarkedResources, setBookmarkedResources] = useState([]);
   const [recentlyViewed, setRecentlyViewed] = useState([]);
-  const [learningPaths, setLearningPaths] = useState([]); // New state for learning paths
+  const [learningPathsInProgress, setLearningPathsInProgress] = useState([]);
+  const [learningPathsCompleted, setLearningPathsCompleted] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
 
   const collections = [
-    "Learning Paths in Progress",
+    "In Progress",
+    "Completed",
     "Recently Viewed",
     "Bookmarked",
     "Recommended",
@@ -64,6 +66,21 @@ export function StudentResources() {
     }
   };
 
+  const getCompletedLearningPaths = async () => {
+    if (!userId) return [];
+    try {
+      const response = await fetch(
+        `http://localhost:8080/api/learning-paths/completed/${userId}`
+      );
+      if (!response.ok) throw new Error("Failed to fetch learning paths");
+
+      return await response.json();
+    } catch (error) {
+      console.error("Error fetching learning paths:", error);
+      return [];
+    }
+  };
+
   // Load recently viewed resources from localStorage
   const getRecentlyViewedResources = () => {
     return JSON.parse(localStorage.getItem("recentlyViewed")) || [];
@@ -73,7 +90,8 @@ export function StudentResources() {
     const fetchData = async () => {
       const allResources = await getAllResources();
       const bookmarks = await getBookmarkedResources();
-      const learningPathsInProgress = await getLearningPathsInProgress();
+      const lpInProgress = await getLearningPathsInProgress();
+      const lpCompleted = await getCompletedLearningPaths();
       const recentlyViewedData = getRecentlyViewedResources();
 
       // Match recently viewed items with actual resources
@@ -86,7 +104,8 @@ export function StudentResources() {
         allResources.filter((res) => bookmarks.some((b) => b.id === res.id))
       );
       setRecentlyViewed(recentResources);
-      setLearningPaths(learningPathsInProgress);
+      setLearningPathsInProgress(lpInProgress);
+      setLearningPathsCompleted(lpCompleted);
     };
 
     fetchData();
@@ -103,8 +122,13 @@ export function StudentResources() {
         resource.title.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
-    if (category === "Learning Paths in Progress") {
-      return learningPaths.filter((lp) =>
+    if (category === "In Progress") {
+      return learningPathsInProgress.filter((lp) =>
+        lp.title.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+    if (category === "Completed") {
+      return learningPathsCompleted.filter((lp) =>
         lp.title.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
@@ -142,10 +166,10 @@ export function StudentResources() {
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                 {filtered.length > 0 ? (
                   filtered.map((item) =>
-                    category === "Learning Paths in Progress" ? (
+                    category === "In Progress" || category === "Completed" ? (
                       <p key={item.learning_path_id}>{item.title}</p>
-                      // todo add learningpath card accordingly...
-                    ) : (
+                    ) : // todo add learning path card accordingly...
+                    category === "Bookmarked" ? (
                       <ResourceCard
                         key={item.id}
                         resource={item}
@@ -155,6 +179,11 @@ export function StudentResources() {
                         )}
                         setBookmarkedResources={setBookmarkedResources}
                       />
+                    ) : (
+                      // Add any other condition for additional categories if needed
+                      <Typography variant="small" color="gray" key={item.id}>
+                        No data found for this category.
+                      </Typography>
                     )
                   )
                 ) : (

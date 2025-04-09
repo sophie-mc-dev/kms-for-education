@@ -40,8 +40,8 @@ async function startServer() {
   // CORS Configuration
   app.use(
     cors({
-      // origin: "http://localhost:5173",
-      origin: "*",
+      origin: "http://localhost:5173",
+      // origin: "*",
       credentials: true,
     })
   );

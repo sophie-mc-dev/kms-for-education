@@ -9,7 +9,6 @@ import {
   Input,
   Typography,
   Radio,
-  Option,
 } from "@material-tailwind/react";
 import Select from "react-select";
 
@@ -116,7 +115,7 @@ export function UploadResource() {
       console.log("Form submitted:", formattedData);
     }
 
-    // const createdBy = `${user.first_name} ${user.last_name}`;
+    const createdBy = `${user.first_name} ${user.last_name}`;
     const formDataToSend = new FormData();
 
     console.log(user);
@@ -126,7 +125,7 @@ export function UploadResource() {
     formDataToSend.append("description", formData.description);
     formDataToSend.append("url", formData.url);
     formDataToSend.append("type", formData.type);
-    formDataToSend.append("created_by", "Sample Author");
+    formDataToSend.append("created_by", createdBy);
     formDataToSend.append("visibility", formData.visibility);
     formDataToSend.append("estimatedTime", Number(formData.estimatedTime));
     if (formData.file) {
@@ -270,7 +269,7 @@ export function UploadResource() {
                 onChange={(selectedOptions) =>
                   setFormData((prev) => ({
                     ...prev,
-                    category: selectedOptions.map((option) => option.name),
+                    category: selectedOptions.map((option) => option.value),
                   }))
                 }
                 options={resourceCategories}
