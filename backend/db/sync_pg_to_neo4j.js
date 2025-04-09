@@ -30,35 +30,34 @@ const syncData = async () => {
 
     // **Sync Resources**
     const resources = await pgClient.query(
-      "SELECT id, title, description, category, type, tags FROM resources"
+      "SELECT id, title, description, category, type FROM resources"
     );
 
     for (let resource of resources.rows) {
-      // **Check if tags is an array** (PostgreSQL should return it as an array)
-      const tags = Array.isArray(resource.tags) ? resource.tags : [];
+      // **Check if category is an array** (PostgreSQL should return it as an array)
+      const category = Array.isArray(resource.category) ? resource.category : [];
 
       // Merge Resource node
       await neoSession.run(
         `MERGE (r:Resource {id: $id})
-         SET r.title = $title, r.description = $description, r.category = $category, r.type = $type`,
+         SET r.title = $title, r.description = $description, r.type = $type`,
         {
           id: resource.id.toString(),
           title: resource.title,
           description: resource.description,
-          category: resource.category,
           type: resource.type,
         }
       );
 
-      // **Sync Tags**: Create relationships between Resource and Tags
-      for (let tag of tags) {
-        tag = tag.trim();
-        if (tag) {
+      // **Sync Categories**: Create relationships between Resource and Categories
+      for (let cat of category) {
+        cat = cat.trim();
+        if (cat) {
           await neoSession.run(
-            `MERGE (t:Tag {name: $tag})
+            `MERGE (c:Category {name: $cat})
              MERGE (r:Resource {id: $id})
-             MERGE (r)-[:HAS_TAG]->(t)`,
-            { id: resource.id.toString(), tag }
+             MERGE (r)-[:HAS_CATEGORY]->(c)`,
+            { id: resource.id.toString(), cat }
           );
         }
       }
