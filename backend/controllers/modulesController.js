@@ -615,8 +615,8 @@ const modulesController = {
       // Insert new progress entry for the module
       await pool.query(
         `INSERT INTO user_module_progress 
-        (user_id, module_id, learning_path_id, status, assessment_status) 
-        VALUES ($1, $2, $3, 'in_progress', 'not_started')`,
+        (user_id, module_id, learning_path_id, status, assessment_status, started_at) 
+        VALUES ($1, $2, $3, 'in_progress', 'not_started', NOW())`,
         [user_id, module_id, learning_path_id]
       );
 
@@ -695,6 +695,110 @@ const modulesController = {
     }
   },
 
+  getStandaloneModuleStatus: async (req, res) => {
+    const { module_id } = req.params;
+    const { user_id } = req.query;
+
+    if (!user_id) {
+      return res.status(400).json({ error: "Missing user_id" });
+    }
+
+    try {
+      // Check if Module exists
+      const moduleCheck = await pool.query(
+        "SELECT id FROM modules WHERE id = $1",
+        [module_id]
+      );
+      if (moduleCheck.rows.length === 0) {
+        return res.status(404).json({ error: "Module not found" });
+      }
+
+      // Check user progress WITHOUT learning_path_id
+      const userModuleProgressQuery = await pool.query(
+        `SELECT * FROM user_module_progress 
+         WHERE user_id = $1 AND module_id = $2 AND learning_path_id IS NULL`,
+        [user_id, module_id]
+      );
+
+      if (userModuleProgressQuery.rows.length === 0) {
+        return res.status(200).json({
+          status: "not_started",
+          message: "No progress found for this standalone module",
+        });
+      }
+
+      const userModuleProgress = userModuleProgressQuery.rows[0];
+      const status = userModuleProgress.status;
+
+      res.status(200).json({
+        status,
+        message: "Standalone module status fetched successfully",
+      });
+    } catch (err) {
+      console.error("Error getting standalone module status:", err);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  },
+
+  getCompletedStandaloneModules: async (req, res) => {
+    const { user_id } = req.params;
+
+    if (!user_id) {
+      return res
+        .status(400)
+        .json({ error: "Missing required parameter: user_id" });
+    }
+
+    try {
+      const result = await pool.query(
+        `SELECT m.*
+         FROM user_module_progress ump
+         JOIN modules m ON m.id = ump.module_id
+         WHERE ump.user_id = $1 
+           AND ump.status = 'completed'
+           AND ump.learning_path_id IS NULL`,
+        [user_id]
+      );
+
+      if (result.rows.length === 0) {
+        return res
+          .status(404)
+          .json({ error: "No modules found for this user" });
+      }
+
+      res.status(200).json(result.rows);
+    } catch (err) {
+      console.error("Error fetching completed standalone modules:", err);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  },
+
+  getInProgressStandaloneModules: async (req, res) => {
+    const { user_id } = req.params;
+
+    if (!user_id) {
+      return res.status(400).json({ error: "Missing user_id" });
+    }
+
+    try {
+      const result = await pool.query(
+        `SELECT m.*
+         FROM user_module_progress ump
+         JOIN modules m ON m.id = ump.module_id
+         WHERE ump.user_id = $1 
+           AND ump.status = 'in_progress'
+           AND ump.learning_path_id IS NULL
+          ORDER BY ump.started_at DESC`,
+        [user_id]
+      );
+
+      res.status(200).json(result.rows);
+    } catch (err) {
+      console.error("Error fetching in-progress standalone modules:", err);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  },
+
   // Complete
   updateStandaloneModuleCompletion: async (req, res) => {
     const { user_id, module_id } = req.params;
@@ -721,31 +825,54 @@ const modulesController = {
       const assessmentStatus = passed ? "passed" : "failed";
       const moduleStatus = passed ? "completed" : "in_progress";
 
-      // Step 3: Update the user progress based on whether it's a learning path or a standalone module
-      let updateQuery;
-      let updateValues;
+      // Step 3: Calculate the time spent
+      const timeSpentQuery = `
+        SELECT started_at
+        FROM user_module_progress
+        WHERE user_id = $1 AND module_id = $2 AND learning_path_id IS NULL
+      `;
+      const timeSpentResult = await pool.query(timeSpentQuery, [
+        user_id,
+        module_id,
+      ]);
 
-      // Update for standalone modules
-      updateQuery = `
-                UPDATE user_module_progress 
-                SET assessment_status = $1, 
-                    status = $2, 
-                    completed_at = NOW()
-                WHERE user_id = $3 AND module_id = $4 AND learning_path_id IS NULL
-            `;
-      updateValues = [assessmentStatus, moduleStatus, user_id, module_id];
+      if (timeSpentResult.rows.length > 0) {
+        const startedAt = timeSpentResult.rows[0].started_at;
+        const completedAt = new Date(); 
+        const timeSpent = completedAt - startedAt; 
 
-      // Execute the update query
-      await pool.query(updateQuery, updateValues);
+        // Convert milliseconds to seconds (or minutes, as needed)
+        const timeSpentInMinutes = Math.floor(timeSpent / 1000 / 60);
 
-      // Log the interaction in the user_interactions table
+        // Step 4: Update the user progress with status, completed_at, and time_spent
+        const updateQuery = `
+          UPDATE user_module_progress 
+          SET assessment_status = $1, 
+              status = $2, 
+              completed_at = NOW(),
+              time_spent = $3
+          WHERE user_id = $4 AND module_id = $5 AND learning_path_id IS NULL
+        `;
+        const updateValues = [
+          assessmentStatus,
+          moduleStatus,
+          timeSpentInMinutes,
+          user_id,
+          module_id,
+        ];
+
+        // Execute the update query
+        await pool.query(updateQuery, updateValues);
+      }
+
+      // Step 5: Log the interaction in the user_interactions table
       await pool.query(
         `INSERT INTO user_interactions (user_id, module_id, interaction_type)
        VALUES ($1, $2, 'completed_module')`,
         [user_id, module_id]
       );
 
-      // Step 4: Send back the response with updated attempt count
+      // Step 6: Send back the response with updated attempt count
       res.json({
         message: "Assessment submitted successfully",
         score,

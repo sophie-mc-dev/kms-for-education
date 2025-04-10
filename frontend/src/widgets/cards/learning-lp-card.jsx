@@ -10,18 +10,13 @@ export function LearningLPCard({ learningItem }) {
 
   const navigate = useNavigate();
 
-  const cleanedLearningPathId = learningItem.id
-  ? parseInt(learningItem.id.replace("lp_", ""), 10)
-  : null;
-
-
   const handleLearningPathClick = async () => {
     try {
-      await registerLearningPathView(userId, cleanedLearningPathId);
+      await registerLearningPathView(userId, learningItem.id);
     } catch (error) {
       console.error("Error registering learning path view:", error);
     }
-    navigate(`/dashboard/learning/learning-path/${cleanedLearningPathId}`);
+    navigate(`/dashboard/learning/learning-path/${learningItem.id}`);
   };
 
   const registerLearningPathView = async (userId, learningPathId) => {
@@ -54,7 +49,7 @@ export function LearningLPCard({ learningItem }) {
     const getLearningPathStatus = async () => {
       try {
         const response = await fetch(
-          `http://localhost:8080/api/learning-paths/${cleanedLearningPathId}/status?user_id=${userId}`
+          `http://localhost:8080/api/learning-paths/${learningItem.id}/status?user_id=${userId}`
         );
 
         if (!response.ok) {
@@ -68,7 +63,7 @@ export function LearningLPCard({ learningItem }) {
       }
     };
 
-    if (cleanedLearningPathId && userId) {
+    if (learningItem.id && userId) {
       getLearningPathStatus();
     }
   }, [learningItem.id, userId]);

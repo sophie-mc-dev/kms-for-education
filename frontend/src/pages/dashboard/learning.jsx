@@ -55,7 +55,6 @@ export function LearningPage() {
       ...filteredLearningPaths.map((item) => ({
         ...item,
         type: "learningPath",
-        id: `lp_${item.id}`,
       })),
     ];
   }
@@ -65,7 +64,6 @@ export function LearningPage() {
       ...filteredModules.map((item) => ({
         ...item,
         type: "module",
-        id: `md_${item.id}`,
       })),
     ];
   }
@@ -106,7 +104,7 @@ export function LearningPage() {
           <Link to="create-learning-path">
               <Button variant="filled" size="sm" className="flex items-center gap-2">
                 <PlusIcon className="w-4 h-4" />
-                Create Learning Path
+                Create Study Path
               </Button>
               </Link>
         </div>
@@ -132,9 +130,9 @@ export function LearningPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             {sortedItems.map((item) =>
               item.type === "learningPath" ? (
-                <LearningLPCard key={item.id} learningItem={item} />
+                <LearningLPCard key={`lp-${item.id}`} learningItem={item} />
               ) : (
-                <LearningMDCard key={item.id} moduleItem={item} />
+                <LearningMDCard key={`md-${item.id}`} moduleItem={item} />
               )
             )}
           </div>

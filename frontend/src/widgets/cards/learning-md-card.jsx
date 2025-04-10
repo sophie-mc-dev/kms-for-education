@@ -1,29 +1,22 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardBody, Typography, Progress } from "@material-tailwind/react";
-import { ClockIcon } from "@heroicons/react/24/outline";
+import { ClockIcon, CheckCircleIcon } from "@heroicons/react/24/outline";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "@/context/UserContext";
 
 export function LearningMDCard({ moduleItem }) {
   const { userId } = useUser();
   const navigate = useNavigate();
+  const [moduleStatus, setModuleStatus] = useState(null);
 
   const handleModuleClick = async () => {
-    let cleanedModuleId;
-
-    if (typeof moduleItem.id === "string") {
-      cleanedModuleId = parseInt(moduleItem.id.replace("md_", ""), 10);
-    } else {
-      cleanedModuleId = parseInt(moduleItem.id, 10);
-    }
-
     try {
-      await registerModuleView(userId, cleanedModuleId);
+      await registerModuleView(userId, moduleItem.id);
     } catch (error) {
       console.error("Error registering module view:", error);
     }
 
-    navigate(`/dashboard/learning/module/${cleanedModuleId}`);
+    navigate(`/dashboard/learning/module/${moduleItem.id}`);
   };
 
   const registerModuleView = async (userId, moduleId) => {
@@ -52,11 +45,42 @@ export function LearningMDCard({ moduleItem }) {
     }
   };
 
+    useEffect(() => {
+      const getModuleStatus = async () => {
+        try {
+          const response = await fetch(
+            `http://localhost:8080/api/modules/${moduleItem.id}/standalone-status?user_id=${userId}`
+          );
+  
+          if (!response.ok) {
+            throw new Error("Failed to fetch learning path status");
+          }
+  
+          const data = await response.json();
+          setModuleStatus(data.status);
+        } catch (err) {
+          console.error("Error fetching module status:", err);
+        }
+      };
+  
+      if (moduleItem.id && userId) {
+        getModuleStatus();
+      }
+    }, [moduleItem.id, userId]);
+
   return (
     <Card
       className="border border-blue-gray-100 shadow-sm cursor-pointer hover:shadow-md transition h-full min-h-[250px] flex flex-col"
       onClick={handleModuleClick}
     >
+
+      {/* Completed Badge */}
+      {moduleStatus === "completed" && (
+        <div className="absolute top-2 right-2 flex items-center justify-center bg-green-500 text-white rounded-full p-2 shadow-md">
+          <CheckCircleIcon className="h-5 w-5" />
+        </div>
+      )}
+
       <CardBody className="flex flex-col h-full">
         {/* Type Badge */}
         <div className="inline-flex items-center mb-3 px-2 py-1 rounded-md w-fit bg-orange-100">

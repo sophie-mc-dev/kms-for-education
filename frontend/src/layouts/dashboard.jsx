@@ -2,14 +2,18 @@ import React, { useEffect, useState } from "react";
 import { Routes, Route } from "react-router-dom";
 import { Cog6ToothIcon } from "@heroicons/react/24/solid";
 import { IconButton } from "@material-tailwind/react";
-import {
-  Sidenav,
-  DashboardNavbar,
-  Configurator,
-} from "@/widgets/layout";
+import { Sidenav, DashboardNavbar, Configurator } from "@/widgets/layout";
 import { useMaterialTailwindController, setOpenConfigurator } from "@/context";
 import { useUser } from "@/context/UserContext";
-import { ResourceDetails, UploadResource, CreateLearningPath, CreateStudentLearningPath, CreateModule, LearningPathDetails, ModuleDetails } from "@/pages/dashboard";
+import {
+  ResourceDetails,
+  UploadResource,
+  CreateLearningPath,
+  CreateStudyPath,
+  CreateModule,
+  LearningPathDetails,
+  ModuleDetails,
+} from "@/pages/dashboard";
 
 export function Dashboard() {
   const [controller, dispatch] = useMaterialTailwindController();
@@ -59,19 +63,38 @@ export function Dashboard() {
                 <Route key={path} exact path={path} element={element} />
               ))
           )}
-          <Route path="search/resources/:resourceId" element={<ResourceDetails />} />
-          <Route path="resources/resources/:resourceId" element={<ResourceDetails />} />
-          <Route path="learning/module/:moduleId/resources/:resourceId" element={<ResourceDetails />} />
-          <Route path="learning/learning-path/:learningPathId" element={<LearningPathDetails />} />
+          <Route
+            path="search/resources/:resourceId"
+            element={<ResourceDetails />}
+          />
+          <Route
+            path="resources/resources/:resourceId"
+            element={<ResourceDetails />}
+          />
+          <Route
+            path="learning/module/:moduleId/resources/:resourceId"
+            element={<ResourceDetails />}
+          />
+          <Route
+            path="learning/learning-path/:learningPathId"
+            element={<LearningPathDetails />}
+          />
           <Route path="learning/module/:moduleId" element={<ModuleDetails />} />
-          <Route path="resources/upload-resource" element={<UploadResource />} />
-          <Route path="learning/upload-learning-path" element={<CreateLearningPath />} />
-          <Route path="learning/create-learning-path" element={<CreateStudentLearningPath />} />
+          <Route
+            path="resources/upload-resource"
+            element={<UploadResource />}
+          />
+          <Route
+            path="learning/upload-learning-path"
+            element={<CreateLearningPath />}
+          />
+          <Route
+            path="learning/create-learning-path"
+            element={<CreateStudyPath />}
+          />
           <Route path="learning/upload-module" element={<CreateModule />} />
         </Routes>
-        <div className="text-blue-gray-600">
-          {/* <Footer /> */}
-        </div>
+        <div className="text-blue-gray-600">{/* <Footer /> */}</div>
       </div>
     </div>
   );

@@ -1,20 +1,26 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Input, Card, CardBody, Typography } from "@material-tailwind/react";
 import { useUser } from "@/context/UserContext";
 import { ResourceCard } from "@/widgets/cards/";
 import { LearningLPCard } from "@/widgets/cards/";
+import { LearningMDCard } from "@/widgets/cards/";
+import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
 
 export function StudentResources() {
   const { userId } = useUser();
   const [resources, setResources] = useState([]);
   const [bookmarkedResources, setBookmarkedResources] = useState([]);
   const [recentlyViewed, setRecentlyViewed] = useState([]);
+  const [studyPaths, setStudyPaths] = useState([]);
   const [learningPathsInProgress, setLearningPathsInProgress] = useState([]);
   const [learningPathsCompleted, setLearningPathsCompleted] = useState([]);
+  const [modulesInProgress, setModulesInProgress] = useState([]);
+  const [modulesCompleted, setModulesCompleted] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
 
   const collections = [
     "Recently Viewed",
+    "My Study Paths",
     "In Progress",
     "Completed",
     "Bookmarked",
@@ -30,6 +36,22 @@ export function StudentResources() {
       return await response.json();
     } catch (error) {
       console.error("Error fetching resources:", error);
+      return [];
+    }
+  };
+
+  const getStudyPaths = async () => {
+    if (!userId) return [];
+
+    try {
+      const response = await fetch(
+        `http://localhost:8080/api/learning-paths/student/${userId}`
+      );
+      if (!response.ok) throw new Error("Failed to fetch study paths");
+
+      return await response.json();
+    } catch (error) {
+      console.error("Error fetching study paths:", error);
       return [];
     }
   };
@@ -81,6 +103,36 @@ export function StudentResources() {
     }
   };
 
+  const getCompletedModules = async () => {
+    if (!userId) return [];
+    try {
+      const response = await fetch(
+        `http://localhost:8080/api/modules/completed/${userId}`
+      );
+      if (!response.ok) throw new Error("Failed to fetch completed modules");
+
+      return await response.json();
+    } catch (error) {
+      console.error("Error fetching completed modules:", error);
+      return [];
+    }
+  };
+
+  const getInProgressModules = async () => {
+    if (!userId) return [];
+    try {
+      const response = await fetch(
+        `http://localhost:8080/api/modules/in-progress/${userId}`
+      );
+      if (!response.ok) throw new Error("Failed to fetch completed modules");
+
+      return await response.json();
+    } catch (error) {
+      console.error("Error fetching completed modules:", error);
+      return [];
+    }
+  };
+
   // Load recently viewed resources from localStorage
   const getRecentlyViewedResources = () => {
     return JSON.parse(localStorage.getItem("recentlyViewed")) || [];
@@ -92,6 +144,9 @@ export function StudentResources() {
     const bookmarks = await getBookmarkedResources();
     const lpInProgress = await getLearningPathsInProgress();
     const lpCompleted = await getCompletedLearningPaths();
+    const mdInProgress = await getInProgressModules();
+    const mdCompleted = await getCompletedModules();
+    const stdPaths = await getStudyPaths();
     const recentlyViewedData = getRecentlyViewedResources();
 
     const recentResources = recentlyViewedData
@@ -105,36 +160,54 @@ export function StudentResources() {
     setRecentlyViewed(recentResources);
     setLearningPathsInProgress(lpInProgress);
     setLearningPathsCompleted(lpCompleted);
+    setModulesInProgress(mdInProgress);
+    setModulesCompleted(mdCompleted);
+    setStudyPaths(stdPaths);
   };
 
   useEffect(() => {
     fetchData();
   }, []);
 
+  const collectionRefs = useRef({});
+
+  const scrollCollection = (direction, category) => {
+    const collection = collectionRefs.current[category];
+    if (collection) {
+      collection.scrollBy({
+        left: direction === "left" ? -500 : 500,
+        behavior: "smooth",
+      });
+    }
+  };
+
   const filteredResources = (category) => {
+    const matchesSearch = (item) =>
+      item.title?.toLowerCase().includes(searchQuery.toLowerCase());
+
     if (category === "Recently Viewed") {
-      return recentlyViewed.filter((resource) =>
-        resource.title.toLowerCase().includes(searchQuery.toLowerCase())
-      );
+      return recentlyViewed.filter(matchesSearch);
     }
+
+    if (category === "My Study Paths") {
+      return studyPaths.filter(matchesSearch);
+    }
+
     if (category === "Bookmarked") {
-      return bookmarkedResources.filter((resource) =>
-        resource.title.toLowerCase().includes(searchQuery.toLowerCase())
-      );
+      return bookmarkedResources.filter(matchesSearch);
     }
+
     if (category === "In Progress") {
-      return learningPathsInProgress.filter((lp) =>
-        lp.title.toLowerCase().includes(searchQuery.toLowerCase())
-      );
+      const combined = [...learningPathsInProgress, ...modulesInProgress];
+      return combined.filter(matchesSearch);
     }
+
     if (category === "Completed") {
-      return learningPathsCompleted.filter((lp) =>
-        lp.title.toLowerCase().includes(searchQuery.toLowerCase())
-      );
+      const combined = [...learningPathsCompleted, ...modulesCompleted];
+      return combined.filter(matchesSearch);
     }
-    return resources.filter((resource) =>
-      resource.title.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+
+    return resources.filter(matchesSearch);
   };
 
   return (
@@ -145,47 +218,88 @@ export function StudentResources() {
         onChange={(e) => setSearchQuery(e.target.value)}
         className="mb-4"
       />
-
       {collections.map((category) => {
         const filtered =
           category === "Recently Viewed"
-            ? recentlyViewed 
-            : filteredResources(category); 
-
+            ? recentlyViewed
+            : filteredResources(category);
         return (
           <Card
             key={category}
             className="col-span-3 border border-blue-gray-100 flex flex-col"
           >
             <CardBody>
-              <Typography variant="h6" color="blue-gray" className="mb-2">
-                {category}
-              </Typography>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+              <div className="flex mb-2 justify-between items-center">
+                <Typography variant="h6" color="blue-gray" className="mb-2">
+                  {category}
+                </Typography>
+                <div className="flex">
+                  <button
+                    onClick={() => scrollCollection("left", category)}
+                    className="p-2rounded-full transition"
+                  >
+                    <ChevronLeftIcon className="h-5 w-5 text-gray-600" />
+                  </button>
+                  <button
+                    onClick={() => scrollCollection("right", category)}
+                    className="p-2 rounded-full transition"
+                  >
+                    <ChevronRightIcon className="h-5 w-5 text-gray-600" />
+                  </button>
+                </div>
+              </div>
+
+              <div
+                ref={(el) => (collectionRefs.current[category] = el)}
+                className="flex overflow-x-auto gap-4 scroll-smooth"
+              >
                 {filtered.length > 0 ? (
-                  filtered.map((item) =>
-                    category === "In Progress" || category === "Completed" ? (
-                      <LearningLPCard
-                        key={item.learning_path_id}
-                        learningItem={item}
-                      />
-                    ) : category === "Bookmarked" ||
-                      category === "Recently Viewed" ? (
-                      <ResourceCard
-                        key={item.id} // Use the item ID for key
-                        resource={item}
-                        userId={userId}
-                        isBookmarked={bookmarkedResources.some(
-                          (r) => r.id === item.id
-                        )}
-                        setBookmarkedResources={setBookmarkedResources}
-                      />
-                    ) : (
-                      <Typography variant="small" color="gray" key={item.id}>
-                        No data found for this category.
-                      </Typography>
-                    )
-                  )
+                  filtered.map((item) => {
+                    const isLearningPath =
+                      item.hasOwnProperty("learning_path_id");
+                    const isModule = item.hasOwnProperty("id");
+                    const isStudyPath = item.creator_type === "student";
+
+                    return (
+                      <div
+                        className="flex-shrink-0 w-[calc(33.33%-16px)]"
+                        key={item.id}
+                      >
+                        {category === "In Progress" ||
+                        category === "Completed" ? (
+                          isLearningPath ? (
+                            <LearningLPCard
+                              key={`lp-${item.learning_path_id}`}
+                              learningItem={item}
+                            />
+                          ) : isModule ? (
+                            <LearningMDCard
+                              key={`mod-${item.id}`}
+                              moduleItem={item}
+                            />
+                          ) : null
+                        ) : category === "Bookmarked" ||
+                          category === "Recently Viewed" ? (
+                          <ResourceCard
+                            key={item.id}
+                            resource={item}
+                            userId={userId}
+                            isBookmarked={bookmarkedResources.some(
+                              (r) => r.id === item.id
+                            )}
+                            setBookmarkedResources={setBookmarkedResources}
+                          />
+                        ) : category === "My Study Paths" ? (
+                          isStudyPath ? (
+                            <LearningLPCard
+                              key={`lp-${item.id}`}
+                              learningItem={item}
+                            />
+                          ) : null
+                        ) : null}
+                      </div>
+                    );
+                  })
                 ) : (
                   <Typography variant="small" color="gray">
                     No data found.

@@ -33,8 +33,8 @@ const learningPathsController = {
 
       // Insert Learning Path
       const learningPathResult = await client.query(
-        `INSERT INTO learning_paths (title, summary, user_id, visibility, estimated_duration, ects, objectives, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW()) RETURNING id`,
+        `INSERT INTO learning_paths (title, summary, user_id, visibility, estimated_duration, ects, objectives, creator_type, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, 'educator', NOW(), NOW()) RETURNING id`,
         [
           title,
           summary,
@@ -76,6 +76,56 @@ const learningPathsController = {
     }
   },
 
+  addStudyPath: async (req, res) => {
+    const { title, summary, modules, objectives, user_id } = req.body;
+
+    // Validate required fields
+    if (!title || !summary || !objectives || !user_id) {
+      return res.status(400).json({ error: "All fields are required" });
+    }
+
+    const client = await pool.connect();
+
+    try {
+      await client.query("BEGIN");
+
+      // Insert Learning Path
+      const studyPathResult = await client.query(
+        `INSERT INTO learning_paths (title, summary, user_id, objectives, creator_type, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, 'student', NOW(), NOW()) RETURNING id`,
+        [title, summary, user_id, objectives]
+      );
+
+      const learningPathId = studyPathResult.rows[0].id;
+
+      // Insert modules into the learning_path_modules table
+      const insertModuleQuery = `
+    INSERT INTO public.learning_path_modules (learning_path_id, module_id, module_order)
+    VALUES ($1, $2, $3);
+  `;
+      for (const { module_id, module_order } of modules) {
+        await client.query(insertModuleQuery, [
+          learningPathId,
+          module_id,
+          module_order,
+        ]);
+      }
+
+      await client.query("COMMIT");
+
+      res.status(201).json({
+        message: "Study Path created successfully",
+        learningPathId,
+      });
+    } catch (err) {
+      await client.query("ROLLBACK");
+      console.error("Error creating study path:", err);
+      res.status(500).json({ error: "Internal Server Error" });
+    } finally {
+      client.release();
+    }
+  },
+
   removeLearningPath: async (req, res) => {
     const { id } = req.params;
     try {
@@ -99,6 +149,7 @@ const learningPathsController = {
         `SELECT lp.*, u.first_name, u.last_name 
          FROM learning_paths lp
          JOIN users u ON lp.user_id = u.user_id
+         WHERE lp.creator_type = 'educator'
          ORDER BY lp.created_at DESC`
       );
       res.json(result.rows);
@@ -107,6 +158,26 @@ const learningPathsController = {
       res.status(500).json({ error: "Internal Server Error" });
     }
   },
+
+  getLearningPathsByLoggedStudent: async (req, res) => {
+    const { user_id } = req.params;
+
+    try {
+
+      const result = await pool.query(
+        `SELECT lp.*, u.first_name, u.last_name
+         FROM learning_paths lp
+         JOIN users u ON lp.user_id = u.user_id
+         WHERE lp.user_id = $1 AND lp.creator_type = 'student'
+         ORDER BY lp.created_at DESC`,
+        [user_id] 
+      );
+      res.json(result.rows);
+    } catch (err) {
+      console.error("Error fetching learning paths by logged-in user:", err);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  },  
 
   getLearningPathById: async (req, res) => {
     const { id } = req.params;

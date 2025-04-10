@@ -21,14 +21,12 @@ export function LearningPathDetails() {
   const [error, setError] = useState(null);
   const completion = Number(userProgress?.progress_percentage) || 0;
 
-  const cleanedLearningPathId = learningPathId.replace("lp_", "");
-
   // Fetch learning path data
   useEffect(() => {
     const fetchLearningPath = async () => {
       try {
         const response = await fetch(
-          `http://localhost:8080/api/learning-paths/${cleanedLearningPathId}`
+          `http://localhost:8080/api/learning-paths/${learningPathId}`
         );
         if (!response.ok) {
           throw new Error("Failed to fetch learning path");
@@ -50,7 +48,7 @@ export function LearningPathDetails() {
     const fetchModules = async () => {
       try {
         const response = await fetch(
-          `http://localhost:8080/api/learning-paths/${cleanedLearningPathId}/modules`
+          `http://localhost:8080/api/learning-paths/${learningPathId}/modules`
         );
         if (!response.ok) {
           throw new Error("Failed to fetch modules");
@@ -68,13 +66,13 @@ export function LearningPathDetails() {
   // Fetch user progress (only for students)
   useEffect(() => {
     const fetchUserProgress = async () => {
-      if (!cleanedLearningPathId || !userId || userRole === "educator") {
+      if (!learningPathId || !userId || userRole === "educator") {
         return;
       }
 
       try {
         const response = await fetch(
-          `http://localhost:8080/api/learning-paths/${cleanedLearningPathId}/progress/${userId}`
+          `http://localhost:8080/api/learning-paths/${learningPathId}/progress/${userId}`
         );
 
         if (response.status === 404) {
@@ -90,12 +88,12 @@ export function LearningPathDetails() {
     };
 
     fetchUserProgress();
-  }, [cleanedLearningPathId, userId, userRole]);
+  }, [learningPathId, userId, userRole]);
 
   const refreshUserProgress = async () => {
     try {
       const response = await fetch(
-        `http://localhost:8080/api/learning-paths/${cleanedLearningPathId}/progress/${userId}`
+        `http://localhost:8080/api/learning-paths/${learningPathId}/progress/${userId}`
       );
       if (!response.ok) throw new Error("Failed to fetch user progress");
       const data = await response.json();
@@ -109,12 +107,12 @@ export function LearningPathDetails() {
   const handleStartLearningPath = async () => {
     try {
       const response = await fetch(
-        `http://localhost:8080/api/learning-paths/${cleanedLearningPathId}/start`,
+        `http://localhost:8080/api/learning-paths/${learningPathId}/start`,
         {
           method: "POST",
           body: JSON.stringify({
             user_id: userId,
-            learning_path_id: cleanedLearningPathId,
+            learning_path_id: learningPathId,
           }),
           headers: { "Content-Type": "application/json" },
           credentials: "include",
@@ -167,22 +165,27 @@ export function LearningPathDetails() {
           </div>
 
           <div className="mt-4 flex items-center gap-x-6">
-            <div className="flex items-center gap-x-2">
-              <Typography className="text-xs font-semibold uppercase text-blue-gray-500">
-                Estimated Duration:
-              </Typography>
-              <Typography variant="small" className="text-blue-gray-600">
-                {learningPath.estimated_duration} minutes
-              </Typography>
-            </div>
-            <div className="flex items-center gap-x-2">
-              <Typography className="text-xs font-semibold uppercase text-blue-gray-500">
-                ECTS:
-              </Typography>
-              <Typography variant="small" className="text-blue-gray-600">
-                {learningPath.ects}
-              </Typography>
-            </div>
+            {learningPath.estimated_duration && (
+              <div className="flex items-center gap-x-2">
+                <Typography className="text-xs font-semibold uppercase text-blue-gray-500">
+                  Estimated Duration:
+                </Typography>
+                <Typography variant="small" className="text-blue-gray-600">
+                  {learningPath.estimated_duration} minutes
+                </Typography>
+              </div>
+            )}
+
+            {learningPath.ects && (
+              <div className="flex items-center gap-x-2">
+                <Typography className="text-xs font-semibold uppercase text-blue-gray-500">
+                  ECTS:
+                </Typography>
+                <Typography variant="small" className="text-blue-gray-600">
+                  {learningPath.ects}
+                </Typography>
+              </div>
+            )}
           </div>
 
           <div
@@ -229,7 +232,9 @@ export function LearningPathDetails() {
                       modules[index - 1]?.id
                     ))
                 }
-                isPassed={userProgress?.completed_module_ids?.includes(module.id)}
+                isPassed={userProgress?.completed_module_ids?.includes(
+                  module.id
+                )}
                 index={index}
                 refreshUserProgress={refreshUserProgress}
               />

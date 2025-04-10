@@ -8,7 +8,6 @@ import {
   Button,
   Input,
   Typography,
-  Radio,
 } from "@material-tailwind/react";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
@@ -17,15 +16,12 @@ import { DragDropContext, Draggable } from "react-beautiful-dnd";
 import { StrictModeDroppable as Droppable } from "@/helpers/StrictModeDroppable";
 import { useUser } from "@/context/UserContext";
 
-export function CreateLearningPath() {
+export function CreateStudyPath() {
   const { userId } = useUser();
   const [step, setStep] = useState(1);
   const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");
   const [objectives, setObjectives] = useState("");
-  const [visibility, setVisibility] = useState("public");
-  const [estimatedDuration, setEstimatedDuration] = useState("");
-  const [ects, setEcts] = useState("");
   const [modules, setModules] = useState([]);
   const [selectedModules, setSelectedModules] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -57,18 +53,15 @@ export function CreateLearningPath() {
     const learningPathData = {
       title,
       summary,
-      visibility,
-      estimatedDuration: parseInt(estimatedDuration, 10),
-      ects: parseInt(ects, 10),
       modules: modulesWithOrder,
       user_id: userId,
-      objectives: objectives
+      objectives: objectives,
     };
 
     console.log("Submitting Learning Path Data:", learningPathData);
 
     try {
-      const response = await fetch("http://localhost:8080/api/learning-paths", {
+      const response = await fetch("http://localhost:8080/api/learning-paths/study-path", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -92,8 +85,8 @@ export function CreateLearningPath() {
     setSelectedModules(
       (prevSelected) =>
         prevSelected.some((mod) => mod.id === module.id)
-          ? prevSelected.filter((mod) => mod.id !== module.id) // Remove if exists
-          : [...prevSelected, module] // Add if not selected
+          ? prevSelected.filter((mod) => mod.id !== module.id) 
+          : [...prevSelected, module] 
     );
   };
 
@@ -153,43 +146,6 @@ export function CreateLearningPath() {
                 onChange={setObjectives}
                 placeholder="Describe the learning path objectives"
               />
-              <div className="flex gap-4">
-                <Input
-                  label="Estimated Duration (min)"
-                  type="number"
-                  value={estimatedDuration}
-                  onChange={(e) => setEstimatedDuration(e.target.value)}
-                  required
-                />
-                <Input
-                  label="ECTS"
-                  type="number"
-                  value={ects}
-                  onChange={(e) => setEcts(e.target.value)}
-                  required
-                />
-              </div>
-              <div>
-                <Typography className="text-xs font-semibold uppercase text-blue-gray-500">
-                  Visibility:
-                </Typography>
-                <div className="flex gap-4">
-                  <Radio
-                    name="visibility"
-                    value="public"
-                    checked={visibility === "public"}
-                    onChange={() => setVisibility("public")}
-                    label="Public"
-                  />
-                  <Radio
-                    name="visibility"
-                    value="private"
-                    checked={visibility === "private"}
-                    onChange={() => setVisibility("private")}
-                    label="Private"
-                  />
-                </div>
-              </div>
             </div>
           )}
 
@@ -326,4 +282,4 @@ export function CreateLearningPath() {
   );
 }
 
-export default CreateLearningPath;
+export default CreateStudyPath;

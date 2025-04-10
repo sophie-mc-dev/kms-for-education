@@ -20,7 +20,6 @@ export function ModuleDetails() {
   const [assessmentStatus, setAssessmentStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const cleanedModuleId = moduleId.replace("md_", "");
 
   const formattedDate = module?.created_at
     ? new Date(module.created_at).toLocaleString("en-US", {
@@ -38,7 +37,7 @@ export function ModuleDetails() {
     const fetchModule = async () => {
       try {
         const response = await fetch(
-          `http://localhost:8080/api/modules/${cleanedModuleId}`
+          `http://localhost:8080/api/modules/${moduleId}`
         );
         if (!response.ok) {
           throw new Error("Failed to fetch module");
@@ -58,7 +57,7 @@ export function ModuleDetails() {
     const fetchResources = async () => {
       try {
         const response = await fetch(
-          `http://localhost:8080/api/modules/${cleanedModuleId}/resources`
+          `http://localhost:8080/api/modules/${moduleId}/resources`
         );
         if (!response.ok) {
           throw new Error("Failed to fetch resources");
@@ -76,7 +75,7 @@ export function ModuleDetails() {
     const fetchAssessment = async () => {
       try {
         const response = await fetch(
-          `http://localhost:8080/api/modules/${cleanedModuleId}/assessment`
+          `http://localhost:8080/api/modules/${moduleId}/assessment`
         );
         if (!response.ok) throw new Error("Failed to fetch assessment");
         const data = await response.json();
@@ -92,7 +91,7 @@ export function ModuleDetails() {
     const fetchAssessmentStatus = async () => {
       try {
         const response = await fetch(
-          `http://localhost:8080/api/modules/${cleanedModuleId}/assessment/status/${userId}`
+          `http://localhost:8080/api/modules/${moduleId}/assessment/status/${userId}`
         );
         if (!response.ok) {
           setAssessmentStatus("not_started"); 
@@ -105,12 +104,12 @@ export function ModuleDetails() {
       }
     };
     fetchAssessmentStatus();
-  }, [userId, cleanedModuleId]);
+  }, [userId, moduleId]);
 
   const handleStartAssessment = async () => {
     try {
       const response = await fetch(
-        `http://localhost:8080/api/modules/${cleanedModuleId}/assessment/status/${userId}`,
+        `http://localhost:8080/api/modules/${moduleId}/assessment/status/${userId}`,
         {
           method: "PUT",
           headers: {
@@ -199,7 +198,7 @@ export function ModuleDetails() {
           ) : (
             <Assessment
               userId={userId}
-              moduleId={cleanedModuleId}
+              moduleId={moduleId}
               assessment={assessment}
             />
           )}
