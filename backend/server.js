@@ -20,21 +20,21 @@ const { testNeo4jConnection } = require("./db/neo4j"); // Neo4j
 const { syncData } = require("./db/sync_pg_to_neo4j");
 
 async function startServer() {
-  const isPostgresConnected = await testPostgresConnection();
-  const isNeo4jConnected = await testNeo4jConnection();
-
-  if (!isPostgresConnected || !isNeo4jConnected) {
-    console.error("Database connection failed. Exiting...");
+  if (!testPostgresConnection) {
+    console.error("❌ PostgreSQL connection failed. Exiting...");
     process.exit(1);
   }
 
-  try {
-    console.log("🔄 Syncing data from PostgreSQL to Neo4j...");
-    await syncData();
-    console.log("✅ Data sync completed.");
-  } catch (error) {
-    console.error("⚠️ Error syncing data:", error.message);
-    process.exit(1); 
+  if (testNeo4jConnection) {
+    try {
+      console.log("🔄 Syncing data from PostgreSQL to Neo4j...");
+      await syncData();
+      console.log("✅ Data sync completed.");
+    } catch (error) {
+      console.warn("⚠️ Error syncing data to Neo4j:", error.message);
+    }
+  } else {
+    console.warn("⚠️ Neo4j not connected. Continuing without Neo4j features.");
   }
 
   // CORS Configuration
