@@ -5,12 +5,14 @@ import {
   RectangleStackIcon,
   BookOpenIcon,
   ClipboardDocumentCheckIcon,
+  MagnifyingGlassIcon
 } from "@heroicons/react/24/solid";
 import {
   Home,
   Profile,
   EducatorResources,
   LearningPage,
+  Search,
 } from "@/pages/dashboard";
 import { SignIn, SignUp } from "@/pages/auth";
 
@@ -27,6 +29,12 @@ export const educatorRoutes = [
         name: "dashboard",
         path: "/home",
         element: <Home />,
+      },
+      {
+        icon: <MagnifyingGlassIcon {...icon} />,
+        name: "search",
+        path: "/search",
+        element: <Search />,
       },
       {
         icon: <BookOpenIcon {...icon} />,

@@ -43,45 +43,34 @@ const resourcesController = {
           created_by,
           tags,
           visibility,
-          estimated_time,
+          parseInt(estimated_time),
           format,
         ]
       );
 
       const resourceId = result.rows[0].id;
 
-      let r2Url = null;
-      let r2Key = null;
+      let finalUrl = url;
 
       if (req.file) {
         // 2. Upload file to R2
         console.log("File received in uploadToR2:", req.file);
         const uploadResult = await uploadToR2(req.file, resourceId);
 
-        if (!uploadResult || !uploadResult.url || !uploadResult.key) {
+        console.log("Upload result:", uploadResult);
+
+        if (!uploadResult) {
           throw new Error("Failed to upload file to R2");
         }
 
-        r2Url = uploadResult.url;
-        r2Key = uploadResult.key;
+        finalUrl = uploadResult;
       }
 
-      // 3. Convert file to HTML if applicable
-      let htmlContent = null;
-      try {
-        if (r2Url && ["txt", "md", "pdf", "docx"].includes(format)) {
-          htmlContent = await convertToHTML(r2Url, format);
-        }
-      } catch (htmlError) {
-        console.error("Error converting to HTML:", htmlError);
-        htmlContent = null;
-      }
-
-      // 4. Store R2 URL, file key, and HTML content in the database
-      await client.query(
-        `UPDATE resources SET url = $1, file_key = $2, html_content = $3 WHERE id = $4`,
-        [r2Url, r2Key, htmlContent, resourceId]
-      );
+      // 3. Update the URL field in the database if it was changed (either provided or uploaded)
+      await client.query(`UPDATE resources SET url = $1 WHERE id = $2`, [
+        finalUrl,
+        resourceId,
+      ]);
 
       await client.query("COMMIT");
 
@@ -115,7 +104,6 @@ const resourcesController = {
       category,
       created_by,
       tags,
-      file_key,
       visibility,
       estimated_time,
       format,
@@ -138,15 +126,9 @@ const resourcesController = {
         return res.status(404).json({ error: "Resource not found" });
       }
 
-      let r2Url = url; // Keep existing URL if no new file is uploaded
-      let r2Key = file_key;
+      let r2Url = url;
 
       if (req.file) {
-        // Delete old file if a new one is uploaded
-        if (r2Key) {
-          await deleteFromR2(r2Key);
-        }
-
         // Upload new file to R2
         const uploadResult = await uploadToR2(req.file, id);
         if (!uploadResult?.url || !uploadResult?.key) {
@@ -154,7 +136,6 @@ const resourcesController = {
         }
 
         r2Url = uploadResult.url;
-        r2Key = uploadResult.key;
       }
 
       // Dynamic query construction
@@ -174,7 +155,6 @@ const resourcesController = {
         estimated_time,
         format,
         html_content,
-        file_key: r2Key,
       };
 
       for (const [key, value] of Object.entries(updates)) {
@@ -208,8 +188,24 @@ const resourcesController = {
         resource: result.rows[0],
       });
     } catch (error) {
-      console.error("Error updating resource:", error);
-      if (client) await client.query("ROLLBACK");
+      console.error("Error uploading resource:", error);
+
+      if (client) {
+        await client.query("ROLLBACK");
+      }
+
+      if (r2Key) {
+        try {
+          await deleteFromR2(r2Key);
+          console.log(`🧹 Rolled back: Deleted file ${r2Key} from R2`);
+        } catch (deleteError) {
+          console.error(
+            "❌ Failed to delete R2 file after rollback:",
+            deleteError
+          );
+        }
+      }
+
       res.status(500).json({ error: "Internal Server Error" });
     } finally {
       if (client) client.release();
@@ -226,24 +222,8 @@ const resourcesController = {
       client = await pool.connect();
       await client.query("BEGIN");
 
-      // Check if the resource exists and get its R2 file key
-      const existingResource = await client.query(
-        "SELECT file_key FROM resources WHERE id = $1",
-        [id]
-      );
-
       if (existingResource.rows.length === 0) {
         return res.status(404).json({ error: "Resource not found" });
-      }
-
-      const fileKey = existingResource.rows[0].file_key;
-
-      // If the resource has an associated file in R2, delete it
-      if (fileKey) {
-        const deleteResult = await deleteFromR2(fileKey);
-        if (!deleteResult.success) {
-          throw new Error("Failed to delete file from R2");
-        }
       }
 
       // Delete the resource from the database
@@ -280,6 +260,23 @@ const resourcesController = {
       const result = await pool.query(
         "SELECT * FROM resources ORDER BY created_at DESC"
       );
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error fetching resources:", error);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  },
+
+  getResourcesByCreator: async (req, res) => {
+    try {
+      const createdBy = req.user;
+      console.log("REQ USER: ", createdBy);
+
+      const result = await pool.query(
+        "SELECT * FROM resources WHERE created_by = $1 ORDER BY created_at DESC",
+        [createdBy] 
+      );
+
       res.json(result.rows);
     } catch (error) {
       console.error("Error fetching resources:", error);

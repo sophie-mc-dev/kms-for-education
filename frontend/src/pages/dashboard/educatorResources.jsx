@@ -9,22 +9,27 @@ import {
   CardFooter,
 } from "@material-tailwind/react";
 import { CloudArrowUpIcon } from "@heroicons/react/24/solid";
-
 import { Link } from "react-router-dom";
+import { useUser } from "@/context/userContext";
 
 export function EducatorResources() {
   const [searchQuery, setSearchQuery] = useState("");
   const [resources, setResources] = useState([]);
-
+  const { user } = useUser();
+  
   const collections = ["Published"];
 
-  // TODO: get resources published by the educator (add method on backend)
+  // Fetch resources created by the logged-in user
   const getAllResources = async () => {
     try {
-      const response = await fetch("http://localhost:8080/api/resources");
-      if (!response.ok) throw new Error("Failed to fetch resources");
-
-      return await response.json();
+      const createdBy = `${user.first_name} ${user.last_name}`;
+      
+      const response = await fetch("http://localhost:8080/api/resources/bycreator");
+      if (!response.ok) {
+        throw new Error("Failed to fetch resources");
+      }
+      const data = await response.json();
+      return data;
     } catch (error) {
       console.error("Error fetching resources:", error);
       return [];
@@ -32,13 +37,11 @@ export function EducatorResources() {
   };
 
   useEffect(() => {
-    const fetchData = async () => {
-      const allResources = await getAllResources();
-
-      setResources(allResources);
+    const fetchResources = async () => {
+      const data = await getAllResources();
+      setResources(data);
     };
-
-    fetchData();
+    fetchResources();
   }, []);
 
   // Filter function

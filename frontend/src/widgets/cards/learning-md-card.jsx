@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { useUser } from "@/context/UserContext";
 
 export function LearningMDCard({ moduleItem }) {
-  const { userId } = useUser();
+  const { userId, userRole } = useUser();
   const navigate = useNavigate();
   const [moduleStatus, setModuleStatus] = useState(null);
 
@@ -46,6 +46,10 @@ export function LearningMDCard({ moduleItem }) {
   };
 
     useEffect(() => {
+      if (userRole === "educator" || !learningItem.id || !userId) {
+        return;
+      }
+      
       const getModuleStatus = async () => {
         try {
           const response = await fetch(

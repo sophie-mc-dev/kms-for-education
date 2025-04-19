@@ -9,6 +9,8 @@ router.post("/upload", upload.single('file'), resourcesController.uploadResource
 
 router.get("/", resourcesController.getAllResources);
 
+router.get("/bycreator", resourcesController.getResourcesByCreator);
+
 router.get("/:id", resourcesController.getResourceById);
 
 router.put("/:id", resourcesController.updateResource);

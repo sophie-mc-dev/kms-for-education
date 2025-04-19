@@ -10,6 +10,7 @@ import { BookmarkIcon } from "@heroicons/react/24/outline";
 import { BookmarkIcon as SolidBookmarkIcon } from "@heroicons/react/24/solid";
 import { useNavigate } from "react-router-dom";
 import { resourceTypes } from "@/data/resource-types.jsx";
+import { useUser } from "@/context/UserContext";
 
 const colorMap = {
   gray: { bg: "bg-gray-100", text: "text-gray-600" },
@@ -24,6 +25,7 @@ const colorMap = {
 };
 
 export function ResourceCard({ resource, userId }) {
+  const { userRole } = useUser();
   const navigate = useNavigate();
   const [bookmarked, setBookmarked] = useState(false);
 
@@ -38,6 +40,10 @@ export function ResourceCard({ resource, userId }) {
   // Check if the resource is already bookmarked when the component mounts
   useEffect(() => {
     if (!userId || !resource.id) return;
+
+    if (userRole === "educator") {
+      return;
+    }
 
     const fetchBookmarks = async () => {
       try {
@@ -149,22 +155,24 @@ export function ResourceCard({ resource, userId }) {
       onClick={handleResourceClick}
     >
       {/* Bookmark Icon */}
-      <div
-        className="absolute top-2 right-2"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <IconButton
-          variant="text"
-          className="text-blue-gray-500 hover:text-blue-gray-700"
-          onClick={handleBookmarkClick}
+      {userRole !== "educator" && (
+        <div
+          className="absolute top-2 right-2"
+          onClick={(e) => e.stopPropagation()}
         >
-          {bookmarked ? (
-            <SolidBookmarkIcon className="h-6 w-6 text-blue-gray-700" />
-          ) : (
-            <BookmarkIcon className="h-6 w-6" />
-          )}
-        </IconButton>
-      </div>
+          <IconButton
+            variant="text"
+            className="text-blue-gray-500 hover:text-blue-gray-700"
+            onClick={handleBookmarkClick}
+          >
+            {bookmarked ? (
+              <SolidBookmarkIcon className="h-6 w-6 text-blue-gray-700" />
+            ) : (
+              <BookmarkIcon className="h-6 w-6" />
+            )}
+          </IconButton>
+        </div>
+      )}
 
       <CardBody className="flex flex-col h-full">
         {/* Resource Type */}

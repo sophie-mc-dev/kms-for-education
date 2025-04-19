@@ -64,6 +64,8 @@ export function CreateModule() {
         body: JSON.stringify({
           title,
           summary,
+          objectives,
+          ects,
           estimated_duration: Number(estimatedDuration),
           assessment: {
             passing_percentage: passingPercentage,
@@ -74,7 +76,7 @@ export function CreateModule() {
           resources: selectedResources.map((res) => res.id),
         }),
       });
-      console.log("Submitting Learning Path Data:", response);
+      console.log("Submitting MODULE Data:", response);
       if (response.ok) navigate("/learning");
       else alert("Error creating module");
     } catch (error) {

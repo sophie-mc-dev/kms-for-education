@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { useUser } from "@/context/UserContext";
 
 export function LearningLPCard({ learningItem }) {
-  const { userId } = useUser();
+  const { userId, userRole } = useUser();
   const [learningPathStatus, setLearningPathStatus] = useState(null);
 
   const navigate = useNavigate();
@@ -46,6 +46,10 @@ export function LearningLPCard({ learningItem }) {
   };
 
   useEffect(() => {
+    if (userRole === "educator" || !learningItem.id || !userId) {
+      return;
+    }
+
     const getLearningPathStatus = async () => {
       try {
         const response = await fetch(

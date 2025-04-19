@@ -71,9 +71,9 @@ export function UploadResource() {
   const handleKeyDown = (e) => {
     if ((e.key === "Enter" || e.key === " ") && tagInput.trim() !== "") {
       e.preventDefault();
-      const newTag = tagInput.trim();
+      const newTag = tagInput.trim().toLowerCase();
 
-      if (!formData.tags.includes(newTag)) {
+      if (!formData.tags.map((t) => t.toLowerCase()).includes(newTag)) {
         setFormData((prev) => ({ ...prev, tags: [...prev.tags, newTag] }));
       }
       setTagInput("");
@@ -92,7 +92,7 @@ export function UploadResource() {
 
     if (!formData.title.trim()) newErrors.title = "Title is required";
     if (!formData.type) newErrors.type = "Type is required";
-    if (!formData.category) newErrors.category = "Category is required";
+    if (!formData.category.length) newErrors.category = "Category is required";
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -117,8 +117,6 @@ export function UploadResource() {
 
     const createdBy = `${user.first_name} ${user.last_name}`;
     const formDataToSend = new FormData();
-
-    console.log(user);
 
     // Append text fields
     formDataToSend.append("title", formData.title);
@@ -161,7 +159,7 @@ export function UploadResource() {
         title: "",
         description: "",
         url: "",
-        type: "",
+        type: null,
         category: [],
         tags: [],
         file: null,
