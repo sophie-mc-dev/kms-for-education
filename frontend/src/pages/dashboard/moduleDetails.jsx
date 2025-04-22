@@ -94,7 +94,7 @@ export function ModuleDetails() {
           `http://localhost:8080/api/modules/${moduleId}/assessment/status/${userId}`
         );
         if (!response.ok) {
-          setAssessmentStatus("not_started"); 
+          setAssessmentStatus("not_started");
         } else {
           const data = await response.json();
           setAssessmentStatus(data.assessmentStatus || "not_started");
@@ -163,9 +163,21 @@ export function ModuleDetails() {
             </div>
           </div>
           <div className="mb-6 font-normal text-blue-gray-900">
+            <Typography variant="h6" color="blue-gray" className="mb-3">
+              Summary
+            </Typography>
             <div
               className="[&>ul]:list-disc [&>ul]:pl-5 [&>ol]:list-decimal"
               dangerouslySetInnerHTML={{ __html: module.summary }}
+            ></div>
+          </div>
+          <div className="mb-6 font-normal text-blue-gray-900">
+            <Typography variant="h6" color="blue-gray" className="mb-3">
+              Objectives
+            </Typography>
+            <div
+              className="[&>ul]:list-disc [&>ul]:pl-5 [&>ol]:list-decimal"
+              dangerouslySetInnerHTML={{ __html: module.objectives }}
             ></div>
           </div>
           <div className="border-t my-4"></div>
@@ -193,7 +205,7 @@ export function ModuleDetails() {
               color="blue"
               className="mb-4"
             >
-              Start Assessment 
+              Start Assessment
             </Button>
           ) : (
             <Assessment

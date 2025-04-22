@@ -79,7 +79,7 @@ export function LearningPage() {
             <PopoverHandler>
               <Button variant="filled" size="sm" className="flex items-center gap-2">
                 <PlusIcon className="w-4 h-4" />
-                Create
+                Add
               </Button>
             </PopoverHandler>
             <PopoverContent className="p-2 border rounded-lg shadow-lg bg-white w-48">

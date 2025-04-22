@@ -188,10 +188,24 @@ export function LearningPathDetails() {
             )}
           </div>
 
-          <div
-            className="[&>ul]:list-disc [&>ul]:pl-5 [&>ol]:list-decimal mt-2 text-blue-gray-700"
-            dangerouslySetInnerHTML={{ __html: learningPath.summary }}
-          ></div>
+          <div className="mb-6 font-normal text-blue-gray-900 mt-4">
+            <Typography variant="h6" color="blue-gray" className="mb-3">
+              Summary
+            </Typography>
+            <div
+              className="[&>ul]:list-disc [&>ul]:pl-5 [&>ol]:list-decimal mt-2 text-blue-gray-700"
+              dangerouslySetInnerHTML={{ __html: learningPath.summary }}
+            ></div>
+          </div>
+          <div className="mb-6 font-normal text-blue-gray-900">
+            <Typography variant="h6" color="blue-gray" className="mb-3">
+              Objectives
+            </Typography>
+            <div
+              className="[&>ul]:list-disc [&>ul]:pl-5 [&>ul>li>ul]:list-disc [&>ul>li>ul]:pl-5 [&>ol]:list-decimal [&>ol>li>ol]:list-decimal [&>ol>li>ol]:pl-5 mt-2 text-blue-gray-700"
+              dangerouslySetInnerHTML={{ __html: learningPath.objectives }}
+            ></div>
+          </div>
 
           {/* Progress Bar Section */}
           {userProgress && (

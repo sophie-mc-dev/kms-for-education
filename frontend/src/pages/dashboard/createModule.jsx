@@ -98,15 +98,25 @@ export function CreateModule() {
 
   const handleQuestionCountChange = (event) => {
     const count = parseInt(event.target.value);
-    if (count <= 5 && count >= 1) {
+    if (count <= 20 && count >= 1) {
       setQuestionCount(count);
-      setQuestions(
-        Array.from({ length: count }, () => ({
-          question_text: "",
-          options: ["", "", "", ""],
-          correct_answer: null,
-        }))
-      );
+      setQuestions((prevQuestions) => {
+        const newQuestions = [...prevQuestions];
+
+        if (count > newQuestions.length) {
+          const additional = Array.from(
+            { length: count - newQuestions.length },
+            () => ({
+              question_text: "",
+              options: ["", "", "", ""],
+              correct_answer: null,
+            })
+          );
+          return [...newQuestions, ...additional];
+        } else {
+          return newQuestions.slice(0, count);
+        }
+      });
     }
   };
 
@@ -132,9 +142,7 @@ export function CreateModule() {
                 )
                 .join("")}
             </answers>
-            <solution>${correctAnswer.join(
-              ","
-            )}</solution>
+            <solution>${correctAnswer.join(",")}</solution>
           </question>`;
           })
           .join("")}
@@ -163,41 +171,47 @@ export function CreateModule() {
     const file = event.target.files[0];
     if (file) {
       const reader = new FileReader();
-  
+
       reader.onload = (e) => {
-        if ((type === "xml" && (file.type === "application/xml" || file.type === "text/xml"))) {
+        if (
+          type === "xml" &&
+          (file.type === "application/xml" || file.type === "text/xml")
+        ) {
           const xmlData = e.target.result;
-  
+
           const parser = new DOMParser();
           const xmlDoc = parser.parseFromString(xmlData, "text/xml");
-  
+
           const questionsXml = xmlDoc.getElementsByTagName("question");
-  
+
           const newQuestions = Array.from(questionsXml).map((question) => {
-            const question_text = question.getElementsByTagName("question_text")[0]?.textContent;
-            const options = Array.from(question.getElementsByTagName("answer")).map((opt) => opt.textContent);
+            const question_text =
+              question.getElementsByTagName("question_text")[0]?.textContent;
+            const options = Array.from(
+              question.getElementsByTagName("answer")
+            ).map((opt) => opt.textContent);
             const correct_answer = parseInt(
               question.getElementsByTagName("solution")[0]?.textContent
             );
-  
+
             return {
               question_text,
               options,
               correct_answer,
             };
           });
-  
+
           setQuestions(newQuestions);
         } else if (type === "json" && file.type === "application/json") {
           const jsonData = JSON.parse(e.target.result);
           setQuestions(jsonData);
         }
       };
-  
+
       reader.readAsText(file);
     }
   };
-  
+
   // Validate required fields for each step
   const canGoToNextStep = () => {
     if (step === 1) {
@@ -459,7 +473,7 @@ export function CreateModule() {
                   value={questionCount}
                   onChange={handleQuestionCountChange}
                   min="3"
-                  max="5"
+                  max="20"
                   required
                 />
               </div>

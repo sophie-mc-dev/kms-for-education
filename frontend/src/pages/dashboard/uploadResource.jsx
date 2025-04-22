@@ -34,7 +34,7 @@ export function UploadResource() {
     title: "",
     description: "",
     url: "",
-    type: "",
+    type: null,
     category: [],
     tags: [],
     file: null,
@@ -125,7 +125,7 @@ export function UploadResource() {
     formDataToSend.append("type", formData.type);
     formDataToSend.append("created_by", createdBy);
     formDataToSend.append("visibility", formData.visibility);
-    formDataToSend.append("estimatedTime", Number(formData.estimatedTime));
+    formDataToSend.append("estimated_time", Number(formData.estimatedTime));
     if (formData.file) {
       formDataToSend.append("file", formData.file);
     }
@@ -262,12 +262,12 @@ export function UploadResource() {
               <Select
                 name="categories"
                 value={resourceCategories.filter((c) =>
-                  formData.category.includes(c.value)
+                  formData.category.includes(c.label)
                 )}
                 onChange={(selectedOptions) =>
                   setFormData((prev) => ({
                     ...prev,
-                    category: selectedOptions.map((option) => option.value),
+                    category: selectedOptions.map((option) => option.label),
                   }))
                 }
                 options={resourceCategories}
