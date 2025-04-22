@@ -30,7 +30,7 @@ const syncData = async () => {
 
     // **Sync Resources**
     const resources = await pgClient.query(
-      "SELECT id, title, description, category, type FROM resources"
+      "SELECT id, title, description, category, tags, type FROM resources"
     );
 
     for (let resource of resources.rows) {
@@ -38,17 +38,21 @@ const syncData = async () => {
       const category = Array.isArray(resource.category)
         ? resource.category
         : [];
+      const tags = Array.isArray(resource.tags)
+        ? resource.tags
+        : [];
 
       // Merge Resource node
       await neoSession.run(
         `MERGE (r:Resource {id: $id})
-         SET r.title = $title, r.description = $description, r.type = $type, r.category = $category`,
+         SET r.title = $title, r.description = $description, r.type = $type, r.category = $category, r.tags = $tags`,
         {
           id: resource.id.toString(),
           title: resource.title,
           description: resource.description,
           type: resource.type,
           category: resource.category,
+          tags: resource.tags,
         }
       );
 
@@ -63,6 +67,19 @@ const syncData = async () => {
             MERGE (r)-[:HAS_CATEGORY]->(c)
             `,
             { id: resource.id.toString(), cat }
+          );
+        }
+      }
+      for (let tag of tags) {
+        tag = tag.trim();
+        if (tag) {
+          await neoSession.run(
+            `
+            MATCH (r:Resource {id: $id})
+            MERGE (t:Tag {name: $tag})
+            MERGE (r)-[:HAS_TAG]->(t)
+            `,
+            { id: resource.id.toString(), tag }
           );
         }
       }

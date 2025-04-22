@@ -10,6 +10,7 @@ const bookmarksRoutes = require("./routes/bookmarksRoutes");
 const learningPathsRoutes = require("./routes/learningPathsRoutes");
 const modulesRoutes = require("./routes/modulesRoutes");
 const userInteractionsRoutes = require("./routes/userInteractionsRoutes");
+const recommendationRoutes = require("./routes/recommendationsRoutes");
 const cors = require("cors");
 
 const app = express();
@@ -75,6 +76,7 @@ async function startServer() {
   app.use("/api/user-interactions", userInteractionsRoutes);
   app.use("/api/learning-paths", learningPathsRoutes);
   app.use("/api/modules", modulesRoutes);
+  app.use("/api/recommendations", recommendationRoutes);
 
   app.get("/", (req, res) => {
     res.send("API is running...");
