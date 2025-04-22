@@ -46,7 +46,7 @@ export function LearningMDCard({ moduleItem }) {
   };
 
     useEffect(() => {
-      if (userRole === "educator" || !learningItem.id || !userId) {
+      if (userRole === "educator" || !moduleItem.id || !userId) {
         return;
       }
       

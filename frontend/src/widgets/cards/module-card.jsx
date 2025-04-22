@@ -306,6 +306,7 @@ export function ModuleCard({
                     moduleId={module.id}
                     learningPathId={learningPathId}
                     userId={userId}
+                    onModuleCompleted={refreshUserProgress}
                   />
                 )}
               </div>

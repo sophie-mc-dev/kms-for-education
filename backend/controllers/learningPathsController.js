@@ -163,21 +163,20 @@ const learningPathsController = {
     const { user_id } = req.params;
 
     try {
-
       const result = await pool.query(
         `SELECT lp.*, u.first_name, u.last_name
          FROM learning_paths lp
          JOIN users u ON lp.user_id = u.user_id
          WHERE lp.user_id = $1 AND lp.creator_type = 'student'
          ORDER BY lp.created_at DESC`,
-        [user_id] 
+        [user_id]
       );
       res.json(result.rows);
     } catch (err) {
       console.error("Error fetching learning paths by logged-in user:", err);
       res.status(500).json({ error: "Internal Server Error" });
     }
-  },  
+  },
 
   getLearningPathById: async (req, res) => {
     const { id } = req.params;
@@ -524,6 +523,15 @@ const learningPathsController = {
       // Execute the update query for module progress
       await pool.query(updateQuery, updateValues);
 
+      // Log module completion if passed
+      if (passed) {
+        await pool.query(
+          `INSERT INTO user_interactions (user_id, module_id, learning_path_id, interaction_type)
+     VALUES ($1, $2, $3, 'completed_module')`,
+          [user_id, module_id, learning_path_id]
+        );
+      }
+
       // Step 4: Fetch all the modules in the learning path
       const learningPathModulesResult = await pool.query(
         `SELECT module_id FROM learning_path_modules WHERE learning_path_id = $1`,
@@ -566,6 +574,13 @@ const learningPathsController = {
            WHERE user_id = $1 AND learning_path_id = $2`,
           [user_id, learning_path_id]
         );
+
+        // Log the interaction in the user_interactions table
+        await pool.query(
+          `INSERT INTO user_interactions (user_id, learning_path_id, interaction_type)
+          VALUES ($1, $2, 'completed_learning_path')`,
+          [user_id, learning_path_id]
+        );
       } else {
         // If there are still locked modules, update the status as in-progress
         currentModuleId =
@@ -588,13 +603,6 @@ const learningPathsController = {
           user_id,
           learning_path_id,
         ]
-      );
-
-      // Log the interaction in the user_interactions table
-      await pool.query(
-        `INSERT INTO user_interactions (user_id, learning_path_id, interaction_type)
-       VALUES ($1, $2, 'completed_learning_path')`,
-        [user_id, learning_path_id]
       );
 
       // Step 8: Send response back

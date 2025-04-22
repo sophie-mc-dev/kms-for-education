@@ -6,12 +6,14 @@ export function Assessment({
   moduleId,
   assessment = { questions: [] },
   learningPathId = null,
+  onModuleCompleted = () => {},
 }) {
   const [userAnswers, setUserAnswers] = useState({});
   const [showFeedback, setShowFeedback] = useState(false);
   const [score, setScore] = useState(null);
   const [attempts, setAttempts] = useState(0);
   const [isAnswerChanged, setIsAnswerChanged] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     const fetchAttempts = async () => {
@@ -44,6 +46,8 @@ export function Assessment({
   };
 
   const checkAnswers = async () => {
+    if (isSubmitting) return;
+
     if (!assessment || !assessment.questions || !assessment.solution) {
       console.error("Invalid assessment data.");
       return;
@@ -88,13 +92,15 @@ export function Assessment({
       passed: passed,
       num_attempts: attempts + 1,
       answers: JSON.stringify(answers),
-      learning_path_id: parseInt(learningPathId, 10)
+      learning_path_id: parseInt(learningPathId, 10),
     };
 
     // Change the API endpoint dynamically (for standalone modules or modules in a LP)
     const endpoint = learningPathId
       ? `http://localhost:8080/api/learning-paths/${learningPathId}/modules/${moduleId}/complete/${userId}`
       : `http://localhost:8080/api/modules/${moduleId}/complete/${userId}?learning_path_id=${learningPathId}`;
+
+    setIsSubmitting(true);
 
     try {
       const submitResponse = await fetch(endpoint, {
@@ -105,11 +111,17 @@ export function Assessment({
         body: JSON.stringify(assessmentResults),
       });
 
-      console.log(assessmentResults)
+      console.log(assessmentResults);
 
       if (!submitResponse.ok) {
         throw new Error("Failed to save assessment results");
       }
+
+      onModuleCompleted({
+        moduleId,
+        score: scorePercentage,
+        passed,
+      });
 
       console.log("Assessment results saved successfully.");
 
@@ -198,8 +210,8 @@ export function Assessment({
 
       {/* Check Answers Button */}
       {assessment && (
-        <Button onClick={checkAnswers} className="mt-4">
-          Check Answers
+        <Button onClick={checkAnswers} className="mt-4" disabled={isSubmitting}>
+          {isSubmitting ? "Checking..." : "Check Answers"}
         </Button>
       )}
 
