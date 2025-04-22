@@ -35,17 +35,20 @@ const syncData = async () => {
 
     for (let resource of resources.rows) {
       // **Check if category is an array** (PostgreSQL should return it as an array)
-      const category = Array.isArray(resource.category) ? resource.category : [];
+      const category = Array.isArray(resource.category)
+        ? resource.category
+        : [];
 
       // Merge Resource node
       await neoSession.run(
         `MERGE (r:Resource {id: $id})
-         SET r.title = $title, r.description = $description, r.type = $type`,
+         SET r.title = $title, r.description = $description, r.type = $type, r.category = $category`,
         {
           id: resource.id.toString(),
           title: resource.title,
           description: resource.description,
           type: resource.type,
+          category: resource.category,
         }
       );
 
@@ -54,9 +57,11 @@ const syncData = async () => {
         cat = cat.trim();
         if (cat) {
           await neoSession.run(
-            `MERGE (c:Category {name: $cat})
-             MERGE (r:Resource {id: $id})
-             MERGE (r)-[:HAS_CATEGORY]->(c)`,
+            `
+            MATCH (r:Resource {id: $id})
+            MERGE (c:Category {name: $cat})
+            MERGE (r)-[:HAS_CATEGORY]->(c)
+            `,
             { id: resource.id.toString(), cat }
           );
         }
@@ -65,9 +70,11 @@ const syncData = async () => {
       // **Sync Resource Type**: Ensure types are also properly connected
       if (resource.type) {
         await neoSession.run(
-          `MERGE (rt:ResourceType {name: $type})
-           MERGE (r:Resource {id: $id})
-           MERGE (r)-[:OF_TYPE]->(rt)`,
+          `
+          MATCH (r:Resource {id: $id})
+          MERGE (rt:ResourceType {name: $type})
+          MERGE (r)-[:OF_TYPE]->(rt)
+           `,
           { id: resource.id.toString(), type: resource.type }
         );
       }
@@ -75,32 +82,36 @@ const syncData = async () => {
 
     // Sync Modules
     const modules = await pgClient.query(
-      "SELECT id, title, summary, estimated_duration FROM modules"
+      "SELECT id, title, summary, objectives, estimated_duration, ects FROM modules"
     );
     for (let module of modules.rows) {
       await neoSession.run(
-        "MERGE (m:Module {id: $id}) SET m.title = $title, m.summary = $summary, m.estimated_duration = $estimated_duration",
+        "MERGE (m:Module {id: $id}) SET m.title = $title, m.summary = $summary, m.objectives = $objectives, m.estimated_duration = $estimated_duration, m.ects = $ects",
         {
           id: module.id.toString(),
           title: module.title,
           summary: module.summary,
+          objectives: module.objectives,
           estimated_duration: module.estimated_duration,
+          ects: module.ects,
         }
       );
     }
 
     // Sync Learning Paths
     const learningPaths = await pgClient.query(
-      "SELECT id, title, summary, difficulty_level FROM learning_paths"
+      "SELECT id, title, summary, objectives, difficulty_level, estimated_duration FROM learning_paths"
     );
     for (let lp of learningPaths.rows) {
       await neoSession.run(
-        "MERGE (lp:LearningPath {id: $id}) SET lp.title = $title, lp.summary = $summary, lp.difficulty_level = $difficulty_level",
+        "MERGE (lp:LearningPath {id: $id}) SET lp.title = $title, lp.summary = $summary, lp.objectives = $objectives, lp.difficulty_level = $difficulty_level, lp.estimated_duration = $estimated_duration",
         {
           id: lp.id.toString(),
           title: lp.title,
           summary: lp.summary,
+          objectives: lp.objectives,
           difficulty_level: lp.difficulty_level,
+          estimated_duration: lp.estimated_duration,
         }
       );
     }
@@ -111,7 +122,7 @@ const syncData = async () => {
     );
     for (let mr of moduleResources.rows) {
       await neoSession.run(
-        "MATCH (m:Module {id: $module_id}), (r:Resource {id: $resource_id}) MERGE (m)-[:CONTAINS]->(r)",
+        "MATCH (m:Module {id: $module_id}), (r:Resource {id: $resource_id}) MERGE (m)-[:HAS_RESOURCE]->(r)",
         {
           module_id: mr.module_id.toString(),
           resource_id: mr.resource_id.toString(),
@@ -125,7 +136,7 @@ const syncData = async () => {
     );
     for (let lpm of learningPathModules.rows) {
       await neoSession.run(
-        "MATCH (lp:LearningPath {id: $learning_path_id}), (m:Module {id: $module_id}) MERGE (lp)-[:INCLUDES]->(m)",
+        "MATCH (lp:LearningPath {id: $learning_path_id}), (m:Module {id: $module_id}) MERGE (lp)-[:HAS_MODULE]->(m)",
         {
           learning_path_id: lpm.learning_path_id.toString(),
           module_id: lpm.module_id.toString(),
@@ -147,10 +158,9 @@ const syncData = async () => {
       );
     }
 
-    // Sync User Interactions
-    // Sync User Interactions
+    // Sync User Interactions with weights
     const userInteractions = await pgClient.query(
-      "SELECT user_id, resource_id, module_id, learning_path_id, interaction_type FROM user_interactions"
+      "SELECT user_id, resource_id, module_id, learning_path_id, interaction_type, timestamp FROM user_interactions"
     );
 
     for (let interaction of userInteractions.rows) {
@@ -158,6 +168,15 @@ const syncData = async () => {
       if (interaction.user_id && interaction.interaction_type) {
         let query = "MATCH (u:User {id: $user_id})";
         let params = { user_id: interaction.user_id.toString() };
+        params.timestamp = interaction.timestamp
+          ? interaction.timestamp.toISOString()
+          : null;
+
+        // Calculate the interaction weight
+        let weight = calculateInteractionWeight(
+          interaction.interaction_type,
+          interaction.timestamp
+        );
 
         // Only add resource_id match if resource_id is not null
         if (interaction.resource_id) {
@@ -183,7 +202,7 @@ const syncData = async () => {
           interaction.module_id ||
           interaction.learning_path_id
         ) {
-          query += " MERGE (u)-[:INTERACTED_WITH {type: $interaction_type}]->";
+          query += ` CREATE (u)-[:${interaction.interaction_type.toUpperCase()} {timestamp: datetime($timestamp), weight: $weight}]->`;
 
           // Add the appropriate node relationship based on the available ids
           if (interaction.resource_id) {
@@ -198,6 +217,7 @@ const syncData = async () => {
           await neoSession.run(query, {
             ...params,
             interaction_type: interaction.interaction_type,
+            weight: weight,
           });
         } else {
           console.log(
@@ -223,6 +243,38 @@ const syncData = async () => {
     await neoSession.close();
   }
 };
+
+function calculateInteractionWeight(interactionType, timestamp) {
+  // Set a base weight depending on interaction type
+  let baseWeight = 0;
+  
+  switch (interactionType) {
+    case 'viewed_resource':
+      baseWeight = 1;  // Viewing a resource has a lower weight
+      break;
+    case 'bookmarked':
+      baseWeight = 2;  // Bookmarking a resource might indicate higher interest
+      break;
+    case 'completed_module':
+      baseWeight = 5;  // Completing a module or resource is a strong indicator of engagement
+      break;
+    default:
+      baseWeight = 1;
+      break;
+  }
+
+  // Factor in recency: recent interactions get higher weights
+  const now = new Date();
+  const interactionDate = new Date(timestamp);
+  const timeDiff = now - interactionDate; // time difference in milliseconds
+  const daysDiff = timeDiff / (1000 * 3600 * 24); // Convert to days
+  
+  // A simple weight decay model: recency increases weight
+  const recencyFactor = Math.max(1, 10 - daysDiff);  // Max decay weight factor is 10 (recent interactions)
+
+  return baseWeight * recencyFactor; // Weight adjusted by recency
+}
+
 
 // syncData();
 module.exports = { syncData };
