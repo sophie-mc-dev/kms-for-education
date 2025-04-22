@@ -158,70 +158,87 @@ const syncData = async () => {
       );
     }
 
-    // Sync User Interactions with weights
+    // Sync User Interactions using Interaction nodes
     const userInteractions = await pgClient.query(
       "SELECT user_id, resource_id, module_id, learning_path_id, interaction_type, timestamp FROM user_interactions"
     );
 
     for (let interaction of userInteractions.rows) {
-      // Ensure that user_id and interaction_type are not null/undefined
       if (interaction.user_id && interaction.interaction_type) {
-        let query = "MATCH (u:User {id: $user_id})";
-        let params = { user_id: interaction.user_id.toString() };
-        params.timestamp = interaction.timestamp
+        const timestamp = interaction.timestamp
           ? interaction.timestamp.toISOString()
-          : null;
+          : new Date().toISOString();
 
-        // Calculate the interaction weight
-        let weight = calculateInteractionWeight(
+        const weight = calculateInteractionWeight(
           interaction.interaction_type,
           interaction.timestamp
         );
 
-        // Only add resource_id match if resource_id is not null
-        if (interaction.resource_id) {
-          query += ", (r:Resource {id: $resource_id})";
-          params.resource_id = interaction.resource_id.toString();
-        }
+        const interactionId = `${interaction.user_id}_${interaction.interaction_type}_${timestamp}`;
 
-        // Only add module_id match if module_id is not null
-        if (interaction.module_id) {
-          query += ", (m:Module {id: $module_id})";
-          params.module_id = interaction.module_id.toString();
-        }
-
-        // Only add learning_path_id match if learning_path_id is not null
-        if (interaction.learning_path_id) {
-          query += ", (lp:LearningPath {id: $learning_path_id})";
-          params.learning_path_id = interaction.learning_path_id.toString();
-        }
-
-        // Ensure we have an interaction with either resource, module, or learning path
-        if (
-          interaction.resource_id ||
-          interaction.module_id ||
-          interaction.learning_path_id
-        ) {
-          query += ` CREATE (u)-[:${interaction.interaction_type.toUpperCase()} {timestamp: datetime($timestamp), weight: $weight}]->`;
-
-          // Add the appropriate node relationship based on the available ids
-          if (interaction.resource_id) {
-            query += "(r)";
-          } else if (interaction.module_id) {
-            query += "(m)";
-          } else if (interaction.learning_path_id) {
-            query += "(lp)";
+        // Create Interaction node
+        await neoSession.run(
+          `
+      MERGE (i:Interaction {id: $interactionId})
+      SET i.type = $type, i.timestamp = datetime($timestamp), i.weight = $weight
+      `,
+          {
+            interactionId,
+            type: interaction.interaction_type.toUpperCase(),
+            timestamp,
+            weight,
           }
+        );
 
-          // Run the final query with all parameters
-          await neoSession.run(query, {
-            ...params,
-            interaction_type: interaction.interaction_type,
-            weight: weight,
-          });
+        // Create PERFORMED relationship
+        await neoSession.run(
+          `
+      MATCH (u:User {id: $userId}), (i:Interaction {id: $interactionId})
+      MERGE (u)-[:PERFORMED]->(i)
+      `,
+          {
+            userId: interaction.user_id.toString(),
+            interactionId,
+          }
+        );
+
+        // Create TARGET relationship to Resource / Module / LearningPath
+        if (interaction.resource_id) {
+          await neoSession.run(
+            `
+        MATCH (i:Interaction {id: $interactionId}), (r:Resource {id: $targetId})
+        MERGE (i)-[:TARGET]->(r)
+        `,
+            {
+              interactionId,
+              targetId: interaction.resource_id.toString(),
+            }
+          );
+        } else if (interaction.module_id) {
+          await neoSession.run(
+            `
+        MATCH (i:Interaction {id: $interactionId}), (m:Module {id: $targetId})
+        MERGE (i)-[:TARGET]->(m)
+        `,
+            {
+              interactionId,
+              targetId: interaction.module_id.toString(),
+            }
+          );
+        } else if (interaction.learning_path_id) {
+          await neoSession.run(
+            `
+        MATCH (i:Interaction {id: $interactionId}), (lp:LearningPath {id: $targetId})
+        MERGE (i)-[:TARGET]->(lp)
+        `,
+            {
+              interactionId,
+              targetId: interaction.learning_path_id.toString(),
+            }
+          );
         } else {
           console.log(
-            `Skipping interaction due to missing resource, module, or learning path: ${JSON.stringify(
+            `Skipping TARGET relationship due to missing target: ${JSON.stringify(
               interaction
             )}`
           );
@@ -245,36 +262,39 @@ const syncData = async () => {
 };
 
 function calculateInteractionWeight(interactionType, timestamp) {
-  // Set a base weight depending on interaction type
   let baseWeight = 0;
-  
+
   switch (interactionType) {
-    case 'viewed_resource':
-      baseWeight = 1;  // Viewing a resource has a lower weight
+    case "viewed_resource":
+    case "viewed_module":
+    case "viewed_learning_path":
+      baseWeight = 2;
       break;
-    case 'bookmarked':
-      baseWeight = 2;  // Bookmarking a resource might indicate higher interest
+    case "started_module":
+    case "started_learning_path":
+      baseWeight = 3;
       break;
-    case 'completed_module':
-      baseWeight = 5;  // Completing a module or resource is a strong indicator of engagement
+    case "bookmarked":
+      baseWeight = 4;
+      break;
+    case "completed_module":
+      baseWeight = 5;
+      break;
+    case "completed_learning_path":
+      baseWeight = 6;
       break;
     default:
       baseWeight = 1;
-      break;
   }
 
-  // Factor in recency: recent interactions get higher weights
   const now = new Date();
   const interactionDate = new Date(timestamp);
-  const timeDiff = now - interactionDate; // time difference in milliseconds
-  const daysDiff = timeDiff / (1000 * 3600 * 24); // Convert to days
-  
-  // A simple weight decay model: recency increases weight
-  const recencyFactor = Math.max(1, 10 - daysDiff);  // Max decay weight factor is 10 (recent interactions)
+  const timeDiff = now - interactionDate;
+  const daysDiff = timeDiff / (1000 * 3600 * 24);
 
-  return baseWeight * recencyFactor; // Weight adjusted by recency
+  const recencyFactor = Math.max(1, 10 - daysDiff); // More recent = higher
+
+  return baseWeight * recencyFactor;
 }
-
-
 // syncData();
 module.exports = { syncData };
