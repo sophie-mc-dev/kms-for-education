@@ -30,10 +30,16 @@ export const studentRoutes = [
     pages: [
       {
         icon: <HomeIcon {...icon} />,
-        name: "dashboard",
+        name: "Dashboard",
         path: "/home",
-        element: <Home />,
+        element: <StudentResources />,
       },
+      // {
+      //   icon: <HomeIcon {...icon} />,
+      //   name: "dashboard",
+      //   path: "/home",
+      //   element: <Home />,
+      // },
       {
         icon: <MagnifyingGlassIcon {...icon} />,
         name: "search",
@@ -45,12 +51,6 @@ export const studentRoutes = [
         name: "learning",
         path: "/learning",
         element: <LearningPage />,
-      },
-      {
-        icon: <BookOpenIcon {...icon} />,
-        name: "resources",
-        path: "/resources",
-        element: <StudentResources />,
       },
       {
         icon: <UserCircleIcon {...icon} />,

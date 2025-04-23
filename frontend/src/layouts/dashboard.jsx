@@ -68,7 +68,7 @@ export function Dashboard() {
             element={<ResourceDetails />}
           />
           <Route
-            path="resources/resources/:resourceId"
+            path="home/resources/:resourceId"
             element={<ResourceDetails />}
           />
           <Route

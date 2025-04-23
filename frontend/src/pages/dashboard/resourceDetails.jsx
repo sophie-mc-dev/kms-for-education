@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
 import {
   Card,
@@ -8,14 +8,19 @@ import {
   Button,
 } from "@material-tailwind/react";
 import ReactMarkdown from "react-markdown";
-import { LearningMDCard } from "@/widgets/cards";
+import { LearningMDCard, ResourceCard } from "@/widgets/cards";
+import { ArrowPathIcon } from "@heroicons/react/24/outline";
 
 export function ResourceDetails() {
   const { resourceId } = useParams();
   const [resource, setResource] = useState(null);
-  const [modules, setModules] = useState([]);
+  const [recommendedModules, setRecommendedModules] = useState([]);
+  const [recommendedResources, setRecommendedResources] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const containerRef = useRef(null);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [cardsPerRow, setCardsPerRow] = useState(1);
 
   useEffect(() => {
     const fetchResourceById = async () => {
@@ -40,19 +45,58 @@ export function ResourceDetails() {
   }, [resourceId]);
 
   useEffect(() => {
-    const fetchModulesByResource = async () => {
+    const fetchRecommendedModules = async () => {
       try {
         const response = await fetch(
-          `http://localhost:8080/api/modules/${resourceId}/modules`
+          `http://localhost:8080/api/recommendations/modules/${resourceId}`
         );
         const data = await response.json();
-        setModules(data);
+        setRecommendedModules(data);
       } catch (error) {
-        console.error("Error fetching learning paths or modules:", error);
+        console.error("Error fetching recommended modules:", error);
       }
     };
-    fetchModulesByResource();
+    fetchRecommendedModules();
   }, []);
+
+  useEffect(() => {
+    const fetchRecommendedResources = async () => {
+      try {
+        const response = await fetch(
+          `http://localhost:8080/api/recommendations/resources/${resourceId}`
+        );
+        const data = await response.json();
+        setRecommendedResources((prev) => [...prev, ...data]);
+      } catch (error) {
+        console.error("Error fetching recommended resources:", error);
+      }
+    };
+    fetchRecommendedResources();
+  }, []);
+
+  useEffect(() => {
+    const calculateCardsPerRow = () => {
+      if (containerRef.current) {
+        const containerWidth = containerRef.current.offsetWidth;
+        const maxCards = Math.floor(containerWidth / 250);
+        setCardsPerRow(maxCards || 1);
+      }
+    };
+
+    calculateCardsPerRow();
+    window.addEventListener("resize", calculateCardsPerRow);
+    return () => window.removeEventListener("resize", calculateCardsPerRow);
+  }, []);
+
+  const handleRefresh = () => {
+    const totalPages = Math.ceil(recommendedResources.length / cardsPerRow);
+    setCurrentPage((prev) => (prev + 1) % totalPages);
+  };
+
+  const visibleResources = recommendedResources.slice(
+    currentPage * cardsPerRow,
+    currentPage * cardsPerRow + cardsPerRow
+  );
 
   const formattedDate = resource?.created_at
     ? new Date(resource.created_at).toLocaleString("en-US", {
@@ -318,15 +362,44 @@ export function ResourceDetails() {
           </CardBody>
         </Card>
 
-        {/* Related Resources */}
-        <Card className="border border-blue-gray-100 p-4">
+        {/* Recommended Resources */}
+        <Card className="border border-blue-gray-100 shadow-sm p-4 flex-1">
           <CardBody>
-            <Typography variant="h6" className="font-semibold mb-2">
-              Related Resources
-            </Typography>
-            <Typography variant="small" className="text-gray-600 italic">
-              Related resources not available yet.
-            </Typography>
+            <div className="flex mb-2 justify-between items-center">
+              <Typography
+                variant="h6"
+                className="font-semibold text-gray-800 mb-3"
+              >
+                Recommended Resources
+              </Typography>
+              <button
+                className="mb-4 transition-transform duration-300 hover:rotate-90"
+                onClick={handleRefresh}
+              >
+                <ArrowPathIcon className="h-5 w-5 text-gray-600" />
+              </button>
+            </div>
+
+            <div
+              ref={containerRef}
+              className="flex gap-4 transition-all duration-300 overflow-hidden"
+            >
+              {loading ? (
+                <p className="text-gray-500 text-sm">
+                  Loading recommended resources...
+                </p>
+              ) : visibleResources.length === 0 ? (
+                <p className="text-gray-500 text-sm">
+                  Couldn't recommend resources.
+                </p>
+              ) : (
+                visibleResources.map((item) => (
+                  <div key={item.id} className="flex-shrink-0 w-[350px]">
+                    <ResourceCard resource={item} />
+                  </div>
+                ))
+              )}
+            </div>
           </CardBody>
         </Card>
       </div>
@@ -335,17 +408,17 @@ export function ResourceDetails() {
         <Card className="border border-blue-gray-100 p-4 h-full shadow-md rounded-lg">
           <CardBody className="space-y-4">
             <Typography variant="h6" className="font-semibold text-gray-800">
-              Related Modules
+              Recommended Modules
             </Typography>
             <div className="flex flex-col gap-3">
-              {modules.length === 0 ? (
+              {recommendedModules.length === 0 ? (
                 <p className="text-gray-500 text-sm">
                   {loading
-                    ? "Loading related modules..."
-                    : "No related modules found."}
+                    ? "Loading recommended modules..."
+                    : "Couldn't recommend modules."}
                 </p>
               ) : (
-                modules.map((item) => (
+                recommendedModules.map((item) => (
                   <LearningMDCard
                     key={item.id}
                     moduleItem={item}

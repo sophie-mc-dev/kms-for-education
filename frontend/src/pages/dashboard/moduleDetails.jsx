@@ -142,80 +142,101 @@ export function ModuleDetails() {
     return <div className="mt-12 text-center">No Module Data Available</div>;
 
   return (
-    <div className="flex gap-4 mt-12 min-h-screen flex-col lg:flex-row">
-      <Card className="border border-blue-gray-100 shadow-sm p-4 flex-1 min-h-full flex flex-col">
-        <CardBody className="flex-grow">
-          <Typography variant="h4" color="blue-gray" className="font-semibold">
-            {module.title}
-          </Typography>
-          <div className="mb-6 flex items-center gap-x-4">
-            {/* Left Section: Date and Author */}
-            <div className="flex items-center gap-x-1">
-              <Typography className="block text-xs font-semibold uppercase text-blue-gray-500">
-                Published On:
-              </Typography>
-              <Typography
-                variant="small"
-                className="font-normal text-blue-gray-500"
-              >
-                {formattedDate}
-              </Typography>
-            </div>
-          </div>
-          <div className="mb-6 font-normal text-blue-gray-900">
-            <Typography variant="h6" color="blue-gray" className="mb-3">
-              Summary
-            </Typography>
-            <div
-              className="[&>ul]:list-disc [&>ul]:pl-5 [&>ol]:list-decimal"
-              dangerouslySetInnerHTML={{ __html: module.summary }}
-            ></div>
-          </div>
-          <div className="mb-6 font-normal text-blue-gray-900">
-            <Typography variant="h6" color="blue-gray" className="mb-3">
-              Objectives
-            </Typography>
-            <div
-              className="[&>ul]:list-disc [&>ul]:pl-5 [&>ol]:list-decimal"
-              dangerouslySetInnerHTML={{ __html: module.objectives }}
-            ></div>
-          </div>
-          <div className="border-t my-4"></div>
-          <Typography variant="h6" color="blue-gray" className="mb-3">
-            Resources
-          </Typography>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {resources.length > 0 ? (
-              resources.map((resource) => (
-                <ResourceCard key={resource.id} resource={resource} />
-              ))
-            ) : (
-              <Typography className="text-blue-gray-600">
-                No resources available for this module.
-              </Typography>
-            )}
-          </div>
-          <div className="border-t my-4"></div>
-          <Typography variant="h6" color="blue-gray" className="mb-3">
-            Test Your Knowledge
-          </Typography>
-          {assessmentStatus === "not_started" ? (
-            <Button
-              onClick={handleStartAssessment}
-              color="blue"
-              className="mb-4"
+    <div className="mt-12 flex gap-4 h-full">
+      {/* Left Main Column */}
+      <div className="w-3/4 flex flex-col gap-4">
+        <Card className="border border-orange-100 shadow-orange-100 shadow-sm p-4 flex-1">
+          <CardBody className="flex-grow">
+            <Typography
+              variant="h4"
+              color="blue-gray"
+              className="font-semibold"
             >
-              Start Assessment
-            </Button>
-          ) : (
-            <Assessment
-              userId={userId}
-              moduleId={moduleId}
-              assessment={assessment}
-            />
-          )}
-        </CardBody>
-      </Card>
+              {module.title}
+            </Typography>
+            <div className="mb-6 flex items-center gap-x-4">
+              {/* Left Section: Date and Author */}
+              <div className="flex items-center gap-x-1">
+                <Typography className="block text-xs font-semibold uppercase text-blue-gray-500">
+                  Published On:
+                </Typography>
+                <Typography
+                  variant="small"
+                  className="font-normal text-blue-gray-500"
+                >
+                  {formattedDate}
+                </Typography>
+              </div>
+            </div>
+            <div className="mb-6 font-normal text-blue-gray-900">
+              <Typography variant="h6" color="blue-gray" className="mb-3">
+                Summary
+              </Typography>
+              <div
+                className="[&>ul]:list-disc [&>ul]:pl-5 [&>ol]:list-decimal"
+                dangerouslySetInnerHTML={{ __html: module.summary }}
+              ></div>
+            </div>
+            <div className="mb-6 font-normal text-blue-gray-900">
+              <Typography variant="h6" color="blue-gray" className="mb-3">
+                Objectives
+              </Typography>
+              <div
+                className="[&>ul]:list-disc [&>ul]:pl-5 [&>ol]:list-decimal"
+                dangerouslySetInnerHTML={{ __html: module.objectives }}
+              ></div>
+            </div>
+            <div className="border-t my-4"></div>
+            <Typography variant="h6" color="blue-gray" className="mb-3">
+              Resources
+            </Typography>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {resources.length > 0 ? (
+                resources.map((resource) => (
+                  <ResourceCard key={resource.id} resource={resource} />
+                ))
+              ) : (
+                <Typography className="text-blue-gray-600">
+                  No resources available for this module.
+                </Typography>
+              )}
+            </div>
+            <div className="border-t my-4"></div>
+            <Typography variant="h6" color="blue-gray" className="mb-3">
+              Test Your Knowledge
+            </Typography>
+            {assessmentStatus === "not_started" ? (
+              <Button
+                onClick={handleStartAssessment}
+                color="orange"
+                className="mb-4"
+              >
+                Start Assessment
+              </Button>
+            ) : (
+              <Assessment
+                userId={userId}
+                moduleId={moduleId}
+                assessment={assessment}
+              />
+            )}
+          </CardBody>
+        </Card>
+      </div>
+
+      {/* Right Sidebar */}
+      <div className="w-1/4">
+        <Card className="border border-blue-gray-100 p-4 h-full shadow-md rounded-lg">
+          <CardBody className="space-y-4">
+            <Typography variant="h6" className="font-semibold text-gray-800">
+              Recommended Modules
+            </Typography>
+            <p variant="h6" className=" text-gray-500 text-sm">
+              no modules yet
+            </p>
+          </CardBody>
+        </Card>
+      </div>
     </div>
   );
 }

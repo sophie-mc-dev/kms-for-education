@@ -16,15 +16,16 @@ export function StudentResources() {
   const [learningPathsCompleted, setLearningPathsCompleted] = useState([]);
   const [modulesInProgress, setModulesInProgress] = useState([]);
   const [modulesCompleted, setModulesCompleted] = useState([]);
+  const [recommnendedResources, setRecommendedResources] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
 
   const collections = [
     "Recently Viewed",
+    "Recommended Resources",
     "My Study Paths",
     "In Progress",
     "Completed",
     "Bookmarked",
-    "Recommended",
   ];
 
   // Fetch all resources from the API
@@ -138,6 +139,22 @@ export function StudentResources() {
     return JSON.parse(localStorage.getItem("recentlyViewed")) || [];
   };
 
+  const getRecommendedResources = async () => {
+    if (!userId) return [];
+
+    try {
+      const response = await fetch(
+        `http://localhost:8080/api/recommendations/${userId}/resources`
+      );
+      if (!response.ok) throw new Error("Failed to fetch study paths");
+
+      return await response.json();
+    } catch (error) {
+      console.error("Error fetching study paths:", error);
+      return [];
+    }
+  };
+
   // Fetch all resources, bookmarks, learning paths, etc.
   const fetchData = async () => {
     const allResources = await getAllResources();
@@ -148,6 +165,7 @@ export function StudentResources() {
     const mdCompleted = await getCompletedModules();
     const stdPaths = await getStudyPaths();
     const recentlyViewedData = getRecentlyViewedResources();
+    const recommendedR = await getRecommendedResources();
 
     const recentResources = recentlyViewedData
       .map((recent) => allResources.find((res) => res.id === recent.id))
@@ -163,6 +181,7 @@ export function StudentResources() {
     setModulesInProgress(mdInProgress);
     setModulesCompleted(mdCompleted);
     setStudyPaths(stdPaths);
+    setRecommendedResources(recommendedR);
   };
 
   useEffect(() => {
@@ -195,6 +214,10 @@ export function StudentResources() {
 
     if (category === "Bookmarked") {
       return bookmarkedResources.filter(matchesSearch);
+    }
+
+    if (category === "Recommended Resources") {
+      return recommnendedResources.filter(matchesSearch);
     }
 
     if (category === "In Progress") {
@@ -263,25 +286,27 @@ export function StudentResources() {
                     return (
                       <div
                         className="flex-shrink-0 w-[calc(33.33%-16px)]"
-                        key={item.id}
+                        key={
+                          isLearningPath
+                            ? `lp-${item.learning_path_id}`
+                            : isModule
+                            ? `mod-${item.id}`
+                            : isStudyPath
+                            ? `sp-${item.id}`
+                            : `res-${item.id}`
+                        }
                       >
                         {category === "In Progress" ||
                         category === "Completed" ? (
                           isLearningPath ? (
-                            <LearningLPCard
-                              key={`lp-${item.learning_path_id}`}
-                              learningItem={item}
-                            />
+                            <LearningLPCard learningItem={item} />
                           ) : isModule ? (
-                            <LearningMDCard
-                              key={`mod-${item.id}`}
-                              moduleItem={item}
-                            />
+                            <LearningMDCard moduleItem={item} />
                           ) : null
                         ) : category === "Bookmarked" ||
-                          category === "Recently Viewed" ? (
+                          category === "Recently Viewed" ||
+                          category === "Recommended Resources" ? (
                           <ResourceCard
-                            key={item.id}
                             resource={item}
                             userId={userId}
                             isBookmarked={bookmarkedResources.some(
@@ -291,10 +316,7 @@ export function StudentResources() {
                           />
                         ) : category === "My Study Paths" ? (
                           isStudyPath ? (
-                            <LearningLPCard
-                              key={`lp-${item.id}`}
-                              learningItem={item}
-                            />
+                            <LearningLPCard learningItem={item} />
                           ) : null
                         ) : null}
                       </div>

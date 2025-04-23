@@ -21,7 +21,7 @@ export function Auth() {
     },
     {
       name: "profile",
-      path: "/dashboard/home",
+      path: "/dashboard/profile",
       icon: UserIcon,
     },
     {
