@@ -33,7 +33,7 @@ export function SignIn() {
         const userData = response.data.user;
         localStorage.setItem("user", JSON.stringify(userData));
         setUserRole(userData.user_role); 
-        navigate("/dashboard/resources");
+        navigate("/dashboard/search");
       }
     } catch (err) {
       console.error(err);

@@ -20,6 +20,46 @@ const usersController = {
     }
   },
 
+  updateProfile: async (req, res) => {
+    const { user_id } = req.params;
+    const {
+      educationLevel,
+      fieldOfStudy,
+      topicInterests,
+      preferredContentTypes,
+      languagePreference,
+    } = req.body;
+  
+    try {
+      // Update the user's profile with the provided data
+      const result = await pool.query(
+        `UPDATE users
+         SET
+           education_level = $1,
+           field_of_study = $2,
+           topic_interests = $3,
+           preferred_content_types = $4,
+           language_preference = $5,
+         WHERE id = $6
+         RETURNING *`,
+        [
+          educationLevel,
+          fieldOfStudy,
+          topicInterests,
+          preferredContentTypes,
+          languagePreference,
+          user_id,
+        ]
+      );
+  
+      const updatedUser = result.rows[0];
+      res.status(200).json({ user: updatedUser });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Error updating user profile" });
+    }
+  },  
+
   // Get a user by ID
   getUserById: async (req, res) => {
     const userId = req.params.id;
