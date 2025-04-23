@@ -101,8 +101,8 @@ export function ResourceCard({ resource, userId }) {
   };
 
   const handleResourceClick = async () => {
-    const viewedResources =
-      JSON.parse(localStorage.getItem("recentlyViewed")) || [];
+    const key = `recentlyViewed-${userId}`;
+    const viewedResources = JSON.parse(localStorage.getItem(key)) || [];
 
     // Prevent duplicates, keep max 3 recently viewed
     const updatedResources = [
@@ -111,7 +111,7 @@ export function ResourceCard({ resource, userId }) {
     ].slice(0, 3);
 
     // Save updated recently viewed resources in localStorage
-    localStorage.setItem("recentlyViewed", JSON.stringify(updatedResources));
+    localStorage.setItem(key, JSON.stringify(updatedResources));
 
     try {
       await registerResourceView(userId, resource.id);

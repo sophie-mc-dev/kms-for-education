@@ -136,7 +136,8 @@ export function StudentResources() {
 
   // Load recently viewed resources from localStorage
   const getRecentlyViewedResources = () => {
-    return JSON.parse(localStorage.getItem("recentlyViewed")) || [];
+    const key = `recentlyViewed-${userId}`;
+    return JSON.parse(localStorage.getItem(key)) || [];
   };
 
   const getRecommendedResources = async () => {
@@ -146,11 +147,11 @@ export function StudentResources() {
       const response = await fetch(
         `http://localhost:8080/api/recommendations/${userId}/resources`
       );
-      if (!response.ok) throw new Error("Failed to fetch study paths");
+      if (!response.ok) throw new Error("Failed to fetch recommended resources");
 
       return await response.json();
     } catch (error) {
-      console.error("Error fetching study paths:", error);
+      console.error("Error fetching recommended resources:", error);
       return [];
     }
   };
