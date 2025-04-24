@@ -7,14 +7,17 @@ import {
   Checkbox,
   Chip,
   Button,
+  CardFooter,
 } from "@material-tailwind/react";
+import { CloudArrowUpIcon } from "@heroicons/react/24/solid";
 import { resourceTypes } from "@/data/resource-types.jsx";
 import { resourceCategories } from "@/data/resource-categories";
 import { ResourceCard } from "@/widgets/cards/";
 import { useUser } from "@/context/UserContext";
+import { Link } from "react-router-dom";
 
 export function Search() {
-  const { userId } = useUser();
+  const { userId, userRole } = useUser();
   const [resources, setResources] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -24,7 +27,9 @@ export function Search() {
 
   const [expandedTypes, setExpandedTypes] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState(false);
+  const [expandedTags, setExpandedTags] = useState(false);
   const visibleLimit = 5;
+  const visibleTagLimit = 15;
 
   const getAllResources = async () => {
     try {
@@ -70,6 +75,10 @@ export function Search() {
     return searchMatch && categoryMatch && tagMatch && typeMatch;
   });
 
+  const sortedResources = [...filteredResources].sort((a, b) =>
+    (a.title ?? "").localeCompare(b.title ?? "")
+  );
+
   // Toggle category selection
   const toggleCategory = (category) => {
     setCategoryFilter((prev) =>
@@ -94,6 +103,22 @@ export function Search() {
 
   return (
     <div className="mt-12 grid grid-cols-4 gap-4">
+      {/* Educator Action Button */}
+      {userRole === "educator" && (
+        <CardFooter className="col-span-4 flex justify-end py-2 px-4">
+          <Link to="upload-resource">
+            <Button
+              variant="filled"
+              size="sm"
+              className="flex items-center gap-2"
+            >
+              <CloudArrowUpIcon className="w-4 h-4" />
+              Upload Resource
+            </Button>
+          </Link>
+        </CardFooter>
+      )}
+
       <Card className="col-span-4 border border-gray-300 rounded-lg">
         <CardBody className="space-y-6 p-6">
           <Input
@@ -112,7 +137,7 @@ export function Search() {
           </Typography>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             {filteredResources.length > 0 ? (
-              filteredResources.map((resource) => (
+              sortedResources.map((resource) => (
                 <ResourceCard
                   key={resource.id}
                   resource={resource}
@@ -227,16 +252,28 @@ export function Search() {
             <div className="flex flex-wrap gap-2">
               {Array.from(
                 new Set(resources.flatMap((resource) => resource.tags))
-              ).map((tag) => (
-                <Chip
-                  key={tag}
-                  value={tag}
-                  color={tagFilter.includes(tag) ? "green" : "blue-gray"}
-                  className="cursor-pointer font-medium"
-                  onClick={() => handleTagClick(tag)}
-                />
-              ))}
+              )
+                .slice(0, expandedTags ? undefined : visibleTagLimit)
+                .map((tag) => (
+                  <Chip
+                    key={tag}
+                    value={tag}
+                    color={tagFilter.includes(tag) ? "green" : "blue-gray"}
+                    className="cursor-pointer font-medium"
+                    onClick={() => handleTagClick(tag)}
+                  />
+                ))}
             </div>
+            {Array.from(new Set(resources.flatMap((resource) => resource.tags)))
+              .length > visibleTagLimit && (
+              <Chip
+                key="toggle-tags"
+                value={expandedTags ? "−" : "+"}
+                color="green"
+                className="cursor-pointer font-medium px-2 py-0 text-lg w-6 h-6 flex items-center mt-2 justify-center rounded-full"
+                onClick={() => setExpandedTags(!expandedTags)}
+              />
+            )}
           </div>
         </CardBody>
       </Card>

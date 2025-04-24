@@ -66,6 +66,7 @@ export function ResourceDetails() {
           `http://localhost:8080/api/recommendations/resources/${resourceId}`
         );
         const data = await response.json();
+        console.log("DATA: ",data)
         setRecommendedResources((prev) => [...prev, ...data]);
       } catch (error) {
         console.error("Error fetching recommended resources:", error);
@@ -136,10 +137,9 @@ export function ResourceDetails() {
     const { url, format, html_content } = resource;
 
     if (url.includes("youtube.com") || url.includes("youtu.be")) {
-      const embedUrl = getYouTubeEmbedUrl(url);
       return embedUrl ? (
         <iframe
-          width="60%"
+          width="100%"
           height="400"
           src={embedUrl}
           title="YouTube video"

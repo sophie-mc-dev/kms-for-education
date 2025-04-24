@@ -81,7 +81,7 @@ export function Dashboard() {
           />
           <Route path="learning/module/:moduleId" element={<ModuleDetails />} />
           <Route
-            path="resources/upload-resource"
+            path="search/upload-resource"
             element={<UploadResource />}
           />
           <Route
