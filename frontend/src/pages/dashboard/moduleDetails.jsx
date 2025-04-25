@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
 import {
   Card,
@@ -7,9 +7,10 @@ import {
   Button,
   Spinner,
 } from "@material-tailwind/react";
-import { ResourceCard } from "@/widgets/cards/";
+import { ResourceCard, LearningMDCard, LearningLPCard } from "@/widgets/cards/";
 import { useUser } from "@/context/userContext";
 import { Assessment } from "@/widgets/cards/";
+import { ArrowPathIcon } from "@heroicons/react/24/outline";
 
 export function ModuleDetails() {
   const { userId } = useUser();
@@ -20,6 +21,23 @@ export function ModuleDetails() {
   const [assessmentStatus, setAssessmentStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  const [recommendedLearningPaths, setRecommendedLearningPaths] = useState([]);
+  const [recommendedModules, setRecommendedModules] = useState([]);
+
+  const containerRef = useRef(null);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [cardsPerRow, setCardsPerRow] = useState(1);
+
+  const handleRefresh = () => {
+    const totalPages = Math.ceil(recommendedModules.length / cardsPerRow);
+    setCurrentPage((prev) => (prev + 1) % totalPages);
+  };
+
+  const visibleModules = recommendedModules.slice(
+    currentPage * cardsPerRow,
+    currentPage * cardsPerRow + cardsPerRow
+  );
 
   const formattedDate = module?.created_at
     ? new Date(module.created_at).toLocaleString("en-US", {
@@ -105,6 +123,40 @@ export function ModuleDetails() {
     };
     fetchAssessmentStatus();
   }, [userId, moduleId]);
+
+  // fetch recommended learning paths
+  useEffect(() => {
+    
+  }, []);
+
+  useEffect(() => {
+    const fetchRecommendedModules = async () => {
+      try {
+        const response = await fetch(
+          `http://localhost:8080/api/recommendations/${userId}/modules/${moduleId}`
+        );
+        const data = await response.json();
+        setRecommendedModules(data);
+      } catch (error) {
+        console.error("Error fetching recommended modules:", error);
+      }
+    };
+    fetchRecommendedModules();
+  }, []);
+
+  useEffect(() => {
+    const calculateCardsPerRow = () => {
+      if (containerRef.current) {
+        const containerWidth = containerRef.current.offsetWidth;
+        const maxCards = Math.floor(containerWidth / 250);
+        setCardsPerRow(maxCards || 1);
+      }
+    };
+
+    calculateCardsPerRow();
+    window.addEventListener("resize", calculateCardsPerRow);
+    return () => window.removeEventListener("resize", calculateCardsPerRow);
+  }, []);
 
   const handleStartAssessment = async () => {
     try {
@@ -222,6 +274,46 @@ export function ModuleDetails() {
             )}
           </CardBody>
         </Card>
+
+        <Card className="border border-blue-gray-100 shadow-sm p-4 flex-1">
+          <CardBody>
+            <div className="flex mb-2 justify-between items-center">
+              <Typography
+                variant="h6"
+                className="font-semibold text-gray-800 mb-3"
+              >
+                Recommended Modules
+              </Typography>
+              <button
+                className="mb-4 transition-transform duration-300 hover:rotate-90"
+                onClick={handleRefresh}
+              >
+                <ArrowPathIcon className="h-5 w-5 text-gray-600" />
+              </button>
+            </div>
+
+            <div
+              ref={containerRef}
+              className="flex gap-4 transition-all duration-300 overflow-hidden"
+            >
+              {loading ? (
+                <p className="text-gray-500 text-sm">
+                  Loading recommended modules...
+                </p>
+              ) : visibleModules.length === 0 ? (
+                <p className="text-gray-500 text-sm">
+                  Couldn't recommend modules.
+                </p>
+              ) : (
+                visibleModules.map((module) => (
+                  <div key={module.id} className="flex-shrink-0 w-[350px]">
+                    <LearningMDCard moduleItem={module} />
+                  </div>
+                ))
+              )}
+            </div>
+          </CardBody>
+        </Card>
       </div>
 
       {/* Right Sidebar */}
@@ -229,10 +321,10 @@ export function ModuleDetails() {
         <Card className="border border-blue-gray-100 p-4 h-full shadow-md rounded-lg">
           <CardBody className="space-y-4">
             <Typography variant="h6" className="font-semibold text-gray-800">
-              Recommended Modules
+              Recommended Learning Paths
             </Typography>
             <p variant="h6" className=" text-gray-500 text-sm">
-              no modules yet
+              no learning paths yet
             </p>
           </CardBody>
         </Card>

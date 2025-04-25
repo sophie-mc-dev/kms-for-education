@@ -5,5 +5,6 @@ const recommendationsController = require("../controllers/recommendationsControl
 router.get("/:user_id/resources", recommendationsController.getResourceRecommendations);
 router.get("/modules/:resource_id", recommendationsController.getModulesRecommendationBasedOnResource);
 router.get("/resources/:resource_id", recommendationsController.getRecommendationBasedOnResource);
+router.get("/:user_id/modules/:module_id", recommendationsController.getRecommendationBasedOnModule);
 
 module.exports = router;

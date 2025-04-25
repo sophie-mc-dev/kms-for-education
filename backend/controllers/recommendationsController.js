@@ -76,7 +76,10 @@ const recommendationsController = {
   },
 
   /**
-   *
+   * For the Module Recommendation sidebar at ResourceDetails Page.
+   * 
+   * Recommends modules with similar resources or modules that include that resource.
+   * 
    * @param {*} req
    * @param {*} res
    */
@@ -142,7 +145,10 @@ const recommendationsController = {
   },
 
   /**
-   *
+   * For the bottom card at ResourceDetails Page.
+   * 
+   * Returns 12 recommendations that are the most fitting to the current resource. 
+   * 
    * @param {*} req
    * @param {*} res
    */
@@ -207,11 +213,16 @@ const recommendationsController = {
   },
 
   /**
-   *
+   * For the Recommended Learning Paths sidebar at ModuleDetails Page.
+   * 
+   * Should recommend learning paths that have that module.
+   * 
    * @param {*} req
    * @param {*} res
    */
-  getLearningPathRecommendationBasedOnModules: async (req, res) => {},
+  getLearningPathRecommendationBasedOnModules: async (req, res) => {
+
+  },
 
   /**
    *
@@ -221,14 +232,90 @@ const recommendationsController = {
   getRecommendationBasedOnLearningPath: async (req, res) => {},
 
   /**
-   *
+   * For the Recommended Modules bottom section at ModuleDetails Page.
+   * 
+   * - Should recommend similar modules based on module metadata and its resources. 
+   * - Recommend modules that include the same resources.
+   * - If standalone module is also in a learning path, recommends modules from that learning path as a way to continue the learning workflow. 
+   * - Excludes modules the user has already completed (interaction = completed_module)
+   * - Calculate a score based on all this and recommend top results
+   * 
    * @param {*} req
    * @param {*} res
    */
-  getRecommendationBasedOnModule: async (req, res) => {},
+  getRecommendationBasedOnModule: async (req, res) => {
+    const user_id = req.params.user_id;
+    const module_id = req.params.module_id;
+    const session = driver.session();
+  
+    try {
+      const cypherQuery = `
+        WITH $user_id AS userId, $module_id AS currentModuleId
+  
+        MATCH (current:Module {id: currentModuleId})-[:HAS_RESOURCE]->(res:Resource)
+        WITH current, COLLECT(res) AS currentResources, userId, currentModuleId
+  
+        OPTIONAL MATCH (lp:LearningPath)-[:HAS_MODULE]->(current)
+        WITH current, currentResources, COLLECT(lp) AS lps, userId, currentModuleId
+  
+        MATCH (user:User {id: userId})-[:PERFORMED]->(:Interaction {type: "COMPLETED_MODULE"})-[:TARGET]->(completed)
+        WHERE completed:Module
+        WITH current, currentResources, lps, COLLECT(completed.id) AS completedModuleIds, userId, currentModuleId
+  
+        MATCH (modRec:Module)
+        WHERE modRec.id <> currentModuleId AND NOT modRec.id IN completedModuleIds
+  
+        OPTIONAL MATCH (lp:LearningPath)-[:HAS_MODULE]->(modRec)
+        WHERE lp IN lps
+  
+        WITH current, modRec, completedModuleIds, 
+            SIZE([r IN currentResources WHERE (modRec)-[:HAS_RESOURCE]->(r)]) AS sharedResourceCount,
+            COUNT(lp) > 0 AS sameLearningPath
+  
+        WITH modRec,
+            CASE WHEN sameLearningPath THEN 7 ELSE 0 END +
+            (CASE WHEN abs(modRec.estimated_duration - current.estimated_duration) < 10 THEN 2 ELSE 0 END) +
+            (CASE WHEN abs(modRec.ects - current.ects) < 1 THEN 2 ELSE 0 END) +
+            sharedResourceCount * 5 AS score
+  
+        RETURN modRec {
+          .id,
+          .title,
+          .summary,
+          .estimated_duration,
+          .ects
+        } AS modRec, score
+        ORDER BY score DESC
+        LIMIT 6
+      `;
+  
+      const result = await session.run(cypherQuery, {
+        user_id: user_id,
+        module_id: module_id,
+      });
+
+      const recommendations = result.records.map((record) => {
+        const rec = record.get("modRec");
+        return {
+          id: rec.id,
+          title: rec.title,
+          summary: rec.summary,
+          estimated_duration: rec.estimated_duration,
+          ects: rec.ects,
+        };
+      });
+  
+      res.status(200).json(recommendations);
+    } catch (err) {
+      console.error("Recommendation Error:", err);
+      res.status(500).json({
+        message: "Failed to get module recommendations.",
+      });
+    } finally {
+      await session.close();
+    }
+  },  
 };
 
 // For Standalone Modules, Get Similar Modules (for example if module is also in a LP, recommend modules of that LP)
-// Get Collaborative Recommendations for User
-// Get Recommended Resources Based on Interaction History
 module.exports = recommendationsController;

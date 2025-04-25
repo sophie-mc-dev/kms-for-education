@@ -154,7 +154,6 @@ export function Assessment({
               const correctIndex = assessment?.solution?.[qIndex];
               const userSelectedIndex = userAnswers[qIndex];
 
-              console.log(questionObj)
               return (
                 <div key={qIndex} className="mb-4 p-4 rounded-md">
                   <Typography className="mb-2 font-medium">
