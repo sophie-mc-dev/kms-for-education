@@ -124,9 +124,19 @@ export function ModuleDetails() {
     fetchAssessmentStatus();
   }, [userId, moduleId]);
 
-  // fetch recommended learning paths
   useEffect(() => {
-    
+    const fetchRecommendedLearningPaths = async () => {
+      try {
+        const response = await fetch(
+          `http://localhost:8080/api/recommendations/learning-paths/${moduleId}`
+        );
+        const data = await response.json();
+        setRecommendedLearningPaths(data);
+      } catch (error) {
+        console.error("Error fetching recommended modules:", error);
+      }
+    };
+    fetchRecommendedLearningPaths();
   }, []);
 
   useEffect(() => {
@@ -323,9 +333,23 @@ export function ModuleDetails() {
             <Typography variant="h6" className="font-semibold text-gray-800">
               Recommended Learning Paths
             </Typography>
-            <p variant="h6" className=" text-gray-500 text-sm">
-              no learning paths yet
-            </p>
+            <div className="flex flex-col gap-3">
+              {recommendedLearningPaths.length === 0 ? (
+                <p className="text-gray-500 text-sm">
+                  {loading
+                    ? "Loading recommended learning paths..."
+                    : "Couldn't recommend learning paths."}
+                </p>
+              ) : (
+                recommendedLearningPaths.map((item) => (
+                  <LearningLPCard
+                    key={item.id}
+                    learningItem={item}
+                    className="p-3 bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-200"
+                  />
+                ))
+              )}
+            </div>
           </CardBody>
         </Card>
       </div>

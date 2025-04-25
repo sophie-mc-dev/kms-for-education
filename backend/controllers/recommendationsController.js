@@ -77,9 +77,9 @@ const recommendationsController = {
 
   /**
    * For the Module Recommendation sidebar at ResourceDetails Page.
-   * 
+   *
    * Recommends modules with similar resources or modules that include that resource.
-   * 
+   *
    * @param {*} req
    * @param {*} res
    */
@@ -146,9 +146,9 @@ const recommendationsController = {
 
   /**
    * For the bottom card at ResourceDetails Page.
-   * 
-   * Returns 12 recommendations that are the most fitting to the current resource. 
-   * 
+   *
+   * Returns 12 recommendations that are the most fitting to the current resource.
+   *
    * @param {*} req
    * @param {*} res
    */
@@ -214,14 +214,71 @@ const recommendationsController = {
 
   /**
    * For the Recommended Learning Paths sidebar at ModuleDetails Page.
-   * 
-   * Should recommend learning paths that have that module.
-   * 
+   *
+   * Should recommend a list of learning paths that have that module together
+   * with suggested learning paths based on the modules and its resources.
+   *
    * @param {*} req
    * @param {*} res
    */
   getLearningPathRecommendationBasedOnModules: async (req, res) => {
+    const module_id = req.params.module_id;
+    const session = driver.session();
 
+    try {
+      const cypherQuery = `
+        WITH $module_id AS moduleId
+
+        // Step 1: Get the input module and its resources
+        MATCH (mod:Module {id: moduleId})-[:HAS_RESOURCE]->(res:Resource)
+        WITH mod, COLLECT(res) AS modResources
+
+        // Step 2: Find learning paths that include this module directly
+        OPTIONAL MATCH (lp:LearningPath)-[:HAS_MODULE]->(mod)
+        WITH mod, modResources, COLLECT(DISTINCT lp) AS directLPs
+
+        // Step 3: Fallback – find other modules that share resources with the current one
+        OPTIONAL MATCH (otherMod:Module)-[:HAS_RESOURCE]->(sharedRes:Resource)
+        WHERE otherMod.id <> mod.id AND sharedRes IN modResources
+        WITH mod, modResources, directLPs, COLLECT(DISTINCT otherMod) AS fallbackModules
+
+        // Step 4: Find learning paths that include those fallback modules
+        UNWIND fallbackModules AS fallbackMod
+        OPTIONAL MATCH (fallbackLP:LearningPath)-[:HAS_MODULE]->(fallbackMod)
+        WITH directLPs, COLLECT(DISTINCT fallbackLP) AS fallbackLPs
+
+        // Step 5: Combine and return unique learning paths
+        WITH apoc.coll.toSet(directLPs + fallbackLPs) AS allPaths
+        UNWIND allPaths AS lp
+        RETURN DISTINCT lp { .id, .title, .description }
+        LIMIT 5
+      `;
+
+      const result = await session.run(cypherQuery, { module_id });
+
+      const recommendations = result.records.map((record) => {
+        const rec = record.get("mod");
+        return {
+          id: rec.id,
+          title: rec.title,
+          summary: rec.summary,
+          estimated_duration: rec.estimated_duration,
+          ects: rec.ects,
+        };
+      });
+
+      res.json(recommendations);
+    } catch (error) {
+      console.error(
+        "Error getting learning path recommendations based on module:",
+        error
+      );
+      res.status(500).json({
+        message: "Failed to get learning path recommendations based on module.",
+      });
+    } finally {
+      await session.close();
+    }
   },
 
   /**
@@ -233,21 +290,21 @@ const recommendationsController = {
 
   /**
    * For the Recommended Modules bottom section at ModuleDetails Page.
-   * 
-   * - Should recommend similar modules based on module metadata and its resources. 
+   *
+   * - Should recommend similar modules based on module metadata and its resources.
    * - Recommend modules that include the same resources.
-   * - If standalone module is also in a learning path, recommends modules from that learning path as a way to continue the learning workflow. 
+   * - If standalone module is also in a learning path, recommends modules from that learning path as a way to continue the learning workflow.
    * - Excludes modules the user has already completed (interaction = completed_module)
    * - Calculate a score based on all this and recommend top results
-   * 
+   *
    * @param {*} req
    * @param {*} res
    */
-  getRecommendationBasedOnModule: async (req, res) => {
+  getModuleRecommendationBasedOnModule: async (req, res) => {
     const user_id = req.params.user_id;
     const module_id = req.params.module_id;
     const session = driver.session();
-  
+
     try {
       const cypherQuery = `
         WITH $user_id AS userId, $module_id AS currentModuleId
@@ -288,7 +345,7 @@ const recommendationsController = {
         ORDER BY score DESC
         LIMIT 6
       `;
-  
+
       const result = await session.run(cypherQuery, {
         user_id: user_id,
         module_id: module_id,
@@ -304,7 +361,7 @@ const recommendationsController = {
           ects: rec.ects,
         };
       });
-  
+
       res.status(200).json(recommendations);
     } catch (err) {
       console.error("Recommendation Error:", err);
@@ -314,7 +371,7 @@ const recommendationsController = {
     } finally {
       await session.close();
     }
-  },  
+  },
 };
 
 // For Standalone Modules, Get Similar Modules (for example if module is also in a LP, recommend modules of that LP)
