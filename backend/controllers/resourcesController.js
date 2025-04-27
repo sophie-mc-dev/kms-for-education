@@ -1,7 +1,7 @@
 const { pool } = require("../db/postgres");
-const { convertToHTML } = require("../utils/convert-to-html");
 const { uploadToR2 } = require("../utils/r2-upload");
 const { deleteFromR2 } = require("../utils/r2-delete");
+const { searchResources } = require("../ontology/ontologyService")
 
 const resourcesController = {
   // Upload a new resource
@@ -274,7 +274,7 @@ const resourcesController = {
 
       const result = await pool.query(
         "SELECT * FROM resources WHERE created_by = $1 ORDER BY created_at DESC",
-        [createdBy] 
+        [createdBy]
       );
 
       res.json(result.rows);
@@ -301,6 +301,22 @@ const resourcesController = {
     } catch (error) {
       console.error("Error fetching resource:", error);
       res.status(500).json({ error: "Internal Server Error" });
+    }
+  },
+
+  searchResources: async (req, res) => {
+    const { query } = req.query;
+    if (!query) {
+      return res.status(400).json({ error: "Query parameter is required" });
+    }
+
+    try {
+      const results = await searchResources(query);
+      res.json(results);
+    } catch (err) {
+      res
+        .status(500)
+        .json({ error: "Error searching resources: " + err.message });
     }
   },
 };

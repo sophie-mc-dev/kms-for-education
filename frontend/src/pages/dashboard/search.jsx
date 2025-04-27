@@ -7,6 +7,7 @@ import {
   Checkbox,
   Chip,
   Button,
+  Spinner,
 } from "@material-tailwind/react";
 import { resourceTypes } from "@/data/resource-types.jsx";
 import { resourceCategories } from "@/data/resource-categories";
@@ -17,6 +18,8 @@ export function Search() {
   const { userId } = useUser();
   const [resources, setResources] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [results, setResults] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   const [categoryFilter, setCategoryFilter] = useState([]);
   const [typeFilter, setTypeFilter] = useState([]);
@@ -42,12 +45,16 @@ export function Search() {
 
   useEffect(() => {
     const fetchResources = async () => {
+      setLoading(true);
       const data = await getAllResources();
       setResources(data);
+      setResults(data);
+      setLoading(false);
     };
     fetchResources();
   }, []);
 
+  // This function filters resources based on search query and active filters
   const filteredResources = resources.filter((resource) => {
     const searchMatch =
       resource.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -92,16 +99,35 @@ export function Search() {
     );
   };
 
+  const handleSearch = async () => {
+    if (!searchQuery) return;
+
+    setLoading(true);
+    try {
+      const response = await fetch(
+        `http://localhost:8080/api/resources/search?query=${searchQuery}`
+      );
+      const data = await response.json();
+      setResults(data);
+    } catch (error) {
+      console.error("Error fetching search results:", error);
+    }
+    setLoading(false);
+  };
+
   return (
     <div className="mt-12 grid grid-cols-4 gap-4">
       <Card className="col-span-4 border border-gray-300 rounded-lg">
         <CardBody className="space-y-6 p-6">
-          <Input
-            label="Search Resources"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="mb-4"
-          />
+          <div className="flex items-center space-x-4">
+            <Input
+              label="Search Resources"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="mb-4 flex-grow"
+            />
+            <Button onClick={handleSearch}>Search</Button>
+          </div>
         </CardBody>
       </Card>
 
@@ -111,7 +137,11 @@ export function Search() {
             Results
           </Typography>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-            {filteredResources.length > 0 ? (
+            {loading ? (
+              <div className="flex justify-center items-center">
+                <Spinner />
+              </div>
+            ) : filteredResources.length > 0 ? (
               filteredResources.map((resource) => (
                 <ResourceCard
                   key={resource.id}

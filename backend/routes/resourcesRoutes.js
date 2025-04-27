@@ -17,4 +17,6 @@ router.put("/:id", resourcesController.updateResource);
 
 router.delete("/:id", resourcesController.deleteResource);
 
+router.get("/search", resourcesController.searchResources);
+
 module.exports = router;
