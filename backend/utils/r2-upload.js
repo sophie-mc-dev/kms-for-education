@@ -1,13 +1,15 @@
-const AWS = require("aws-sdk");
-const r2Config = require("../config/r2-config");
-const { v4: uuidv4 } = require("uuid");
+const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3'); 
+const r2Config = require('../config/r2-config');
+const { v4: uuidv4 } = require('uuid');
 
-const s3 = new AWS.S3({
-  accessKeyId: r2Config.accessKeyId,
-  secretAccessKey: r2Config.secretAccessKey,
+const s3 = new S3Client({
+  credentials: {
+    accessKeyId: r2Config.accessKeyId,
+    secretAccessKey: r2Config.secretAccessKey,
+  },
   endpoint: r2Config.endpoint,
-  signatureVersion: "v4",
-  region: "auto",
+  region: 'auto',  
+  signatureVersion: 'v4',
 });
 
 async function uploadToR2(file, resourceId) {

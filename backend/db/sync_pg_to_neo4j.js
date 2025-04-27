@@ -10,7 +10,7 @@ const syncData = async () => {
   const neoSession = driver.session();
 
   try {
-    console.log("Starting data synchronization...");
+    console.log("🔄 Starting data synchronization...");
 
     // Sync Users
     const users = await pgClient.query(
@@ -269,7 +269,7 @@ const syncData = async () => {
       }
     }
 
-    console.log("Data synchronization completed successfully!");
+    console.log("✅ Data synchronization completed successfully!");
   } catch (error) {
     console.error("Error syncing data:", error);
   } finally {

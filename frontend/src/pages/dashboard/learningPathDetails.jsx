@@ -9,6 +9,7 @@ import {
 } from "@material-tailwind/react";
 import { ModuleCard } from "@/widgets/cards";
 import { useUser } from "@/context/UserContext";
+import { ResourceCard } from "@/widgets/cards";
 
 export function LearningPathDetails() {
   const { userId } = useUser();
@@ -19,6 +20,8 @@ export function LearningPathDetails() {
   const [userProgress, setUserProgress] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [recommendedResources, setRecommendedResources] = useState([]);
+
   const completion = Number(userProgress?.progress_percentage) || 0;
 
   // Fetch learning path data
@@ -126,6 +129,21 @@ export function LearningPathDetails() {
       setError(err.message);
     }
   };
+
+  useEffect(() => {
+    const fetchRecommendedLearningPaths = async () => {
+      try {
+        const response = await fetch(
+          `http://localhost:8080/api/recommendations/${userId}/learning-paths/${learningPathId}/resources`
+        );
+        const data = await response.json();
+        setRecommendedResources(data);
+      } catch (error) {
+        console.error("Error fetching recommended resources:", error);
+      }
+    };
+    fetchRecommendedLearningPaths();
+  }, []);
 
   const isLearningPathStarted =
     userProgress && userProgress.status === "in_progress";
@@ -266,11 +284,25 @@ export function LearningPathDetails() {
         <Card className="border border-blue-gray-100 p-4 h-full shadow-md rounded-lg">
           <CardBody className="space-y-4">
             <Typography variant="h6" className="font-semibold text-gray-800">
-              Recommended
+              Expand Your Knowledge
             </Typography>
-            <p variant="h6" className=" text-gray-500 text-sm">
-              No data yet.
-            </p>
+            <div className="flex flex-col gap-3">
+              {recommendedResources.length === 0 ? (
+                <p className="text-gray-500 text-sm">
+                  {loading
+                    ? "Loading recommended learning paths..."
+                    : "Couldn't recommend learning paths."}
+                </p>
+              ) : (
+                recommendedResources.map((item) => (
+                  <ResourceCard
+                    key={item.id}
+                    resource={item}
+                    className="p-3 bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-200"
+                  />
+                ))
+              )}
+            </div>
           </CardBody>
         </Card>
       </div>

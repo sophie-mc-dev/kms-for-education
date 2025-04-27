@@ -31,9 +31,7 @@ async function startServer() {
 
   if (testNeo4jConnection) {
     try {
-      console.log("🔄 Syncing data from PostgreSQL to Neo4j...");
       await syncData();
-      console.log("✅ Data sync completed.");
     } catch (error) {
       console.warn("⚠️ Error syncing data to Neo4j:", error.message);
     }

@@ -128,7 +128,7 @@ export function ModuleDetails() {
     const fetchRecommendedLearningPaths = async () => {
       try {
         const response = await fetch(
-          `http://localhost:8080/api/recommendations/learning-paths/${moduleId}`
+          `http://localhost:8080/api/recommendations/${userId}/learning-paths/${moduleId}`
         );
         const data = await response.json();
         setRecommendedLearningPaths(data);

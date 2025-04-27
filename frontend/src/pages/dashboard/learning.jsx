@@ -27,11 +27,15 @@ export function LearningPage() {
   useEffect(() => {
     const fetchLearningPathsAndModules = async () => {
       try {
-        const response = await fetch("http://localhost:8080/api/learning-paths");
+        const response = await fetch(
+          "http://localhost:8080/api/learning-paths"
+        );
         const data = await response.json();
         setLearningPaths(data);
 
-        const modulesResponse = await fetch("http://localhost:8080/api/modules");
+        const modulesResponse = await fetch(
+          "http://localhost:8080/api/modules"
+        );
         const modulesData = await modulesResponse.json();
         setModules(modulesData);
       } catch (error) {
@@ -68,7 +72,9 @@ export function LearningPage() {
     ];
   }
 
-  const sortedItems = combinedItems.sort((a, b) => a.title.localeCompare(b.title));
+  const sortedItems = combinedItems.sort((a, b) =>
+    a.title.localeCompare(b.title)
+  );
 
   return (
     <div className="mt-12 grid grid-cols-4 gap-4">
@@ -77,7 +83,11 @@ export function LearningPage() {
         <div className="col-span-4 flex justify-end py-2 px-4">
           <Popover placement="bottom-end">
             <PopoverHandler>
-              <Button variant="filled" size="sm" className="flex items-center gap-2">
+              <Button
+                variant="filled"
+                size="sm"
+                className="flex items-center gap-2"
+              >
                 <PlusIcon className="w-4 h-4" />
                 Add
               </Button>
@@ -102,22 +112,29 @@ export function LearningPage() {
       {userRole === "student" && (
         <div className="col-span-4 flex justify-end py-2 px-4">
           <Link to="create-learning-path">
-              <Button variant="filled" size="sm" className="flex items-center gap-2">
-                <PlusIcon className="w-4 h-4" />
-                Create Study Path
-              </Button>
-              </Link>
+            <Button
+              variant="filled"
+              size="sm"
+              className="flex items-center gap-2"
+            >
+              <PlusIcon className="w-4 h-4" />
+              Create Study Path
+            </Button>
+          </Link>
         </div>
       )}
 
       {/* Search Section */}
       <Card className="col-span-4 border border-gray-300 rounded-lg">
         <CardBody className="p-6">
-          <Input
-            label="Search Learning Resources"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+          <div className="flex items-center space-x-4">
+            <Input
+              label="Search Learning Resources"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            <Button>Search</Button>
+          </div>
         </CardBody>
       </Card>
 
@@ -146,12 +163,23 @@ export function LearningPage() {
             Filters
           </Typography>
           <div className="mb-4">
-            <Typography variant="small" className="text-xs font-semibold uppercase text-blue-gray-500">
+            <Typography
+              variant="small"
+              className="text-xs font-semibold uppercase text-blue-gray-500"
+            >
               Type:
             </Typography>
             <div className="flex flex-col gap-2">
-              <Checkbox checked={filterLP} onChange={() => setFilterLP(!filterLP)} label="Learning Paths" />
-              <Checkbox checked={filterMD} onChange={() => setFilterMD(!filterMD)} label="Modules" />
+              <Checkbox
+                checked={filterLP}
+                onChange={() => setFilterLP(!filterLP)}
+                label="Learning Paths"
+              />
+              <Checkbox
+                checked={filterMD}
+                onChange={() => setFilterMD(!filterMD)}
+                label="Modules"
+              />
             </div>
           </div>
         </CardBody>

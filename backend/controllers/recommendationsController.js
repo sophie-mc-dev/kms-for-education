@@ -223,41 +223,60 @@ const recommendationsController = {
    */
   getLearningPathRecommendationBasedOnModules: async (req, res) => {
     const module_id = req.params.module_id;
+    const user_id = req.params.user_id;
     const session = driver.session();
 
     try {
       const cypherQuery = `
-        WITH $module_id AS moduleId
+        WITH $module_id AS moduleId, $user_id AS userId 
 
         // Step 1: Get the input module and its resources
         MATCH (mod:Module {id: moduleId})-[:HAS_RESOURCE]->(res:Resource)
-        WITH mod, COLLECT(res) AS modResources
+        WITH mod, COLLECT(res) AS modResources, userId
 
         // Step 2: Find learning paths that include this module directly
         OPTIONAL MATCH (lp:LearningPath)-[:HAS_MODULE]->(mod)
-        WITH mod, modResources, COLLECT(DISTINCT lp) AS directLPs
+        WITH mod, modResources, COLLECT(DISTINCT lp) AS directLPs, userId
 
-        // Step 3: Fallback – find other modules that share resources with the current one
+        // Step 3: Find other modules that share resources with the current one
         OPTIONAL MATCH (otherMod:Module)-[:HAS_RESOURCE]->(sharedRes:Resource)
         WHERE otherMod.id <> mod.id AND sharedRes IN modResources
-        WITH mod, modResources, directLPs, COLLECT(DISTINCT otherMod) AS fallbackModules
+        WITH mod, modResources, directLPs, COLLECT(DISTINCT otherMod) AS relatedModules, userId
 
-        // Step 4: Find learning paths that include those fallback modules
-        UNWIND fallbackModules AS fallbackMod
-        OPTIONAL MATCH (fallbackLP:LearningPath)-[:HAS_MODULE]->(fallbackMod)
-        WITH directLPs, COLLECT(DISTINCT fallbackLP) AS fallbackLPs
+        // Step 4: Find learning paths that include those related modules
+        OPTIONAL MATCH (fallbackLP:LearningPath)-[:HAS_MODULE]->(relatedMod:Module)
+        WHERE relatedMod IN relatedModules
+        WITH modResources, directLPs, COLLECT(DISTINCT fallbackLP) AS fallbackLPs, userId
 
-        // Step 5: Combine and return unique learning paths
-        WITH apoc.coll.toSet(directLPs + fallbackLPs) AS allPaths
-        UNWIND allPaths AS lp
-        RETURN DISTINCT lp { .id, .title, .description }
+        // Step 5: Consider user interactions with resources
+        OPTIONAL MATCH (user:User {id: userId})-[:PERFORMED]->(:Interaction {type: "VIEWED_RESOURCE"})-[:TARGET]->(viewedRes:Resource)
+        WHERE viewedRes IN modResources
+        WITH directLPs, fallbackLPs, COUNT(viewedRes) AS viewedCount
+
+        // Step 6: Score direct and fallback learning paths separately inside a subquery
+        CALL {
+            WITH directLPs, viewedCount
+            UNWIND directLPs AS directLP
+            RETURN directLP AS learningPath, (10 + viewedCount * 3) AS score, 'direct' AS source
+            UNION
+            WITH fallbackLPs, viewedCount
+            UNWIND fallbackLPs AS fallbackLP
+            RETURN fallbackLP AS learningPath, (5 + viewedCount * 2) AS score, 'fallback' AS source
+        }
+        WITH DISTINCT learningPath, score, source  // Ensure unique learning paths in the final result
+        RETURN learningPath { .id, .title, .summary, .estimated_duration, .ects } AS recommendedPath, score, source
+        ORDER BY score DESC
         LIMIT 5
+
       `;
 
-      const result = await session.run(cypherQuery, { module_id });
+      const result = await session.run(cypherQuery, {
+        user_id: user_id,
+        module_id: module_id,
+      });
 
       const recommendations = result.records.map((record) => {
-        const rec = record.get("mod");
+        const rec = record.get("recommendedPath");
         return {
           id: rec.id,
           title: rec.title,
@@ -282,11 +301,170 @@ const recommendationsController = {
   },
 
   /**
+   * For the LP Details Page
+   *
+   * Recommends other learning paths based on shared modules/resources
+   * and previous user interactions
    *
    * @param {*} req
    * @param {*} res
    */
-  getRecommendationBasedOnLearningPath: async (req, res) => {},
+  getLPRecommendationBasedOnLearningPath: async (req, res) => {
+    const user_id = req.params.user_id;
+    const learning_path_id = req.params.learning_path_id;
+    const session = driver.session();
+
+    try {
+      const cypherQuery = `
+        WITH $learning_path_id AS currentLearningPathId, $user_id AS userId
+
+        // Step 1: Get the current learning path and its modules
+        MATCH (lp:LearningPath {id: currentLearningPathId})-[:HAS_MODULE]->(mod:Module)-[:HAS_RESOURCE]->(res:Resource)
+        WITH currentLearningPathId, COLLECT(DISTINCT mod) AS currentModules, COLLECT(DISTINCT res) AS currentResources
+
+        // Step 2: Find learning paths that share modules/resources
+        MATCH (otherLp:LearningPath)-[:HAS_MODULE]->(sharedMod:Module)-[:HAS_RESOURCE]->(sharedRes:Resource)
+        WHERE (sharedMod IN currentModules OR sharedRes IN currentResources) 
+        AND otherLp.id <> currentLearningPathId  // Exclude the current learning path itself directly in this step
+
+        // Step 3: Collect learning paths the user has completed
+        OPTIONAL MATCH (user:User {id: $user_id})-[:PERFORMED]->(:Interaction {type: "COMPLETED_LEARNING_PATH"})-[:TARGET]->(completedLp:LearningPath)
+        WITH currentLearningPathId, COLLECT(DISTINCT completedLp.id) AS completedLearningPaths, otherLp, sharedMod, sharedRes
+
+        // Step 4: Filter out learning paths that the user has already completed
+        WHERE NOT otherLp.id IN completedLearningPaths
+
+        // Step 5: Count the number of "VIEWED_LEARNING_PATH" interactions for each learning path
+        OPTIONAL MATCH (user:User {id: $user_id})-[:PERFORMED]->(:Interaction {type: "VIEWED_LEARNING_PATH"})-[:TARGET]->(viewedLp:LearningPath)
+        WHERE viewedLp.id = otherLp.id
+        WITH otherLp, COUNT(viewedLp) AS viewedCount, sharedMod, sharedRes, completedLearningPaths
+
+        // Step 6: Rank the learning paths based on shared modules/resources and viewed interactions
+        WITH otherLp, COUNT(DISTINCT sharedMod) AS sharedModulesCount, COUNT(DISTINCT sharedRes) AS sharedResourcesCount, viewedCount
+        WITH otherLp, sharedModulesCount + sharedResourcesCount * 2 + viewedCount * 1 AS recommendationScore
+
+        // Step 7: Return recommended learning paths sorted by the score
+        RETURN otherLp { .id, .title, .summary, .estimated_duration, .ects } AS recommendedPath, recommendationScore
+        ORDER BY recommendationScore DESC
+        LIMIT 5
+      `;
+
+      const result = await session.run(cypherQuery, {
+        user_id: user_id,
+        learning_path_id: learning_path_id,
+      });
+
+      const recommendations = result.records.map((record) => {
+        const rec = record.get("recommendedPath");
+        return {
+          id: rec.id,
+          title: rec.title,
+          summary: rec.summary,
+          estimated_duration: rec.estimated_duration,
+          ects: rec.ects,
+        };
+      });
+
+      res.status(200).json(recommendations);
+    } catch (err) {
+      console.error("Recommendation Error:", err);
+      res.status(500).json({
+        message:
+          "Failed to get learning path recommendations based on learning path.",
+      });
+    } finally {
+      await session.close();
+    }
+  },
+
+  /**
+   * For the LearningPath Details page sidebar
+   * 
+   * It recommends resources from other modules that are not part of the current learning path.
+   * If the user has previously viewed certain resources, those are prioritized in the recommendations.
+   * Recommended resources are ranked based on how many times the user has viewed them.
+   * 
+   * @param {*} req 
+   * @param {*} res 
+   */
+  getResourceRecommendationBasedOnLearningPath: async (req, res) => {
+    const user_id = req.params.user_id;
+    const learning_path_id = req.params.learning_path_id;
+    const session = driver.session();
+
+    try {
+      const cypherQuery = `
+        WITH $learning_path_id AS currentLearningPathId, $user_id AS userId
+
+        // Step 1: Get the current learning path and its modules/resources
+        MATCH (lp:LearningPath {id: currentLearningPathId})-[:HAS_MODULE]->(mod:Module)-[:HAS_RESOURCE]->(res:Resource)
+        WITH currentLearningPathId, COLLECT(DISTINCT mod) AS currentModules, COLLECT(DISTINCT res) AS currentResources
+
+        // Step 2: Find other resources that share modules/resources (but not already in the current learning path)
+        MATCH (otherMod:Module)-[:HAS_RESOURCE]->(otherRes:Resource)
+        WHERE NOT otherRes IN currentResources // Exclude resources already part of the current learning path
+        AND otherMod <> ALL(mod IN currentModules WHERE otherMod.id = mod.id) // Ensure it's from a different module
+        WITH currentLearningPathId, COLLECT(DISTINCT otherRes) AS recommendedResources
+
+        // Step 3: Consider resources based on the user's previous interactions (e.g., viewed or saved resources)
+        OPTIONAL MATCH (user:User {id: $user_id})-[:PERFORMED]->(:Interaction {type: "VIEWED_RESOURCE"})-[:TARGET]->(viewedRes:Resource)
+        WHERE viewedRes IN recommendedResources
+        WITH recommendedResources, COUNT(viewedRes) AS viewCount
+
+        // Step 4: Rank the recommended resources based on their similarity to current resources and view count
+        WITH recommendedResources, viewCount
+        ORDER BY viewCount DESC
+
+        // Step 5: Unwind the resources and return the recommended resources with categories, tags, and score
+        UNWIND recommendedResources AS recommendedRes
+        MATCH (recommendedRes)-[:HAS_CATEGORY]->(cat:Category)
+        MATCH (recommendedRes)-[:HAS_TAG]->(tag:Tag)
+        WITH recommendedRes, COLLECT(DISTINCT cat) AS otherCategories, COLLECT(DISTINCT tag) AS otherTags, viewCount
+
+        // Step 6: Calculate the total score (you can adjust how the score is calculated)
+        WITH recommendedRes, otherCategories, otherTags, viewCount, (viewCount * 1) + 0 AS totalScore // Adjust scoring formula
+
+        // Step 7: Return the recommended resources with all the required fields
+        RETURN recommendedRes { 
+            .id, 
+            .title, 
+            .description, 
+            .type, 
+            category: [cat IN otherCategories | cat.name], 
+            tags: [tag IN otherTags | tag.name], 
+            score: totalScore
+        } AS recommendedResource
+        LIMIT 6
+      `;
+
+      const result = await session.run(cypherQuery, {
+        user_id: user_id,
+        learning_path_id: learning_path_id,
+      });
+
+      const recommendations = result.records.map((record) => {
+        const rec = record.get("recommendedResource");
+        return {
+          id: rec.id,
+          title: rec.title,
+          description: rec.description,
+          type: rec.type,
+          category: rec.category,
+          tags: rec.tags,
+        };
+      });
+
+      res.status(200).json(recommendations);
+    } catch (err) {
+      console.error("Recommendation Error:", err);
+      res.status(500).json({
+        message:
+          "Failed to get resource recommendations based on learning path.",
+      });
+    } finally {
+      await session.close();
+    }
+  },
 
   /**
    * For the Recommended Modules bottom section at ModuleDetails Page.
@@ -374,5 +552,4 @@ const recommendationsController = {
   },
 };
 
-// For Standalone Modules, Get Similar Modules (for example if module is also in a LP, recommend modules of that LP)
 module.exports = recommendationsController;

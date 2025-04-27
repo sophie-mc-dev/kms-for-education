@@ -157,7 +157,7 @@ export function Assessment({
               return (
                 <div key={qIndex} className="mb-4 p-4 rounded-md">
                   <Typography className="mb-2 font-medium">
-                    Question {qIndex + 1}: {questionObj}
+                  {`Question ${qIndex + 1}: ${questionObj.question_text}`}
                   </Typography>
 
                   {assessment?.answers?.[qIndex]?.length > 0 ? (
@@ -166,7 +166,7 @@ export function Assessment({
                       const isSelected = aIndex === userSelectedIndex;
 
                       return (
-                        <label key={aIndex} className="block">
+                        <label key={`${assessment?.id}-${qIndex}-${aIndex}`} className="block">
                           <div
                             className={`p-2 rounded-md cursor-pointer flex items-center gap-2 border 
                               ${isSelected ? "border-2" : "border"}
