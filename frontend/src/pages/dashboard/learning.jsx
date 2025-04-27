@@ -98,7 +98,7 @@ export function LearningPage() {
         </div>
       )}
 
-      {/* Educator Action Button */}
+      {/* Student Action Button */}
       {userRole === "student" && (
         <div className="col-span-4 flex justify-end py-2 px-4">
           <Link to="create-learning-path">

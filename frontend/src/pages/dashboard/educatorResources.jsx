@@ -5,11 +5,7 @@ import {
   CardBody,
   Typography,
   CardHeader,
-  Button,
-  CardFooter,
 } from "@material-tailwind/react";
-import { CloudArrowUpIcon } from "@heroicons/react/24/solid";
-import { Link } from "react-router-dom";
 import { useUser } from "@/context/userContext";
 
 export function EducatorResources() {
@@ -17,7 +13,7 @@ export function EducatorResources() {
   const [resources, setResources] = useState([]);
   const { user } = useUser();
   
-  const collections = ["Published"];
+  const collections = ["My Resources", "Public Resources", "Private Resources", "My Modules", "My Learning Paths"];
 
   // Fetch resources created by the logged-in user
   const getAllResources = async () => {
@@ -54,18 +50,6 @@ export function EducatorResources() {
 
   return (
     <div className="mt-12 flex flex-col gap-6">
-      <CardFooter className="flex items-center justify-end py-0 px-1">
-        <Link to="upload-resource">
-          <Button
-            variant="filled"
-            size="sm"
-            className="flex items-center gap-2"
-          >
-            <CloudArrowUpIcon className="w-4 h-4" />
-            Upload Resource
-          </Button>
-        </Link>
-      </CardFooter>
 
       {/* Search Bar */}
       <Input

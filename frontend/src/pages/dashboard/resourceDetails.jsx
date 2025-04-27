@@ -18,6 +18,7 @@ export function ResourceDetails() {
   const [recommendedResources, setRecommendedResources] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  
   const containerRef = useRef(null);
   const [currentPage, setCurrentPage] = useState(0);
   const [cardsPerRow, setCardsPerRow] = useState(1);
@@ -139,7 +140,7 @@ export function ResourceDetails() {
       const embedUrl = getYouTubeEmbedUrl(url);
       return embedUrl ? (
         <iframe
-          width="60%"
+          width="100%"
           height="400"
           src={embedUrl}
           title="YouTube video"
