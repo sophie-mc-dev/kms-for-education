@@ -1,4 +1,5 @@
 const { pool } = require("../scripts/postgres");
+const { indexModule } = require("../services/elasticSearchService");
 
 const modulesController = {
   createModule: async (req, res) => {
@@ -82,6 +83,20 @@ const modulesController = {
       }
 
       await client.query("COMMIT");
+
+      await indexModule({
+        id: module.id,
+        title,
+        summary,
+        created_at,
+        updated_at,
+        estimated_duration: parseInt(estimated_duration),
+        is_standalone,
+        objectives,
+        ects,
+      });
+
+
       res.status(201).json(module);
     } catch (error) {
       await client.query("ROLLBACK");

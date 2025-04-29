@@ -1,4 +1,5 @@
 const { pool } = require("../scripts/postgres");
+const { indexLearningPath } = require("../services/elasticSearchService");
 
 const learningPathsController = {
   addLearningPath: async (req, res) => {
@@ -62,6 +63,21 @@ const learningPathsController = {
       }
 
       await client.query("COMMIT");
+
+      await indexLearningPath({
+        id: learningPathId,
+        title,
+        summary,
+        created_at,
+        updated_at,
+        estimated_duration: parseInt(estimatedDuration),
+        ects,
+        difficulty_level,
+        objectives,
+        creator_type,
+        first_name,
+        last_name,
+      });
 
       res.status(201).json({
         message: "Learning Path created successfully",
