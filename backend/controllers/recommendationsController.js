@@ -119,6 +119,11 @@ const recommendationsController = {
 
       const result = await session.run(cypherQuery, { resource_id });
 
+      if (!result.records.length) {
+        res.status(200).json([]);
+        return;
+      }
+
       const recommendations = result.records.map((record) => {
         const rec = record.get("mod");
         return {
@@ -190,6 +195,11 @@ const recommendationsController = {
     `;
 
       const result = await session.run(cypherQuery, { resource_id });
+
+      if (!result.records.length) {
+        res.status(200).json([]);
+        return;
+      }
 
       const recommendations = result.records.map((record) => {
         const rec = record.get("other");

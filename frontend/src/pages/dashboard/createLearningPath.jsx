@@ -16,6 +16,7 @@ import { LearningMDCard } from "@/widgets/cards";
 import { DragDropContext, Draggable } from "react-beautiful-dnd";
 import { StrictModeDroppable as Droppable } from "@/helpers/StrictModeDroppable";
 import { useUser } from "@/context/UserContext";
+import Select from "react-select";
 
 export function CreateLearningPath() {
   const { userId } = useUser();
@@ -25,12 +26,19 @@ export function CreateLearningPath() {
   const [objectives, setObjectives] = useState("");
   const [visibility, setVisibility] = useState("public");
   const [estimatedDuration, setEstimatedDuration] = useState("");
+  const [difficultyLevel, setDifficultyLevel] = useState("");
   const [ects, setEcts] = useState("");
   const [modules, setModules] = useState([]);
   const [selectedModules, setSelectedModules] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const navigate = useNavigate();
+
+  const difficultyLevels = [
+    { value: "Beginner", label: "Beginner" },
+    { value: "Intermediate", label: "Intermediate" },
+    { value: "Advanced", label: "Advanced" },
+  ];
 
   useEffect(() => {
     const fetchModules = async () => {
@@ -62,7 +70,8 @@ export function CreateLearningPath() {
       ects: parseInt(ects, 10),
       modules: modulesWithOrder,
       user_id: userId,
-      objectives: objectives
+      objectives: objectives,
+      difficulty_level: difficultyLevel,
     };
 
     console.log("Submitting Learning Path Data:", learningPathData);
@@ -169,6 +178,29 @@ export function CreateLearningPath() {
                   required
                 />
               </div>
+
+              <div className="flex-1">
+                <Typography className="text-xs font-semibold uppercase text-blue-gray-500">
+                  Difficulty Level:
+                </Typography>
+                <Select
+                  name="difficulty"
+                  value={difficultyLevels.find(
+                    (d) => d.value === difficultyLevel
+                  )}
+                  onChange={(selectedOption) =>
+                    setDifficultyLevel((prev) => ({
+                      ...prev,
+                      difficulty: selectedOption.value,
+                    }))
+                  }
+                  options={difficultyLevels}
+                  placeholder="Select difficulty level"
+                  className="basic-single-select"
+                  classNamePrefix="select"
+                />
+              </div>
+
               <div>
                 <Typography className="text-xs font-semibold uppercase text-blue-gray-500">
                   Visibility:

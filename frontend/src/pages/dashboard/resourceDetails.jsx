@@ -18,7 +18,7 @@ export function ResourceDetails() {
   const [recommendedResources, setRecommendedResources] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  
+
   const containerRef = useRef(null);
   const [currentPage, setCurrentPage] = useState(0);
   const [cardsPerRow, setCardsPerRow] = useState(1);
@@ -311,21 +311,23 @@ export function ResourceDetails() {
               </div>
             </div>
 
-            <div className="mb-6">
-              <Typography
-                variant="small"
-                color="blue-gray"
-                className="font-semibold capitalize"
-              >
-                File Format:
-              </Typography>
-              <Typography
-                variant="small"
-                className="font-normal text-blue-gray-500 uppercase"
-              >
-                {resource.format}
-              </Typography>
-            </div>
+            {resource.format && (
+              <div className="mb-6">
+                <Typography
+                  variant="small"
+                  color="blue-gray"
+                  className="font-semibold capitalize"
+                >
+                  File Format:
+                </Typography>
+                <Typography
+                  variant="small"
+                  className="font-normal text-blue-gray-500 uppercase"
+                >
+                  {resource.format}
+                </Typography>
+              </div>
+            )}
 
             {resource.tags && resource.tags.length > 0 && (
               <div className="mb-6">

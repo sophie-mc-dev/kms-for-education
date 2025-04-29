@@ -16,6 +16,8 @@ const searchController = {
           multi_match: {
             query: q,
             fields: ["title^3", "description", "tags", "category"],
+            fuzziness: "AUTO",
+            
           },
         },
       });

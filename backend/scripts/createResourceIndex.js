@@ -1,9 +1,9 @@
 const { esClient } = require("./elasticsearch");
 
 async function createIndex() {
-  const exists = await esClient.indices.exists({ index: "resources" });
+  const indexExists = await esClient.indices.exists({ index: "resources" });
 
-  if (!exists) {
+  if (!indexExists.body) {
     await esClient.indices.create({
       index: "resources",
       body: {
@@ -15,6 +15,7 @@ async function createIndex() {
             tags: { type: "keyword" },
             category: { type: "keyword" },
             format: { type: "keyword" },
+            embedding: { type: "dense_vector", dims: 768 }
           },
         },
       },

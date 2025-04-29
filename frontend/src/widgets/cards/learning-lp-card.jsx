@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Card, CardBody, Typography, Progress } from "@material-tailwind/react";
+import { Card, CardBody, Typography, Progress, Chip } from "@material-tailwind/react";
 import { ClockIcon, CheckCircleIcon } from "@heroicons/react/24/outline";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "@/context/UserContext";
@@ -121,6 +121,23 @@ export function LearningLPCard({ learningItem }) {
             <Typography variant="small" className="font-medium">
               {learningItem.estimated_duration} min | {learningItem.ects} ECTS
             </Typography>
+          </div>
+        </div>
+
+        <div className="mt-auto">
+          <div
+            className="flex flex-wrap gap-1"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {learningItem.difficulty_level && (
+              <div className="flex flex-wrap gap-2 text-sm mb-2">
+                <Chip
+                  value={learningItem.difficulty_level}
+                  size="sm"
+                  className="bg-blue-gray-100 text-blue-gray-700 font-medium"
+                />
+              </div>
+            )}
           </div>
         </div>
 

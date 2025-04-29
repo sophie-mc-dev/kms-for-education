@@ -24,6 +24,8 @@ export function LearningPage() {
   const [filterMD, setFilterMD] = useState(true);
   const { userRole } = useUser();
 
+  // TODO: add filters for status, difficulty level, ects, duration
+
   useEffect(() => {
     const fetchLearningPathsAndModules = async () => {
       try {

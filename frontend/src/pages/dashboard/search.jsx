@@ -8,6 +8,7 @@ import {
   Chip,
   Button,
   Spinner,
+  CardFooter,
 } from "@material-tailwind/react";
 import { CloudArrowUpIcon } from "@heroicons/react/24/solid";
 import { resourceTypes } from "@/data/resource-types.jsx";
@@ -33,6 +34,17 @@ export function Search() {
   const visibleLimit = 5;
   const visibleTagLimit = 15;
 
+  useEffect(() => {
+    const fetchResources = async () => {
+      setLoading(true);
+      const data = await getAllResources();
+      setResources(data);
+      setResults(data);
+      setLoading(false);
+    };
+    fetchResources();
+  }, []);
+
   const getAllResources = async () => {
     try {
       const response = await fetch("http://localhost:8080/api/resources");
@@ -47,23 +59,29 @@ export function Search() {
     }
   };
 
-  useEffect(() => {
-    const fetchResources = async () => {
-      setLoading(true);
-      const data = await getAllResources();
-      setResources(data);
+  const handleSearch = async () => {
+    if (!searchQuery) {
+      setResults(resources);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await fetch(
+        `http://localhost:8080/api/search/resources?q=${encodeURIComponent(
+          searchQuery
+        )}`
+      );
+      const data = await response.json();
       setResults(data);
-      setLoading(false);
-    };
-    fetchResources();
-  }, []);
+    } catch (error) {
+      console.error("Error fetching search results:", error);
+    }
+    setLoading(false);
+  };
 
   // This function filters resources based on search query and active filters
-  const filteredResources = resources.filter((resource) => {
-    const searchMatch =
-      resource.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      resource.description?.toLowerCase().includes(searchQuery.toLowerCase());
-
+  const filteredResults = results.filter((resource) => {
     const typeMatch =
       typeFilter.length > 0 ? typeFilter.includes(resource.type) : true;
 
@@ -78,12 +96,8 @@ export function Search() {
         ? resource.tags?.some((tag) => tagFilter.includes(tag)) ?? false
         : true;
 
-    return searchMatch && categoryMatch && tagMatch && typeMatch;
+    return categoryMatch && tagMatch && typeMatch;
   });
-
-  const sortedResources = [...filteredResources].sort((a, b) =>
-    (a.title ?? "").localeCompare(b.title ?? "")
-  );
 
   // Toggle category selection
   const toggleCategory = (category) => {
@@ -107,22 +121,6 @@ export function Search() {
     );
   };
 
-  const handleSearch = async () => {
-    if (!searchQuery) return;
-
-    setLoading(true);
-    try {
-      const response = await fetch(
-        `http://localhost:8080/api/resources/search?query=${searchQuery}`
-      );
-      const data = await response.json();
-      setResults(data);
-    } catch (error) {
-      console.error("Error fetching search results:", error);
-    }
-    setLoading(false);
-  };
-
   return (
     <div className="mt-12 grid grid-cols-4 gap-4">
       {/* Educator Action Button */}
@@ -143,15 +141,23 @@ export function Search() {
 
       <Card className="col-span-4 border border-gray-300 rounded-lg">
         <CardBody className="space-y-6 p-6">
-          <div className="flex items-center space-x-4">
+          <form
+            className="flex items-center space-x-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSearch();
+            }}
+          >
             <Input
               label="Search Resources"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="mb-4 flex-grow"
             />
-            <Button onClick={handleSearch}>Search</Button>
-          </div>
+            <Button type="submit" disabled={loading}>
+              {loading ? <Spinner className="w-4 h-4" /> : "Search"}
+            </Button>
+          </form>
         </CardBody>
       </Card>
 
@@ -165,8 +171,8 @@ export function Search() {
               <div className="flex justify-center items-center">
                 <Spinner />
               </div>
-            ) : filteredResources.length > 0 ? (
-              filteredResources.map((resource) => (
+            ) : filteredResults.length > 0 ? (
+              filteredResults.map((resource) => (
                 <ResourceCard
                   key={resource.id}
                   resource={resource}
@@ -175,7 +181,7 @@ export function Search() {
               ))
             ) : (
               <Typography variant="small" color="gray">
-                No resources found.
+                No matching resources found.
               </Typography>
             )}
           </div>
