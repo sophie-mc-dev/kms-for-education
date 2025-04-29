@@ -1,4 +1,4 @@
-const { pool } = require("../db/postgres");
+const { pool } = require("../scripts/postgres");
 const bcrypt = require("bcryptjs");
 
 async function hashPassword(password) {

@@ -1,7 +1,8 @@
-const { pool } = require("../db/postgres");
-const { uploadToR2 } = require("../utils/r2-upload");
-const { deleteFromR2 } = require("../utils/r2-delete");
-const { searchResources } = require("../ontology/ontologyService")
+const { pool } = require("../scripts/postgres");
+const { uploadToR2 } = require("../utils/r2Upload");
+const { deleteFromR2 } = require("../utils/r2Delete");
+const { searchResources } = require("../ontology/ontologyService");
+const { indexResource } = require("../services/elasticSearchService");
 
 const resourcesController = {
   // Upload a new resource
@@ -74,6 +75,20 @@ const resourcesController = {
 
       await client.query("COMMIT");
 
+      await indexResource({
+        id: resourceId,
+        title,
+        description,
+        url: finalUrl,
+        type,
+        category,
+        created_by,
+        tags,
+        visibility,
+        estimated_time: parseInt(estimated_time),
+        format,
+      });
+
       res.status(201).json({
         message: "Resource uploaded successfully",
         resourceId: resourceId,
@@ -107,7 +122,6 @@ const resourcesController = {
       visibility,
       estimated_time,
       format,
-      html_content,
     } = req.body;
 
     let client;
@@ -154,7 +168,6 @@ const resourcesController = {
         visibility,
         estimated_time,
         format,
-        html_content,
       };
 
       for (const [key, value] of Object.entries(updates)) {
@@ -187,6 +200,8 @@ const resourcesController = {
         message: "Resource updated successfully",
         resource: result.rows[0],
       });
+
+      await indexResource(result.rows[0]);
     } catch (error) {
       console.error("Error uploading resource:", error);
 

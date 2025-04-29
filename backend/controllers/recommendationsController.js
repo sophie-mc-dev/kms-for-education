@@ -1,5 +1,5 @@
-const { pool } = require("../db/postgres");
-const { driver } = require("../db/neo4j");
+const { pool } = require("../scripts/postgres");
+const { driver } = require("../scripts/neo4j");
 
 const recommendationsController = {
   /**
@@ -379,13 +379,13 @@ const recommendationsController = {
 
   /**
    * For the LearningPath Details page sidebar
-   * 
+   *
    * It recommends resources from other modules that are not part of the current learning path.
    * If the user has previously viewed certain resources, those are prioritized in the recommendations.
    * Recommended resources are ranked based on how many times the user has viewed them.
-   * 
-   * @param {*} req 
-   * @param {*} res 
+   *
+   * @param {*} req
+   * @param {*} res
    */
   getResourceRecommendationBasedOnLearningPath: async (req, res) => {
     const user_id = req.params.user_id;

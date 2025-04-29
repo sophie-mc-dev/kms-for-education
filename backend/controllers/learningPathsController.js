@@ -1,4 +1,4 @@
-const { pool } = require("../db/postgres");
+const { pool } = require("../scripts/postgres");
 
 const learningPathsController = {
   addLearningPath: async (req, res) => {

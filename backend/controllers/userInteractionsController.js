@@ -13,15 +13,12 @@ REGISTER:
 - identify user-specific preferences
 - completing a module is more important than just viewing it
 */
-const { pool } = require("../db/postgres");
+const { pool } = require("../scripts/postgres");
 
 const userInteractionsController = {
   // Registers an interaction with a resource
   registerResourceView: async (req, res) => {
-    const {
-      user_id,
-      resource_id,
-    } = req.body;
+    const { user_id, resource_id } = req.body;
 
     try {
       // Insert the interaction into the database
@@ -31,7 +28,7 @@ const userInteractionsController = {
         [user_id, resource_id]
       );
 
-      res.status(200).json(result.rows[0]); 
+      res.status(200).json(result.rows[0]);
     } catch (error) {
       console.error("Error saving resource interaction:", error);
       res.status(500).json({ error: "Failed to save resource interaction" });
@@ -40,10 +37,7 @@ const userInteractionsController = {
 
   // Registers an interaction with a module
   registerModuleView: async (req, res) => {
-    const {
-      user_id,
-      module_id,
-    } = req.body;
+    const { user_id, module_id } = req.body;
 
     try {
       // Insert the interaction into the database
@@ -62,10 +56,7 @@ const userInteractionsController = {
 
   // Registers an interaction with a learning path
   registerLearningPathView: async (req, res) => {
-    const {
-      user_id,
-      learning_path_id,
-    } = req.body;
+    const { user_id, learning_path_id } = req.body;
 
     try {
       // Insert the interaction into the database
@@ -91,10 +82,10 @@ const userInteractionsController = {
         `SELECT resource_id, COUNT(*) AS interactions_count
            FROM user_interactions
            GROUP BY resource_id
-           ORDER BY interactions_count DESC` 
+           ORDER BY interactions_count DESC`
       );
 
-      res.status(200).json(result.rows); 
+      res.status(200).json(result.rows);
     } catch (error) {
       console.error("Error retrieving most popular resources:", error);
       res
@@ -113,7 +104,7 @@ const userInteractionsController = {
            ORDER BY interactions_count DESC`
       );
 
-      res.status(200).json(result.rows); 
+      res.status(200).json(result.rows);
     } catch (error) {
       console.error("Error retrieving most popular modules:", error);
       res
@@ -132,7 +123,7 @@ const userInteractionsController = {
            ORDER BY interactions_count DESC`
       );
 
-      res.status(200).json(result.rows); 
+      res.status(200).json(result.rows);
     } catch (error) {
       console.error("Error retrieving most popular learning paths:", error);
       res

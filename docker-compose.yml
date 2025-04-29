@@ -1,4 +1,25 @@
 services:
+  elasticsearch:
+    container_name: container-elasticsearch
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.1
+    ports:
+      - "9200:9200"
+    environment:
+      - discovery.type=single-node
+      - ELASTIC_PASSWORD=elastic123
+      - xpack.security.enabled=true
+      - xpack.security.authc.api_key.enabled=true
+      - xpack.ml.enabled=true
+      - ES_JAVA_OPTS=-Xms1g -Xmx1g
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    mem_limit: 2g
+    restart: unless-stopped
+
   postgres:
     container_name: container-pg
     image: postgres
@@ -67,3 +88,4 @@ services:
 volumes:
   postgres-data:
   neo4j-data:
+  elasticsearch-data:

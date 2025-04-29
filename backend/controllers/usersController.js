@@ -1,6 +1,4 @@
-const { pool } = require("../db/postgres");
-const bcrypt = require("bcryptjs");
-
+ 
 async function hashPassword(password) {
   const saltRounds = 10;
   return await bcrypt.hash(password, saltRounds);
@@ -29,7 +27,7 @@ const usersController = {
       preferredContentTypes,
       languagePreference,
     } = req.body;
-  
+
     try {
       // Update the user's profile with the provided data
       const result = await pool.query(
@@ -51,14 +49,14 @@ const usersController = {
           user_id,
         ]
       );
-  
+
       const updatedUser = result.rows[0];
       res.status(200).json({ user: updatedUser });
     } catch (err) {
       console.error(err);
       res.status(500).json({ message: "Error updating user profile" });
     }
-  },  
+  },
 
   // Get a user by ID
   getUserById: async (req, res) => {

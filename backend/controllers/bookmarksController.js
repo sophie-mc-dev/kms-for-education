@@ -1,4 +1,4 @@
-const { pool } = require("../db/postgres");
+const { pool } = require("../scripts/postgres");
 
 const bookmarksController = {
   // Add a bookmark

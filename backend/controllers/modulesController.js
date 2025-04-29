@@ -1,4 +1,4 @@
-const { pool } = require("../db/postgres");
+const { pool } = require("../scripts/postgres");
 
 const modulesController = {
   createModule: async (req, res) => {
@@ -838,8 +838,8 @@ const modulesController = {
 
       if (timeSpentResult.rows.length > 0) {
         const startedAt = timeSpentResult.rows[0].started_at;
-        const completedAt = new Date(); 
-        const timeSpent = completedAt - startedAt; 
+        const completedAt = new Date();
+        const timeSpent = completedAt - startedAt;
 
         // Convert milliseconds to seconds (or minutes, as needed)
         const timeSpentInMinutes = Math.floor(timeSpent / 1000 / 60);
