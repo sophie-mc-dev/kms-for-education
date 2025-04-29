@@ -7,7 +7,7 @@ const searchController = {
    * @param {*} res
    */
   searchResources: async (req, res) => {
-    const { q } = req.body;
+    const { q } = req.query;
 
     try {
       const results = await esClient.search({
