@@ -245,7 +245,7 @@ export function Search() {
             <div>
               {[...resourceCategories]
                 .filter((category) => category.label)
-                .sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""))
+                .sort((a, b) => (a.value ?? "").localeCompare(b.value ?? ""))
                 .slice(
                   0,
                   expandedCategories ? resourceCategories.length : visibleLimit

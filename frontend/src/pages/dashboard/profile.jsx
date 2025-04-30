@@ -6,9 +6,8 @@ import {
   Input,
   Button,
 } from "@material-tailwind/react";
-import { HomeIcon, Cog6ToothIcon, PencilIcon } from "@heroicons/react/24/solid";
-import { ProfileInfoCard } from "@/widgets/cards";
 import { useUser } from "@/context/userContext";
+import UserPreferencesForm from "@/widgets/layout/userPreferencesForm";
 
 export function Profile() {
   const { userId } = useUser();
@@ -17,7 +16,16 @@ export function Profile() {
     last_name: "",
     email: "",
     user_role: "",
-  });  const [isLoading, setIsLoading] = useState(true);
+  });
+  const [isLoading, setIsLoading] = useState(true);
+
+  const [formData, setFormData] = useState({
+    educationLevel: "",
+    fieldOfStudy: "",
+    topicInterests: [],
+    preferredContentTypes: [],
+    languagePreference: "",
+  });
 
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -27,7 +35,9 @@ export function Profile() {
       }
 
       try {
-        const response = await fetch(`http://localhost:8080/api/users/${userId}`);
+        const response = await fetch(
+          `http://localhost:8080/api/users/${userId}`
+        );
         if (!response.ok) throw new Error("Failed to fetch user profile");
 
         const data = await response.json();
@@ -49,13 +59,16 @@ export function Profile() {
 
   const handleSave = async () => {
     try {
-      const response = await fetch(`http://localhost:8080/api/users/${userId}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(user),
-      });
+      const response = await fetch(
+        `http://localhost:8080/api/users/${userId}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(user),
+        }
+      );
 
       if (!response.ok) throw new Error("Failed to update user profile");
       alert("Profile updated successfully");
@@ -71,7 +84,7 @@ export function Profile() {
       </div>
 
       <Card className="mx-8 -mt-16 mb-6 lg:mx-4 border border-blue-gray-100">
-          <CardBody className="flex flex-col items-center">
+        <CardBody className="flex flex-col items-center">
           {isLoading ? (
             <Typography variant="small">Loading...</Typography>
           ) : (
@@ -95,9 +108,11 @@ export function Profile() {
                 onChange={handleChange}
                 disabled
               />
-              <Button color="gray" className="w-40 mt-4" onClick={handleSave}>
-                Save Changes
-              </Button>
+              <UserPreferencesForm
+                formData={formData}
+                setFormData={setFormData}
+                onSubmit={handleSave}
+              />
             </form>
           )}
         </CardBody>
