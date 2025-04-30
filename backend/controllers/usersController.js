@@ -66,7 +66,9 @@ const usersController = {
 
     try {
       const result = await pool.query(
-        "SELECT user_id, email, first_name, last_name, user_role FROM users WHERE user_id = $1",
+        `SELECT user_id, email, first_name, last_name, user_role, language_preference 
+        FROM users 
+        WHERE user_id = $1`,
         [userId]
       );
       const user = result.rows[0];

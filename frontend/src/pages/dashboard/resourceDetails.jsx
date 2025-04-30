@@ -170,13 +170,13 @@ export function ResourceDetails() {
             height="700px"
             className="border rounded-md shadow-md"
           />
-          {/* <Button
+          <Button
             color="blue-gray"
             className="mt-2"
             onClick={() => window.open(url)}
           >
             Open PDF
-          </Button> */}
+          </Button>
         </div>
       );
     }
@@ -265,7 +265,7 @@ export function ResourceDetails() {
               </div>
             </div>
 
-            <div className="mb-6 font-normal text-blue-gray-900">
+            <div className="mb-6 font-normal text-blue-gray-500">
               <div
                 className="[&>ul]:list-disc [&>ul]:pl-5 [&>ol]:list-decimal"
                 dangerouslySetInnerHTML={{ __html: resource.description }}

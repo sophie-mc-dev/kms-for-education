@@ -30,10 +30,10 @@ export function ResourceCard({ resource, userId }) {
   const [bookmarked, setBookmarked] = useState(false);
 
   const resourceType = resourceTypes.find(
-    (type) => type.label === resource.type
+    (type) => type.value === resource.type
   );
   const resourceData =
-    resourceTypes.find((r) => r.label === resource.type) || {};
+    resourceTypes.find((r) => r.value === resource.type) || {};
   const { color = "gray" } = resourceData;
   const { bg, text } = colorMap[color];
 

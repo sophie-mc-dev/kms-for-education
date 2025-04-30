@@ -223,7 +223,13 @@ export function LearningPathDetails() {
                 Objectives
               </Typography>
               <div
-                className="[&>ul]:list-disc [&>ul]:pl-5 [&>ul>li>ul]:list-disc [&>ul>li>ul]:pl-5 [&>ol]:list-decimal [&>ol>li>ol]:list-decimal [&>ol>li>ol]:pl-5 mt-2 text-blue-gray-700"
+                className="
+                  [&_ol]:list-decimal [&_ul]:list-disc 
+                  [&_li]:ml-4
+                  [&_ol_ol]:list-decimal [&_ul_ul]:list-disc 
+                  [&_ol_ol]:ml-2 [&_ul_ul]:ml-4 
+                  mt-2 text-blue-gray-700
+                "
                 dangerouslySetInnerHTML={{ __html: learningPath.objectives }}
               ></div>
             </div>

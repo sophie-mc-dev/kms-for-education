@@ -99,6 +99,14 @@ export function Search() {
     return categoryMatch && tagMatch && typeMatch;
   });
 
+  // Order resource results alphabetically by default except when a search is made
+  const isSearch = searchQuery.trim().length > 0;
+  const displayedResults = isSearch
+    ? filteredResults // keep relevance order
+    : [...filteredResults].sort((a, b) =>
+        a.title.toLowerCase().localeCompare(b.title.toLowerCase())
+      );
+
   // Toggle category selection
   const toggleCategory = (category) => {
     setCategoryFilter((prev) =>
@@ -171,8 +179,8 @@ export function Search() {
               <div className="flex justify-center items-center">
                 <Spinner />
               </div>
-            ) : filteredResults.length > 0 ? (
-              filteredResults.map((resource) => (
+            ) : displayedResults.length > 0 ? (
+              displayedResults.map((resource) => (
                 <ResourceCard
                   key={resource.id}
                   resource={resource}

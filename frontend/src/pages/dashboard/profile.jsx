@@ -16,6 +16,7 @@ export function Profile() {
     last_name: "",
     email: "",
     user_role: "",
+    language_preference: "",
   });
   const [isLoading, setIsLoading] = useState(true);
 
