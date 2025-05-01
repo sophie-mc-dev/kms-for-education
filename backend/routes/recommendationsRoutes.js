@@ -8,6 +8,7 @@ router.get("/:user_id/learning-paths/:learning_path_id/resources", recommendatio
 
 router.get("/modules/:resource_id", recommendationsController.getModulesRecommendationBasedOnResource);
 router.get("/:user_id/modules/:module_id", recommendationsController.getModuleRecommendationBasedOnModule);
+router.get("/modules", recommendationsController.getModuleRecommendationForLPathCreation);
 
 router.get("/:user_id/learning-paths/:module_id", recommendationsController.getLearningPathRecommendationBasedOnModules);
 router.get("/:user_id/learning-paths/:learning_path_id", recommendationsController.getLPRecommendationBasedOnLearningPath);

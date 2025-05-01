@@ -560,6 +560,66 @@ const recommendationsController = {
       await session.close();
     }
   },
+
+  /**
+   * User inputs categories
+   *
+   *
+   * @param {*} req
+   * @param {*} res
+   */
+  getModuleRecommendationForLPathCreation: async (req, res) => {
+    const selectedCategories = req.body.categories;
+
+    try {
+      const cypherQuery = `
+        WITH $selectedCategories AS categories  // e.g., ["AI", "Data Science"]
+
+        // Find resources with those categories
+        MATCH (r:Resource)-[:BELONGS_TO]->(cat:Category)
+        WHERE cat.name IN categories
+
+        // Get modules that have those resources
+        MATCH (m:Module)-[:HAS_RESOURCE]->(r)
+        WITH m, COUNT(DISTINCT r) AS matchingResourceCount
+
+        // Boost score if more matching resources
+        RETURN m {
+          .id,
+          .title,
+          .summary,
+          .estimated_duration,
+          .ects
+        } AS modRec, matchingResourceCount
+        ORDER BY matchingResourceCount DESC
+        LIMIT 10
+      `;
+
+      const result = await session.run(cypherQuery, {
+        selectedCategories: selectedCategories,
+      });
+
+      const recommendations = result.records.map((record) => {
+        const rec = record.get("modRec");
+        return {
+          id: rec.id,
+          title: rec.title,
+          summary: rec.summary,
+          estimated_duration: rec.estimated_duration,
+          ects: rec.ects,
+        };
+      });
+
+      res.status(200).json(recommendations);
+    } catch (err) {
+      console.error("Recommendation Error:", err);
+      res.status(500).json({
+        message: "Failed to get module recommendations for learning path creation.",
+      });
+    } finally {
+      await session.close();
+    }
+  },
 };
 
 module.exports = recommendationsController;
