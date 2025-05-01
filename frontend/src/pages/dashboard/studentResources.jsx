@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Input, Card, CardBody, Typography } from "@material-tailwind/react";
+import { Input, Card, CardBody, Typography, Spinner } from "@material-tailwind/react";
 import { useUser } from "@/context/UserContext";
 import { ResourceCard } from "@/widgets/cards/";
 import { LearningLPCard } from "@/widgets/cards/";
@@ -16,8 +16,18 @@ export function StudentResources() {
   const [learningPathsCompleted, setLearningPathsCompleted] = useState([]);
   const [modulesInProgress, setModulesInProgress] = useState([]);
   const [modulesCompleted, setModulesCompleted] = useState([]);
-  const [recommnendedResources, setRecommendedResources] = useState([]);
+  const [recommendedResources, setRecommendedResources] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
+
+  const [loading, setLoading] = useState({
+    resources: true,
+    bookmarks: true,
+    studyPaths: true,
+    inProgress: true,
+    completed: true,
+    modules: true,
+    recommended: true,
+  });
 
   const collections = [
     "Recently Viewed",
@@ -28,168 +38,61 @@ export function StudentResources() {
     "Bookmarked",
   ];
 
-  // Fetch all resources from the API
-  const getAllResources = async () => {
-    try {
-      const response = await fetch("http://localhost:8080/api/resources");
-      if (!response.ok) throw new Error("Failed to fetch resources");
+  const collectionRefs = useRef({});
 
-      return await response.json();
-    } catch (error) {
-      console.error("Error fetching resources:", error);
-      return [];
-    }
-  };
-
-  const getStudyPaths = async () => {
-    if (!userId) return [];
-
-    try {
-      const response = await fetch(
-        `http://localhost:8080/api/learning-paths/student/${userId}`
-      );
-      if (!response.ok) throw new Error("Failed to fetch study paths");
-
-      return await response.json();
-    } catch (error) {
-      console.error("Error fetching study paths:", error);
-      return [];
-    }
-  };
-
-  // Fetch bookmarked resources for the user
-  const getBookmarkedResources = async () => {
-    if (!userId) return [];
-    try {
-      const response = await fetch(
-        ` http://localhost:8080/api/bookmarks/${userId}`
-      );
-      if (!response.ok) throw new Error("Failed to fetch bookmarks");
-
-      return await response.json();
-    } catch (error) {
-      console.error("Error fetching bookmarks:", error);
-      return [];
-    }
-  };
-
-  // Fetch learning paths in progress for the user
-  const getLearningPathsInProgress = async () => {
-    if (!userId) return [];
-    try {
-      const response = await fetch(
-        ` http://localhost:8080/api/learning-paths/in-progress/${userId}`
-      );
-      if (!response.ok) throw new Error("Failed to fetch learning paths");
-
-      return await response.json();
-    } catch (error) {
-      console.error("Error fetching learning paths:", error);
-      return [];
-    }
-  };
-
-  const getCompletedLearningPaths = async () => {
-    if (!userId) return [];
-    try {
-      const response = await fetch(
-        `http://localhost:8080/api/learning-paths/completed/${userId}`
-      );
-      if (!response.ok) throw new Error("Failed to fetch learning paths");
-
-      return await response.json();
-    } catch (error) {
-      console.error("Error fetching learning paths:", error);
-      return [];
-    }
-  };
-
-  const getCompletedModules = async () => {
-    if (!userId) return [];
-    try {
-      const response = await fetch(
-        `http://localhost:8080/api/modules/completed/${userId}`
-      );
-      if (!response.ok) throw new Error("Failed to fetch completed modules");
-
-      return await response.json();
-    } catch (error) {
-      console.error("Error fetching completed modules:", error);
-      return [];
-    }
-  };
-
-  const getInProgressModules = async () => {
-    if (!userId) return [];
-    try {
-      const response = await fetch(
-        `http://localhost:8080/api/modules/in-progress/${userId}`
-      );
-      if (!response.ok) throw new Error("Failed to fetch completed modules");
-
-      return await response.json();
-    } catch (error) {
-      console.error("Error fetching completed modules:", error);
-      return [];
-    }
-  };
-
-  // Load recently viewed resources from localStorage
-  const getRecentlyViewedResources = () => {
-    const key = `recentlyViewed-${userId}`;
-    return JSON.parse(localStorage.getItem(key)) || [];
-  };
-
-  const getRecommendedResources = async () => {
-    if (!userId) return [];
-
-    try {
-      const response = await fetch(
-        `http://localhost:8080/api/recommendations/${userId}/resources`
-      );
-      if (!response.ok) throw new Error("Failed to fetch recommended resources");
-
-      return await response.json();
-    } catch (error) {
-      console.error("Error fetching recommended resources:", error);
-      return [];
-    }
-  };
-
-  // Fetch all resources, bookmarks, learning paths, etc.
   const fetchData = async () => {
-    const allResources = await getAllResources();
-    const bookmarks = await getBookmarkedResources();
-    const lpInProgress = await getLearningPathsInProgress();
-    const lpCompleted = await getCompletedLearningPaths();
-    const mdInProgress = await getInProgressModules();
-    const mdCompleted = await getCompletedModules();
-    const stdPaths = await getStudyPaths();
-    const recentlyViewedData = getRecentlyViewedResources();
-    const recommendedR = await getRecommendedResources();
-
-    const recentResources = recentlyViewedData
-      .map((recent) => allResources.find((res) => res.id === recent.id))
-      .filter(Boolean);
-
-    setResources(allResources);
-    setBookmarkedResources(
-      allResources.filter((res) => bookmarks.some((b) => b.id === res.id))
-    );
-    setRecentlyViewed(recentResources);
-    setLearningPathsInProgress(lpInProgress);
-    setLearningPathsCompleted(lpCompleted);
-    setModulesInProgress(mdInProgress);
-    setModulesCompleted(mdCompleted);
-    setStudyPaths(stdPaths);
-    setRecommendedResources(recommendedR);
+    try {
+      setLoading((prev) => ({
+        ...prev,
+        resources: true,
+        bookmarks: true,
+        studyPaths: true,
+        inProgress: true,
+        completed: true,
+        modules: true,
+        recommended: true,
+      }));
+  
+      const allResources = await fetch("http://localhost:8080/api/resources").then((res) => res.json());
+      const bookmarks = await fetch(`http://localhost:8080/api/bookmarks/${userId}`).then((res) => res.json());
+      const lpInProgress = await fetch(`http://localhost:8080/api/learning-paths/in-progress/${userId}`).then((res) => res.json());
+      const lpCompleted = await fetch(`http://localhost:8080/api/learning-paths/completed/${userId}`).then((res) => res.json());
+      const mdInProgress = await fetch(`http://localhost:8080/api/modules/in-progress/${userId}`).then((res) => res.json());
+      const mdCompleted = await fetch(`http://localhost:8080/api/modules/completed/${userId}`).then((res) => res.json());
+      const stdPaths = await fetch(`http://localhost:8080/api/learning-paths/student/${userId}`).then((res) => res.json());
+      const recommendedR = await fetch(`http://localhost:8080/api/recommendations/${userId}/resources`).then((res) => res.json());
+      const recentlyViewedData = JSON.parse(localStorage.getItem(`recentlyViewed-${userId}`)) || [];
+  
+      // Set the resources and other data
+      setResources(allResources);
+      setBookmarkedResources(allResources.filter((res) => bookmarks.some((b) => b.id === res.id)));
+      setRecentlyViewed(recentlyViewedData.map((recent) => allResources.find((res) => res.id === recent.id)).filter(Boolean));
+      setLearningPathsInProgress(lpInProgress);
+      setLearningPathsCompleted(lpCompleted);
+      setModulesInProgress(mdInProgress);
+      setModulesCompleted(mdCompleted);
+      setStudyPaths(stdPaths);
+      setRecommendedResources(recommendedR);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    } finally {
+      setLoading((prev) => ({
+        ...prev,
+        resources: false,
+        bookmarks: false,
+        studyPaths: false,
+        inProgress: false,
+        completed: false,
+        modules: false,
+        recommended: false,
+      }));
+    }
   };
+  
 
   useEffect(() => {
-    fetchData();
-  }, []);
-
-  const collectionRefs = useRef({});
+    if (userId) fetchData();
+  }, [userId]);
 
   const scrollCollection = (direction, category) => {
     const collection = collectionRefs.current[category];
@@ -205,33 +108,26 @@ export function StudentResources() {
     const matchesSearch = (item) =>
       item.title?.toLowerCase().includes(searchQuery.toLowerCase());
 
-    if (category === "Recently Viewed") {
-      return recentlyViewed.filter(matchesSearch);
+    switch (category) {
+      case "Recently Viewed":
+        return recentlyViewed.filter(matchesSearch);
+      case "My Study Paths":
+        return studyPaths.filter(matchesSearch);
+      case "Bookmarked":
+        return bookmarkedResources.filter(matchesSearch);
+      case "Recommended Resources":
+        return recommendedResources.filter(matchesSearch);
+      case "In Progress":
+        return [...learningPathsInProgress, ...modulesInProgress].filter(
+          matchesSearch
+        );
+      case "Completed":
+        return [...learningPathsCompleted, ...modulesCompleted].filter(
+          matchesSearch
+        );
+      default:
+        return resources.filter(matchesSearch);
     }
-
-    if (category === "My Study Paths") {
-      return studyPaths.filter(matchesSearch);
-    }
-
-    if (category === "Bookmarked") {
-      return bookmarkedResources.filter(matchesSearch);
-    }
-
-    if (category === "Recommended Resources") {
-      return recommnendedResources.filter(matchesSearch);
-    }
-
-    if (category === "In Progress") {
-      const combined = [...learningPathsInProgress, ...modulesInProgress];
-      return combined.filter(matchesSearch);
-    }
-
-    if (category === "Completed") {
-      const combined = [...learningPathsCompleted, ...modulesCompleted];
-      return combined.filter(matchesSearch);
-    }
-
-    return resources.filter(matchesSearch);
   };
 
   return (
@@ -247,6 +143,8 @@ export function StudentResources() {
           category === "Recently Viewed"
             ? recentlyViewed
             : filteredResources(category);
+
+        const isLoading = loading[category.toLowerCase().replace(" ", "")];
         return (
           <Card
             key={category}
@@ -277,7 +175,11 @@ export function StudentResources() {
                 ref={(el) => (collectionRefs.current[category] = el)}
                 className="flex overflow-x-auto gap-4 scroll-smooth"
               >
-                {filtered.length > 0 ? (
+                {isLoading ? (
+                  <div className="flex justify-center items-center w-full">
+                    <Spinner />
+                  </div>
+                ) : filtered.length > 0 ? (
                   filtered.map((item) => {
                     const isLearningPath =
                       item.hasOwnProperty("learning_path_id");
@@ -325,7 +227,7 @@ export function StudentResources() {
                   })
                 ) : (
                   <Typography variant="small" color="gray">
-                    No data found.
+                    No items found.
                   </Typography>
                 )}
               </div>

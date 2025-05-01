@@ -1,4 +1,4 @@
-import fetch from 'node-fetch';
+require('dotenv').config();
 
 const generateEmbedding = async (text) => {
   const response = await fetch(
@@ -9,9 +9,7 @@ const generateEmbedding = async (text) => {
         Authorization: `Bearer ${process.env.HUGGINGFACE_API_KEY}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        inputs: text,
-      }),
+      body: JSON.stringify({ inputs: text }),
     }
   );
 
@@ -20,11 +18,12 @@ const generateEmbedding = async (text) => {
   }
 
   const data = await response.json();
-  if (!data[0] || !data[0].embedding) {
-    throw new Error("Embedding not found in the response");
+
+  if (!Array.isArray(data) || !Array.isArray(data[0])) {
+    throw new Error("Unexpected response format from Hugging Face");
   }
 
-  return data[0].embedding;
+  return data[0];
 };
 
-export { generateEmbedding };
+module.exports = { generateEmbedding };

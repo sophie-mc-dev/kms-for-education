@@ -22,7 +22,7 @@ async function createLearningPathIndex() {
             creator_type: { type: "keyword" },
             first_name: { type: "text" },
             last_name: { type: "text" },
-            // todo: add embedding
+            embedding: { type: "dense_vector", dims: 768 }
           },
         },
       },

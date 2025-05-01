@@ -17,7 +17,7 @@ async function createModuleIndex() {
             is_standalone: { type: "boolean" },
             objectives: { type: "text" },
             ects: { type: "integer" },
-            // todo: add embedding
+            embedding: { type: "dense_vector", dims: 768 }
           },
         },
       },

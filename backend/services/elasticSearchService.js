@@ -4,8 +4,6 @@ const { generateEmbedding } = require('../scripts/generateResourceEmbeddings');
 
 // Index a resource
 async function indexResource(resource) {
-  const embedding = await generateEmbedding(resource.description);
-  console.log(embedding);  // Check that this is an array of numbers (e.g., [0.1, 0.2, ...])
 
   await esClient.index({
     index: 'resources',
@@ -17,15 +15,12 @@ async function indexResource(resource) {
       tags: resource.tags,
       category: resource.category,
       format: resource.format,
-      embedding: embedding
     }
   });
 }
 
 // Index a module
 async function indexModule(module) {
-  const embedding = await generateEmbedding(module.summary);
-  console.log(embedding); 
 
   await esClient.index({
     index: 'modules',
@@ -39,15 +34,12 @@ async function indexModule(module) {
       is_standalone: module.is_standalone,
       objectives: module.objectives,
       ects: module.ects,
-      embedding: embedding
     }
   });
 }
 
 // Index a learning path
 async function indexLearningPath(learningPath) {
-  const embedding = await generateEmbedding(learningPath.summary);
-  console.log(embedding); 
 
   await esClient.index({
     index: 'learning_paths',
@@ -64,7 +56,6 @@ async function indexLearningPath(learningPath) {
       creator_type: learningPath.creator_type,
       first_name: learningPath.first_name,
       last_name: learningPath.last_name,
-      embedding: embedding
     }
   });
 }

@@ -19,16 +19,4 @@ async function testElasticSearchConnection() {
   }
 }
 
-async function deployElserModel() {
-  try {
-    const response = await esClient.ml.startTrainedModelDeployment({
-      model_id: "elser_model_1",
-      deployment_id: "elser_deployment",
-    });
-    console.log("ELSER deployment successful:", response);
-  } catch (error) {
-    console.error("Error deploying ELSER:", error);
-  }
-}
-
-module.exports = { esClient, testElasticSearchConnection, deployElserModel };
+module.exports = { esClient, testElasticSearchConnection };
