@@ -17,7 +17,6 @@ const searchController = {
             query: q,
             fields: ["title^3", "description", "tags", "category"],
             fuzziness: "AUTO",
-            
           },
         },
       });
@@ -29,8 +28,35 @@ const searchController = {
 
       res.json(hits);
     } catch (error) {
-      console.error("Search failed:", error);
-      res.status(500).json({ error: "Search failed" });
+      console.error("Search for resources failed:", error);
+      res.status(500).json({ error: "Search for resources failed" });
+    }
+  },
+
+  searchModules: async (req, res) => {
+    const { q } = req.query;
+
+    try {
+      const results = await esClient.search({
+        index: "modules",
+        query: {
+          multi_match: {
+            query: q,
+            fields: ["title^3", "summary", "objectives"],
+            fuzziness: "AUTO",
+          },
+        },
+      });
+
+      const hits = results.hits.hits.map((hit) => ({
+        id: hit._id,
+        ...hit._source,
+      }));
+
+      res.json(hits);
+    } catch (error) {
+      console.error("Search for modules failed:", error);
+      res.status(500).json({ error: "Search for modules failed" });
     }
   },
 
@@ -42,8 +68,31 @@ const searchController = {
    * @param {*} req
    * @param {*} res
    */
-  searchModulesAndLearningPaths: async (req, res) => {
-    // Implement logic for searching modules and learning paths
+  searchLearningPaths: async (req, res) => {
+    const { q } = req.query;
+
+    try {
+      const results = await esClient.search({
+        index: "learningPaths",
+        query: {
+          multi_match: {
+            query: q,
+            fields: ["title^3", "summary", "objectives"],
+            fuzziness: "AUTO",
+          },
+        },
+      });
+
+      const hits = results.hits.hits.map((hit) => ({
+        id: hit._id,
+        ...hit._source,
+      }));
+
+      res.json(hits);
+    } catch (error) {
+      console.error("Search for modules failed:", error);
+      res.status(500).json({ error: "Search for modules failed" });
+    }
   },
 };
 

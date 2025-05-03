@@ -573,17 +573,19 @@ const recommendationsController = {
 
     try {
       const cypherQuery = `
-        WITH $selectedCategories AS categories  // e.g., ["AI", "Data Science"]
+        WITH $categories AS categories
 
-        // Find resources with those categories
-        MATCH (r:Resource)-[:BELONGS_TO]->(cat:Category)
+        // Step 1: Match resources that belong to any of the selected categories
+        MATCH (r:Resource)-[:HAS_CATEGORY]->(cat:Category)
         WHERE cat.name IN categories
 
-        // Get modules that have those resources
+        // Step 2: Find modules that include those resources
         MATCH (m:Module)-[:HAS_RESOURCE]->(r)
+
+        // Step 3: Count how many matching resources each module has
         WITH m, COUNT(DISTINCT r) AS matchingResourceCount
 
-        // Boost score if more matching resources
+        // Step 4: Return module data with a relevance score
         RETURN m {
           .id,
           .title,
@@ -614,7 +616,8 @@ const recommendationsController = {
     } catch (err) {
       console.error("Recommendation Error:", err);
       res.status(500).json({
-        message: "Failed to get module recommendations for learning path creation.",
+        message:
+          "Failed to get module recommendations for learning path creation.",
       });
     } finally {
       await session.close();
