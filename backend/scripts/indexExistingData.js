@@ -1,6 +1,7 @@
 const { pool } = require("./postgres"); // your DB connection
 const { indexResource } = require("../services/elasticSearchService");
 const { indexModule } = require("../services/elasticSearchService");
+const { indexLearningPath } = require("../services/elasticSearchService");
 
 (async () => {
   const client = await pool.connect();
@@ -11,7 +12,10 @@ const { indexModule } = require("../services/elasticSearchService");
     const resModules = await client.query("SELECT * FROM modules");
     for (const module of resModules.rows) await indexModule(module);
 
-    console.log("🎉 Done indexing all resources and modules!");
+    const resLearningPaths = await client.query("SELECT * FROM learning_paths");
+    for (const learningPath of resLearningPaths.rows) await indexLearningPath(learningPath);
+
+    console.log("🎉 Done indexing all resources and learning content!");
   } catch (err) {
     console.error("Error during indexing:", err.message);
   } finally {

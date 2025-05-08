@@ -15,11 +15,14 @@ async function indexResource(resource) {
   try {
     embedding = await generateEmbedding(combinedText);
   } catch (err) {
-    console.error(`❌ Failed to generate embedding for resource ID ${resource.id}:`, err.message);
+    console.error(
+      `❌ Failed to generate embedding for resource ID ${resource.id}:`,
+      err.message
+    );
     return;
   }
 
-  console.log("Generated Embedding:", embedding); 
+  console.log("Generated Embedding:", embedding);
 
   try {
     await esClient.index({
@@ -27,26 +30,31 @@ async function indexResource(resource) {
       id: resource.id,
       document: {
         title: resource.title,
-        description: resource.description?.replace(/<[^>]*>?/gm, ''),
+        description: resource.description?.replace(/<[^>]*>?/gm, ""),
         type: resource.type,
         tags: resource.tags,
         category: resource.category,
         format: resource.format,
-        embedding: embedding,  
+        embedding: embedding,
       },
     });
     console.log(`✅ Indexed resource ID ${resource.id}`);
   } catch (err) {
-    console.error(`❌ Failed to index resource ID ${resource.id}:`, err.message);
+    console.error(
+      `❌ Failed to index resource ID ${resource.id}:`,
+      err.message
+    );
   }
 }
 
 // Index a module
 async function indexModule(module) {
   await esClient.index({
-    index: "modules",
-    id: module.id,
+    index: "learning_content",
+    id: `module-${module.id}`,
     document: {
+      item_id: module.id,
+      type: "module",
       title: module.title,
       summary: module.summary.replace(/<[^>]*>?/gm, ""),
       created_at: module.created_at,
@@ -62,9 +70,10 @@ async function indexModule(module) {
 // Index a learning path
 async function indexLearningPath(learningPath) {
   await esClient.index({
-    index: "learning_paths",
-    id: learningPath.id,
+    index: "learning_content",
+    id: `learning_path-${learningPath.id}`,
     document: {
+      type: "learning_path",
       title: learningPath.title,
       summary: learningPath.summary.replace(/<[^>]*>?/gm, ""),
       created_at: learningPath.created_at,

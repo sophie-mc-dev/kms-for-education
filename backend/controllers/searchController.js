@@ -33,12 +33,12 @@ const searchController = {
     }
   },
 
-  searchModules: async (req, res) => {
+  searchLearningContent: async (req, res) => {
     const { q } = req.query;
 
     try {
       const results = await esClient.search({
-        index: "modules",
+        index: "learning_content",
         query: {
           multi_match: {
             query: q,
@@ -50,48 +50,14 @@ const searchController = {
 
       const hits = results.hits.hits.map((hit) => ({
         id: hit._id,
+        type: hit._source.type,
         ...hit._source,
       }));
 
       res.json(hits);
     } catch (error) {
-      console.error("Search for modules failed:", error);
-      res.status(500).json({ error: "Search for modules failed" });
-    }
-  },
-
-  /**
-   * Search MD/LP on Learning Page
-   *
-   * Search modules and learning paths at once or
-   * separately and then join (?).
-   * @param {*} req
-   * @param {*} res
-   */
-  searchLearningPaths: async (req, res) => {
-    const { q } = req.query;
-
-    try {
-      const results = await esClient.search({
-        index: "learningPaths",
-        query: {
-          multi_match: {
-            query: q,
-            fields: ["title^3", "summary", "objectives"],
-            fuzziness: "AUTO",
-          },
-        },
-      });
-
-      const hits = results.hits.hits.map((hit) => ({
-        id: hit._id,
-        ...hit._source,
-      }));
-
-      res.json(hits);
-    } catch (error) {
-      console.error("Search for modules failed:", error);
-      res.status(500).json({ error: "Search for modules failed" });
+      console.error("Search for learning content failed:", error);
+      res.status(500).json({ error: "Search for learning content failed" });
     }
   },
 };
