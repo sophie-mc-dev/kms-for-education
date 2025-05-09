@@ -10,10 +10,10 @@ const generateEmbedding = async (text) => {
     let embedding = output[0];  
     let flattenedEmbedding = Array.from(embedding.ort_tensor.cpuData);
 
-    if (flattenedEmbedding.length > 385) {
-      flattenedEmbedding = flattenedEmbedding.slice(0, 385);
-    } else if (flattenedEmbedding.length < 385) {
-      while (flattenedEmbedding.length < 385) {
+    if (flattenedEmbedding.length > 384) {
+      flattenedEmbedding = flattenedEmbedding.slice(0, 384);
+    } else if (flattenedEmbedding.length < 384) {
+      while (flattenedEmbedding.length < 384) {
         flattenedEmbedding.push(0);
       }
     }

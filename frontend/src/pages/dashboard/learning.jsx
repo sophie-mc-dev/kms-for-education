@@ -23,8 +23,8 @@ export function LearningPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [filterLP, setFilterLP] = useState(true);
-  const [filterMD, setFilterMD] = useState(true);
+  const [filterLP, setFilterLP] = useState(false);
+  const [filterMD, setFilterMD] = useState(false);
   const { userRole } = useUser();
 
   useEffect(() => {
@@ -112,6 +112,8 @@ export function LearningPage() {
   };
 
   const filteredResults = results.filter((item) => {
+    if ((filterLP && filterMD) || (!filterLP && !filterMD)) return true;
+
     if (filterLP && item.type === "learning_path") return true;
     if (filterMD && item.type === "module") return true;
     return false;
@@ -217,9 +219,9 @@ export function LearningPage() {
               <Typography
                 variant="small"
                 color="gray"
-                className="col-span-full text-center"
+                className="col-span-full text-left"
               >
-                No matching resources found.
+                No matching learning content found.
               </Typography>
             )}
           </div>
@@ -252,9 +254,7 @@ export function LearningPage() {
               />
             </div>
           </div>
-          <div>
-            TODO: add progress filters, difficulty level, duration
-          </div>
+
         </CardBody>
       </Card>
     </div>
