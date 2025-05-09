@@ -15,7 +15,12 @@ async function createIndex() {
             tags: { type: "keyword" },
             category: { type: "keyword" },
             format: { type: "keyword" },
-            embedding: { type: "dense_vector", dims: 384 }
+            embedding: {
+              type: "dense_vector",
+              dims: 384,
+              index: true,
+              similarity: "cosine",
+            },
           },
         },
       },

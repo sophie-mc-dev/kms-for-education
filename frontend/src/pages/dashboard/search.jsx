@@ -68,9 +68,9 @@ export function Search() {
     setLoading(true);
     try {
       const response = await fetch(
-        `http://localhost:8080/api/search/resources?q=${encodeURIComponent(
+        `http://localhost:8080/api/search/resources?q=${
           searchQuery
-        )}`
+        }`
       );
       const data = await response.json();
       setResults(data);
