@@ -113,7 +113,7 @@ const recommendationsController = {
         WITH directModules, fallbackModules,
             CASE WHEN SIZE(directModules) > 0 THEN directModules ELSE fallbackModules END AS finalModules
         UNWIND finalModules AS mod
-        RETURN DISTINCT mod { .id, .title, .summary, .estimated_duration, .ects }
+        RETURN DISTINCT mod { .id, .title, .summary, .estimated_duration }
         LIMIT 5
       `;
 
@@ -131,7 +131,6 @@ const recommendationsController = {
           title: rec.title,
           summary: rec.summary,
           estimated_duration: rec.estimated_duration,
-          ects: rec.ects,
         };
       });
 
@@ -274,7 +273,7 @@ const recommendationsController = {
             RETURN fallbackLP AS learningPath, (5 + viewedCount * 2) AS score, 'fallback' AS source
         }
         WITH DISTINCT learningPath, score, source  // Ensure unique learning paths in the final result
-        RETURN learningPath { .id, .title, .summary, .estimated_duration, .ects } AS recommendedPath, score, source
+        RETURN learningPath { .id, .title, .summary, .estimated_duration } AS recommendedPath, score, source
         ORDER BY score DESC
         LIMIT 5
 
@@ -292,7 +291,6 @@ const recommendationsController = {
           title: rec.title,
           summary: rec.summary,
           estimated_duration: rec.estimated_duration,
-          ects: rec.ects,
         };
       });
 
@@ -354,7 +352,7 @@ const recommendationsController = {
         WITH otherLp, sharedModulesCount + sharedResourcesCount * 2 + viewedCount * 1 AS recommendationScore
 
         // Step 7: Return recommended learning paths sorted by the score
-        RETURN otherLp { .id, .title, .summary, .estimated_duration, .ects } AS recommendedPath, recommendationScore
+        RETURN otherLp { .id, .title, .summary, .estimated_duration } AS recommendedPath, recommendationScore
         ORDER BY recommendationScore DESC
         LIMIT 5
       `;
@@ -371,7 +369,6 @@ const recommendationsController = {
           title: rec.title,
           summary: rec.summary,
           estimated_duration: rec.estimated_duration,
-          ects: rec.ects,
         };
       });
 
@@ -520,15 +517,13 @@ const recommendationsController = {
         WITH modRec,
             CASE WHEN sameLearningPath THEN 7 ELSE 0 END +
             (CASE WHEN abs(modRec.estimated_duration - current.estimated_duration) < 10 THEN 2 ELSE 0 END) +
-            (CASE WHEN abs(modRec.ects - current.ects) < 1 THEN 2 ELSE 0 END) +
             sharedResourceCount * 5 AS score
   
         RETURN modRec {
           .id,
           .title,
           .summary,
-          .estimated_duration,
-          .ects
+          .estimated_duration
         } AS modRec, score
         ORDER BY score DESC
         LIMIT 6
@@ -546,7 +541,6 @@ const recommendationsController = {
           title: rec.title,
           summary: rec.summary,
           estimated_duration: rec.estimated_duration,
-          ects: rec.ects,
         };
       });
 
@@ -591,7 +585,6 @@ const recommendationsController = {
           .title,
           .summary,
           .estimated_duration,
-          .ects
         } AS modRec, matchingResourceCount
         ORDER BY matchingResourceCount DESC
         LIMIT 10
@@ -608,7 +601,6 @@ const recommendationsController = {
           title: rec.title,
           summary: rec.summary,
           estimated_duration: rec.estimated_duration,
-          ects: rec.ects,
         };
       });
 

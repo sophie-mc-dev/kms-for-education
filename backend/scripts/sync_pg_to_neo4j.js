@@ -99,18 +99,17 @@ const syncData = async () => {
 
     // Sync Modules
     const modules = await pgClient.query(
-      "SELECT id, title, summary, objectives, estimated_duration, ects FROM modules"
+      "SELECT id, title, summary, objectives, estimated_duration FROM modules"
     );
     for (let module of modules.rows) {
       await neoSession.run(
-        "MERGE (m:Module {id: $id}) SET m.title = $title, m.summary = $summary, m.objectives = $objectives, m.estimated_duration = $estimated_duration, m.ects = $ects",
+        "MERGE (m:Module {id: $id}) SET m.title = $title, m.summary = $summary, m.objectives = $objectives, m.estimated_duration = $estimated_duration",
         {
           id: module.id.toString(),
           title: module.title,
           summary: module.summary,
           objectives: module.objectives,
           estimated_duration: module.estimated_duration,
-          ects: module.ects,
         }
       );
     }

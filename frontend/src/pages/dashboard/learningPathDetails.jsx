@@ -196,17 +196,6 @@ export function LearningPathDetails() {
                   </Typography>
                 </div>
               )}
-
-              {learningPath.ects && (
-                <div className="flex items-center gap-x-2">
-                  <Typography className="text-xs font-semibold uppercase text-blue-gray-500">
-                    ECTS:
-                  </Typography>
-                  <Typography variant="small" className="text-blue-gray-600">
-                    {learningPath.ects}
-                  </Typography>
-                </div>
-              )}
             </div>
 
             <div className="mb-6 font-normal text-blue-gray-900 mt-4">

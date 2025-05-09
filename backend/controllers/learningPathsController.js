@@ -8,7 +8,6 @@ const learningPathsController = {
       summary,
       visibility,
       estimatedDuration,
-      ects,
       modules,
       objectives,
       user_id,
@@ -20,7 +19,6 @@ const learningPathsController = {
       !summary ||
       !visibility ||
       !estimatedDuration ||
-      ects === undefined ||
       !objectives ||
       !user_id
     ) {
@@ -34,15 +32,14 @@ const learningPathsController = {
 
       // Insert Learning Path
       const learningPathResult = await client.query(
-        `INSERT INTO learning_paths (title, summary, user_id, visibility, estimated_duration, ects, objectives, creator_type, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, 'educator', NOW(), NOW()) RETURNING id`,
+        `INSERT INTO learning_paths (title, summary, user_id, visibility, estimated_duration, objectives, creator_type, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, 'educator', NOW(), NOW()) RETURNING id`,
         [
           title,
           summary,
           user_id,
           visibility,
           estimatedDuration,
-          ects,
           objectives,
         ]
       );
@@ -71,7 +68,6 @@ const learningPathsController = {
         created_at,
         updated_at,
         estimated_duration: parseInt(estimatedDuration),
-        ects,
         difficulty_level,
         objectives,
         creator_type,
@@ -216,15 +212,14 @@ const learningPathsController = {
 
   updateLearningPath: async (req, res) => {
     const { id } = req.params;
-    const { title, summary, visibility, estimated_duration, ects, modules } =
+    const { title, summary, visibility, estimated_duration, modules } =
       req.body;
 
     if (
       !title ||
       !summary ||
       !visibility ||
-      !estimated_duration ||
-      ects === undefined
+      !estimated_duration
     ) {
       return res.status(400).json({ error: "All fields are required" });
     }
@@ -237,9 +232,9 @@ const learningPathsController = {
       // Update Learning Path details
       const result = await client.query(
         `UPDATE learning_paths 
-         SET title = $1, summary = $2, visibility = $3, estimated_duration = $4, ects = $5, updated_at = NOW()
+         SET title = $1, summary = $2, visibility = $3, estimated_duration = $4, updated_at = NOW()
          WHERE id = $6 RETURNING *`,
-        [title, summary, visibility, estimated_duration, ects, id]
+        [title, summary, visibility, estimated_duration, id]
       );
 
       if (result.rows.length === 0) {

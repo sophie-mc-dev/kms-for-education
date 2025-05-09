@@ -62,7 +62,6 @@ async function indexModule(module) {
       estimated_duration: module.estimated_duration,
       is_standalone: module.is_standalone,
       objectives: module.objectives,
-      ects: module.ects,
     },
   });
 }
@@ -79,7 +78,6 @@ async function indexLearningPath(learningPath) {
       created_at: learningPath.created_at,
       updated_at: learningPath.updated_at,
       estimated_duration: learningPath.estimated_duration,
-      ects: learningPath.ects,
       difficulty_level: learningPath.difficulty_level,
       objectives: learningPath.objectives,
       creator_type: learningPath.creator_type,

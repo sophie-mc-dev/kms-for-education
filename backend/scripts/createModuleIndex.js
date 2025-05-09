@@ -16,7 +16,6 @@ async function createModuleIndex() {
             estimated_duration: { type: "integer" }, 
             is_standalone: { type: "boolean" },
             objectives: { type: "text" },
-            ects: { type: "integer" },
             embedding: { type: "dense_vector", dims: 768 }
           },
         },

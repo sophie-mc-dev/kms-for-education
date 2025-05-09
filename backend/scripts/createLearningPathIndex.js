@@ -16,7 +16,6 @@ async function createLearningPathIndex() {
             created_at: { type: "date" },
             updated_at: { type: "date" },
             estimated_duration: { type: "integer" },  
-            ects: { type: "integer" },
             difficulty_level: { type: "keyword" },
             objectives: { type: "text" },
             creator_type: { type: "keyword" },

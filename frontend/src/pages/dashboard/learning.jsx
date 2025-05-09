@@ -253,7 +253,7 @@ export function LearningPage() {
             </div>
           </div>
           <div>
-            TODO: add progress filters, difficulty level, ects, duration
+            TODO: add progress filters, difficulty level, duration
           </div>
         </CardBody>
       </Card>

@@ -24,7 +24,6 @@ export function CreateModule() {
   const [summary, setSummary] = useState("");
   const [estimatedDuration, setEstimatedDuration] = useState("");
   const [objectives, setObjectives] = useState("");
-  const [ects, setEcts] = useState("");
   const [resources, setResources] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedResources, setSelectedResources] = useState([]);
@@ -65,7 +64,6 @@ export function CreateModule() {
           title,
           summary,
           objectives,
-          ects,
           estimated_duration: Number(estimatedDuration),
           assessment: {
             passing_percentage: passingPercentage,
@@ -219,8 +217,7 @@ export function CreateModule() {
         title.trim() !== "" &&
         summary.trim() !== "" &&
         objectives.trim() !== "" &&
-        estimatedDuration.trim() !== "" &&
-        ects.trim() !== ""
+        estimatedDuration.trim() !== ""
       );
     }
     if (step === 2) {
@@ -281,13 +278,6 @@ export function CreateModule() {
                   type="number"
                   value={estimatedDuration}
                   onChange={(e) => setEstimatedDuration(e.target.value)}
-                  required
-                />
-                <Input
-                  label="ECTS"
-                  type="number"
-                  value={ects}
-                  onChange={(e) => setEcts(e.target.value)}
                   required
                 />
               </div>

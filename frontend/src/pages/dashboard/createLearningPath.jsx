@@ -28,7 +28,6 @@ export function CreateLearningPath() {
   const [visibility, setVisibility] = useState("public");
   const [estimatedDuration, setEstimatedDuration] = useState("");
   const [difficultyLevel, setDifficultyLevel] = useState("");
-  const [ects, setEcts] = useState("");
   const [modules, setModules] = useState([]);
   const [selectedModules, setSelectedModules] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -74,7 +73,6 @@ export function CreateLearningPath() {
       summary,
       visibility,
       estimatedDuration: parseInt(estimatedDuration, 10),
-      ects: parseInt(ects, 10),
       modules: modulesWithOrder,
       user_id: userId,
       objectives: objectives,
@@ -203,13 +201,6 @@ export function CreateLearningPath() {
                   type="number"
                   value={estimatedDuration}
                   onChange={(e) => setEstimatedDuration(e.target.value)}
-                  required
-                />
-                <Input
-                  label="ECTS"
-                  type="number"
-                  value={ects}
-                  onChange={(e) => setEcts(e.target.value)}
                   required
                 />
               </div>

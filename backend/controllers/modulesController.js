@@ -10,7 +10,6 @@ const modulesController = {
       assessment,
       resources,
       objectives,
-      ects,
     } = req.body;
 
     if (!title) {
@@ -23,10 +22,10 @@ const modulesController = {
 
       // Insert module
       const moduleResult = await client.query(
-        `INSERT INTO modules (title, summary, estimated_duration, objectives, ects) 
-       VALUES ($1, $2, $3, $4, $5) 
+        `INSERT INTO modules (title, summary, estimated_duration, objectives) 
+       VALUES ($1, $2, $3, $4) 
        RETURNING *`,
-        [title, summary, estimated_duration, objectives, ects]
+        [title, summary, estimated_duration, objectives]
       );
 
       const module = moduleResult.rows[0];
@@ -93,7 +92,6 @@ const modulesController = {
         estimated_duration: parseInt(estimated_duration),
         is_standalone,
         objectives,
-        ects,
       });
 
 
@@ -138,7 +136,7 @@ const modulesController = {
   // Update a module
   updateModule: async (req, res) => {
     const { id } = req.params;
-    const { title, summary, estimated_duration, assessment, objectives, ects } =
+    const { title, summary, estimated_duration, assessment, objectives } =
       req.body;
 
     const client = await pool.connect();
@@ -148,10 +146,10 @@ const modulesController = {
       // Update module details
       const moduleResult = await client.query(
         `UPDATE modules 
-         SET title = $1, summary = $2,  estimated_duration = $3, objectives = $4, ects = $5, updated_at = NOW()
-         WHERE id = $7 
+         SET title = $1, summary = $2,  estimated_duration = $3, objectives = $4, updated_at = NOW()
+         WHERE id = $5 
          RETURNING *`,
-        [title, summary, estimated_duration, objectives, ects, id]
+        [title, summary, estimated_duration, objectives, id]
       );
 
       if (moduleResult.rows.length === 0) {
