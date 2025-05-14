@@ -563,35 +563,32 @@ const recommendationsController = {
    * @param {*} res
    */
   getModuleRecommendationForLPathCreation: async (req, res) => {
-    const selectedCategories = req.body.categories;
+    const categories = req.body.categories;
+    const session = driver.session();
 
     try {
       const cypherQuery = `
         WITH $categories AS categories
 
-        // Step 1: Match resources that belong to any of the selected categories
         MATCH (r:Resource)-[:HAS_CATEGORY]->(cat:Category)
         WHERE cat.name IN categories
 
-        // Step 2: Find modules that include those resources
         MATCH (m:Module)-[:HAS_RESOURCE]->(r)
 
-        // Step 3: Count how many matching resources each module has
         WITH m, COUNT(DISTINCT r) AS matchingResourceCount
 
-        // Step 4: Return module data with a relevance score
         RETURN m {
           .id,
           .title,
           .summary,
-          .estimated_duration,
+          .estimated_duration
         } AS modRec, matchingResourceCount
         ORDER BY matchingResourceCount DESC
         LIMIT 10
       `;
 
       const result = await session.run(cypherQuery, {
-        selectedCategories: selectedCategories,
+        categories: categories,
       });
 
       const recommendations = result.records.map((record) => {

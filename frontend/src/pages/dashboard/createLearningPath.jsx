@@ -36,7 +36,7 @@ export function CreateLearningPath() {
   const [selectedCategories, setSelectedCategories] = useState([]);
   const [recommendedModules, setRecommendedModules] = useState([]);
   const [activeTab, setActiveTab] = useState("recommended");
-  const modulesToShow = activeTab === "recommended" ? [] : modules;
+  const modulesToShow = activeTab === "recommended" ? recommendedModules : modules;
 
   const navigate = useNavigate();
 
@@ -79,8 +79,6 @@ export function CreateLearningPath() {
       difficulty_level: difficultyLevel,
     };
 
-    console.log("Submitting Learning Path Data:", learningPathData);
-
     try {
       const response = await fetch("http://localhost:8080/api/learning-paths", {
         method: "POST",
@@ -103,35 +101,21 @@ export function CreateLearningPath() {
   };
 
   const handleModuleToggle = (module) => {
-    setSelectedModules(
-      (prevSelected) =>
-        prevSelected.some((mod) => mod.id === module.id)
-          ? prevSelected.filter((mod) => mod.id !== module.id) // Remove if exists
-          : [...prevSelected, module] // Add if not selected
+    setSelectedModules((prevSelected) =>
+      prevSelected.some((mod) => mod.id === module.id)
+        ? prevSelected.filter((mod) => mod.id !== module.id)
+        : [...prevSelected, module]
     );
   };
 
   const handleDragEnd = (result) => {
     if (!result.destination) return;
 
-    console.log(
-      "Dragging from:",
-      result.source.index,
-      "to:",
-      result.destination.index
-    );
-
     const updatedModules = Array.from(selectedModules);
     const [movedItem] = updatedModules.splice(result.source.index, 1);
     updatedModules.splice(result.destination.index, 0, movedItem);
 
-    // Save new order in state
     setSelectedModules(updatedModules);
-
-    console.log(
-      "Updated order:",
-      updatedModules.map((mod, index) => ({ id: mod.id, order: index }))
-    );
   };
 
   const handleNextStep = async () => {
@@ -144,18 +128,28 @@ export function CreateLearningPath() {
             headers: {
               "Content-Type": "application/json",
             },
-            body: JSON.stringify(learningPathData),
+            body: JSON.stringify({
+              categories: selectedCategories.map((cat) => cat.label),
+            }),
           }
         );
 
         if (response.ok) {
-          console.log("Learning path data saved successfully");
-          setStep(step + 1);
+          const recommended = await response.json();
+          const cleaned = recommended.map((mod) => ({
+            ...mod,
+            id: parseInt(mod.id, 10), 
+          }));
+          setRecommendedModules(cleaned);
+          setStep(2);
         } else {
-          console.error("Error saving learning path:", await response.text());
+          console.error(
+            "Error fetching recommended modules:",
+            await response.text()
+          );
         }
       } catch (error) {
-        console.error("Failed to save:", error);
+        console.error("Failed to fetch recommended modules:", error);
       }
     } else {
       setStep(step + 1);
@@ -195,15 +189,6 @@ export function CreateLearningPath() {
                 onChange={setObjectives}
                 placeholder="Describe the learning path objectives"
               />
-              <div className="flex gap-4">
-                <Input
-                  label="Estimated Duration (min)"
-                  type="number"
-                  value={estimatedDuration}
-                  onChange={(e) => setEstimatedDuration(e.target.value)}
-                  required
-                />
-              </div>
 
               <div className="flex-1">
                 <Typography className="text-xs font-semibold uppercase text-blue-gray-500">
@@ -300,47 +285,62 @@ export function CreateLearningPath() {
                   </div>
 
                   {/* Filtered Modules Grid */}
-                  <div className="grid grid-cols-[repeat(auto-fit,minmax(250px,1fr))] gap-4 mt-4 w-full">
-                    {modulesToShow
-                      .filter((mod) =>
-                        mod.title
-                          .toLowerCase()
-                          .includes(searchTerm.toLowerCase())
-                      )
-                      .map((module) => {
-                        const isSelected = selectedModules.some(
-                          (mod) => mod.id === module.id
-                        );
+                  <div className="mt-4 w-full">
+                    {modulesToShow.filter((mod) =>
+                      mod.title.toLowerCase().includes(searchTerm.toLowerCase())
+                    ).length === 0 ? (
+                      <Typography
+                        variant="paragraph"
+                        color="gray"
+                        className="text-gray-500"
+                      >
+                        {activeTab === "recommended"
+                          ? "No recommended modules available."
+                          : "No modules match your search."}
+                      </Typography>
+                    ) : (
+                      <div className="grid grid-cols-[repeat(auto-fit,minmax(250px,1fr))] gap-4">
+                        {modulesToShow
+                          .filter((mod) =>
+                            mod.title
+                              .toLowerCase()
+                              .includes(searchTerm.toLowerCase())
+                          )
+                          .map((module) => {
+                            const isSelected = selectedModules.some(
+                              (mod) => mod.id === module.id
+                            );
 
-                        return (
-                          <div
-                            key={module.id}
-                            className="p-2 bg-white rounded grid items-center"
-                          >
-                            <LearningMDCard moduleItem={module} />
-
-                            {isSelected ? (
-                              <Button
-                                color="gray"
-                                size="sm"
-                                className="mt-2"
-                                disabled
+                            return (
+                              <div
+                                key={module.id}
+                                className="p-2 bg-white rounded grid items-center"
                               >
-                                Added
-                              </Button>
-                            ) : (
-                              <Button
-                                color="blue"
-                                size="sm"
-                                className="mt-2"
-                                onClick={() => handleModuleToggle(module)}
-                              >
-                                Add
-                              </Button>
-                            )}
-                          </div>
-                        );
-                      })}
+                                <LearningMDCard moduleItem={module} />
+                                {isSelected ? (
+                                  <Button
+                                    color="gray"
+                                    size="sm"
+                                    className="mt-2"
+                                    disabled
+                                  >
+                                    Added
+                                  </Button>
+                                ) : (
+                                  <Button
+                                    color="blue"
+                                    size="sm"
+                                    className="mt-2"
+                                    onClick={() => handleModuleToggle(module)}
+                                  >
+                                    Add
+                                  </Button>
+                                )}
+                              </div>
+                            );
+                          })}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -416,7 +416,16 @@ export function CreateLearningPath() {
             </Button>
           )}
           {step < 2 ? (
-            <Button variant="filled" onClick={() => setStep(step + 1)}>
+            <Button
+              variant="filled"
+              onClick={() => {
+                if (step === 1) {
+                  handleNextStep();
+                } else {
+                  setStep(step + 1);
+                }
+              }}
+            >
               Next
             </Button>
           ) : (
