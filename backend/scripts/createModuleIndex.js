@@ -14,9 +14,13 @@ async function createModuleIndex() {
             created_at: { type: "date" },
             updated_at: { type: "date" },
             estimated_duration: { type: "integer" }, 
-            is_standalone: { type: "boolean" },
             objectives: { type: "text" },
-            embedding: { type: "dense_vector", dims: 768 }
+            embedding: {
+              type: "dense_vector",
+              dims: 384,
+              index: true,
+              similarity: "cosine",
+            },
           },
         },
       },

@@ -68,9 +68,7 @@ export function Search() {
     setLoading(true);
     try {
       const response = await fetch(
-        `http://localhost:8080/api/search/resources?q=${
-          searchQuery
-        }`
+        `http://localhost:8080/api/search/resources?q=${searchQuery}`
       );
       const data = await response.json();
       setResults(data);
@@ -174,25 +172,26 @@ export function Search() {
           <Typography variant="h6" color="blue-gray" className="mb-2">
             Results
           </Typography>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-            {loading ? (
-              <div className="flex justify-center items-center">
-                <Spinner />
-              </div>
-            ) : displayedResults.length > 0 ? (
-              displayedResults.map((resource) => (
+
+          {loading ? (
+            <div className="w-full flex justify-center items-center py-8">
+              <Spinner className="w-6 h-6" />
+            </div>
+          ) : displayedResults.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+              {displayedResults.map((resource) => (
                 <ResourceCard
                   key={resource.id}
                   resource={resource}
                   userId={userId}
                 />
-              ))
-            ) : (
-              <Typography variant="small" color="gray">
-                No matching resources found.
-              </Typography>
-            )}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <Typography variant="small" color="gray">
+              No matching resources found.
+            </Typography>
+          )}
         </CardBody>
       </Card>
 

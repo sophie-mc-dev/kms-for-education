@@ -284,7 +284,7 @@ const resourcesController = {
 
   getResourcesByCreator: async (req, res) => {
     try {
-      const createdBy = req.user;
+      const createdBy = `${req.user.first_name} ${req.user.last_name}`;
       console.log("REQ USER: ", createdBy);
 
       const result = await pool.query(

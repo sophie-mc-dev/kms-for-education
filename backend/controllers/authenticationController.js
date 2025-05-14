@@ -1,5 +1,6 @@
 const { pool } = require("../scripts/postgres");
 const bcrypt = require("bcryptjs");
+const passport = require("passport");
 
 async function hashPassword(password) {
   const saltRounds = 10;
@@ -56,13 +57,45 @@ const authenticationController = {
   },
 
   // User login
-  signin: (req, res) => {
-    console.log(req.user);
-    console.log("Session Object:", req.session);
-    const user = { ...req.user };
-    delete user.password_hash;
-    res.json({ user });
-    console.log(req.body);
+  // signin: (req, res) => {
+  //   console.log(req.user);
+  //   console.log("Session Object:", req.session);
+  //   const user = { ...req.user };
+  //   delete user.password_hash;
+  //   res.json({ user });
+  //   console.log(req.body);
+  // },
+
+  signin: (req, res, next) => {
+    passport.authenticate("local", (err, user, info) => {
+      if (err) return next(err);
+      if (!user) {
+        return res
+          .status(401)
+          .json({ message: info?.message || "Invalid credentials" });
+      }
+
+      req.logIn(user, (err) => {
+        if (err) return next(err);
+
+        const userSafe = { ...user };
+        delete userSafe.password_hash;
+
+        console.log("Authenticated user:", req.user);
+        return res.json({ user: userSafe });
+      });
+    })(req, res, next);
+  },
+
+  signout: (req, res) => {
+    req.logout((err) => {
+      if (err) return res.status(500).json({ message: "Logout failed" });
+
+      req.session.destroy(() => {
+        res.clearCookie("connect.sid");
+        res.status(200).json({ message: "Logged out successfully" });
+      });
+    });
   },
 };
 

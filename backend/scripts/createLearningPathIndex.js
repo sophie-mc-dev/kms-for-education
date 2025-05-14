@@ -1,7 +1,9 @@
 const { esClient } = require("./elasticsearch");
 
 async function createLearningPathIndex() {
-  const indexExists = await esClient.indices.exists({ index: "learning_paths" });
+  const indexExists = await esClient.indices.exists({
+    index: "learning_paths",
+  });
 
   if (!indexExists.body) {
     await esClient.indices.create({
@@ -15,13 +17,18 @@ async function createLearningPathIndex() {
             visibility: { type: "keyword" },
             created_at: { type: "date" },
             updated_at: { type: "date" },
-            estimated_duration: { type: "integer" },  
+            estimated_duration: { type: "integer" },
             difficulty_level: { type: "keyword" },
             objectives: { type: "text" },
             creator_type: { type: "keyword" },
             first_name: { type: "text" },
             last_name: { type: "text" },
-            embedding: { type: "dense_vector", dims: 768 }
+            embedding: {
+              type: "dense_vector",
+              dims: 384,
+              index: true,
+              similarity: "cosine",
+            },
           },
         },
       },

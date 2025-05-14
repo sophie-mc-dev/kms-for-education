@@ -265,7 +265,7 @@ export function ResourceDetails() {
               </div>
             </div>
 
-            <div className="mb-6 font-normal text-blue-gray-500">
+            <div className="mb-6 font-normal text-blue-gray-500 text-sm">
               <div
                 className="[&>ul]:list-disc [&>ul]:pl-5 [&>ol]:list-decimal"
                 dangerouslySetInnerHTML={{ __html: resource.description }}
@@ -285,6 +285,22 @@ export function ResourceDetails() {
                 className="font-normal text-blue-gray-500"
               >
                 {resource.type}
+              </Typography>
+            </div>
+
+            <div className="mb-6">
+              <Typography
+                variant="small"
+                color="blue-gray"
+                className="font-semibold capitalize"
+              >
+                Estimated Time:
+              </Typography>
+              <Typography
+                variant="small"
+                className="font-normal text-blue-gray-500"
+              >
+                {resource.estimated_time} min
               </Typography>
             </div>
 

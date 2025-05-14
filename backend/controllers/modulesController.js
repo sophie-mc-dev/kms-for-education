@@ -3,14 +3,7 @@ const { indexModule } = require("../services/elasticSearchService");
 
 const modulesController = {
   createModule: async (req, res) => {
-    const {
-      title,
-      summary,
-      estimated_duration,
-      assessment,
-      resources,
-      objectives,
-    } = req.body;
+    const { title, summary, assessment, resources, objectives } = req.body;
 
     if (!title) {
       return res.status(400).json({ error: "Title is required" });
@@ -20,10 +13,20 @@ const modulesController = {
     try {
       await client.query("BEGIN");
 
+      const resourceQuery = await client.query(
+        `SELECT estimated_time FROM resources WHERE id = ANY($1::int[])`,
+        [resources]
+      );
+
+      const estimated_duration = resourceQuery.rows.reduce(
+        (sum, r) => sum + (r.estimated_time || 0),
+        0
+      );
+
       // Insert module
       const moduleResult = await client.query(
-        `INSERT INTO modules (title, summary, estimated_duration, objectives) 
-       VALUES ($1, $2, $3, $4) 
+        `INSERT INTO modules (title, summary, estimated_duration, objectives, created_at) 
+       VALUES ($1, $2, $3, $4, NOW()) 
        RETURNING *`,
         [title, summary, estimated_duration, objectives]
       );
@@ -87,13 +90,11 @@ const modulesController = {
         id: module.id,
         title,
         summary,
-        created_at,
-        updated_at,
+        created_at: module.created_at,
+        updated_at: module.updated_at,
         estimated_duration: parseInt(estimated_duration),
-        is_standalone,
         objectives,
       });
-
 
       res.status(201).json(module);
     } catch (error) {

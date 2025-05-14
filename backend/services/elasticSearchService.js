@@ -70,8 +70,8 @@ async function indexModule(module) {
     created_at: module.created_at,
     updated_at: module.updated_at,
     estimated_duration: module.estimated_duration,
-    is_standalone: module.is_standalone,
     objectives: module.objectives,
+    embedding,
   };
 
   await tryIndexDocument("learning_content", `module-${module.id}`, document, "module");
@@ -100,6 +100,7 @@ async function indexLearningPath(learningPath) {
     creator_type: learningPath.creator_type,
     first_name: learningPath.first_name,
     last_name: learningPath.last_name,
+    embedding,
   };
 
   await tryIndexDocument("learning_content", `learning_path-${learningPath.id}`, document, "learningPath");

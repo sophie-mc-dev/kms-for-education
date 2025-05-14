@@ -3,25 +3,11 @@ const { indexLearningPath } = require("../services/elasticSearchService");
 
 const learningPathsController = {
   addLearningPath: async (req, res) => {
-    const {
-      title,
-      summary,
-      visibility,
-      estimatedDuration,
-      modules,
-      objectives,
-      user_id,
-    } = req.body;
+    const { title, summary, visibility, modules, objectives, user_id } =
+      req.body;
 
     // Validate required fields
-    if (
-      !title ||
-      !summary ||
-      !visibility ||
-      !estimatedDuration ||
-      !objectives ||
-      !user_id
-    ) {
+    if (!title || !summary || !visibility || !objectives || !user_id) {
       return res.status(400).json({ error: "All fields are required" });
     }
 
@@ -30,21 +16,25 @@ const learningPathsController = {
     try {
       await client.query("BEGIN");
 
+      const moduleIds = modules.map((m) => m.module_id);
+      const moduleDurationsResult = await client.query(
+        `SELECT estimated_duration FROM modules WHERE id = ANY($1::int[])`,
+        [moduleIds]
+      );
+
+      const estimatedDuration = moduleDurationsResult.rows.reduce(
+        (sum, m) => sum + (m.estimated_duration || 0),
+        0
+      );
+
       // Insert Learning Path
       const learningPathResult = await client.query(
         `INSERT INTO learning_paths (title, summary, user_id, visibility, estimated_duration, objectives, creator_type, created_at, updated_at)
          VALUES ($1, $2, $3, $4, $5, $6, 'educator', NOW(), NOW()) RETURNING id`,
-        [
-          title,
-          summary,
-          user_id,
-          visibility,
-          estimatedDuration,
-          objectives,
-        ]
+        [title, summary, user_id, visibility, estimatedDuration, objectives]
       );
 
-      const learningPathId = learningPathResult.rows[0].id;
+      const learningPath = learningPathResult.rows[0];
 
       // Insert modules into the learning_path_modules table
       const insertModuleQuery = `
@@ -53,7 +43,7 @@ const learningPathsController = {
   `;
       for (const { module_id, module_order } of modules) {
         await client.query(insertModuleQuery, [
-          learningPathId,
+          learningPath.id,
           module_id,
           module_order,
         ]);
@@ -62,11 +52,11 @@ const learningPathsController = {
       await client.query("COMMIT");
 
       await indexLearningPath({
-        id: learningPathId,
+        id: learningPath.id,
         title,
         summary,
-        created_at,
-        updated_at,
+        created_at: learningPath.created_at,
+        updated_at: learningPath.updated_at,
         estimated_duration: parseInt(estimatedDuration),
         difficulty_level,
         objectives,
@@ -75,10 +65,7 @@ const learningPathsController = {
         last_name,
       });
 
-      res.status(201).json({
-        message: "Learning Path created successfully",
-        learningPathId,
-      });
+      res.status(201).json(learningPath);
     } catch (err) {
       await client.query("ROLLBACK");
       console.error("Error creating learning path:", err);
@@ -215,12 +202,7 @@ const learningPathsController = {
     const { title, summary, visibility, estimated_duration, modules } =
       req.body;
 
-    if (
-      !title ||
-      !summary ||
-      !visibility ||
-      !estimated_duration
-    ) {
+    if (!title || !summary || !visibility || !estimated_duration) {
       return res.status(400).json({ error: "All fields are required" });
     }
 

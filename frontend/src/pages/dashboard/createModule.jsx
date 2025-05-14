@@ -22,7 +22,6 @@ export function CreateModule() {
   const [step, setStep] = useState(1);
   const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");
-  const [estimatedDuration, setEstimatedDuration] = useState("");
   const [objectives, setObjectives] = useState("");
   const [resources, setResources] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -64,7 +63,6 @@ export function CreateModule() {
           title,
           summary,
           objectives,
-          estimated_duration: Number(estimatedDuration),
           assessment: {
             passing_percentage: passingPercentage,
             questions: questions.map((q) => q.question_text),
@@ -214,10 +212,7 @@ export function CreateModule() {
   const canGoToNextStep = () => {
     if (step === 1) {
       return (
-        title.trim() !== "" &&
-        summary.trim() !== "" &&
-        objectives.trim() !== "" &&
-        estimatedDuration.trim() !== ""
+        title.trim() !== "" && summary.trim() !== "" && objectives.trim() !== ""
       );
     }
     if (step === 2) {
@@ -272,15 +267,6 @@ export function CreateModule() {
                 placeholder="Describe the objectives of the module"
                 required
               />
-              <div className="flex gap-4">
-                <Input
-                  label="Estimated Duration (minutes)"
-                  type="number"
-                  value={estimatedDuration}
-                  onChange={(e) => setEstimatedDuration(e.target.value)}
-                  required
-                />
-              </div>
             </div>
           )}
 
