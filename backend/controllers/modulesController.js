@@ -84,8 +84,6 @@ const modulesController = {
         }
       }
 
-      await client.query("COMMIT");
-
       await indexModule({
         id: module.id,
         title,
@@ -95,6 +93,8 @@ const modulesController = {
         estimated_duration: parseInt(estimated_duration),
         objectives,
       });
+
+      await client.query("COMMIT");
 
       res.status(201).json(module);
     } catch (error) {

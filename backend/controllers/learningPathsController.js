@@ -49,8 +49,6 @@ const learningPathsController = {
         ]);
       }
 
-      await client.query("COMMIT");
-
       await indexLearningPath({
         id: learningPath.id,
         title,
@@ -64,6 +62,8 @@ const learningPathsController = {
         first_name,
         last_name,
       });
+
+      await client.query("COMMIT");
 
       res.status(201).json(learningPath);
     } catch (err) {
@@ -498,20 +498,25 @@ const learningPathsController = {
       const moduleStatus = passed ? "completed" : "in_progress";
 
       // Step 3: Update the user progress in user_module_progress
-      let updateQuery = `
-                UPDATE user_module_progress 
-                SET assessment_status = $1, 
-                    status = $2,
-                    completed_at = NOW()
-                WHERE user_id = $3 AND module_id = $4 AND learning_path_id = $5
-            `;
-      let updateValues = [
-        assessmentStatus,
-        moduleStatus,
-        user_id,
-        module_id,
-        learning_path_id,
-      ];
+      let updateQuery;
+      let updateValues;
+
+      if (moduleStatus === 'completed') {
+        updateQuery = `
+          UPDATE user_module_progress 
+          SET assessment_status = $1, 
+              status = $2,
+              completed_at = NOW()
+          WHERE user_id = $3 AND module_id = $4 AND learning_path_id = $5`;
+        updateValues = [assessmentStatus, moduleStatus, user_id, module_id, learning_path_id];
+      } else {
+        updateQuery = `
+          UPDATE user_module_progress 
+          SET assessment_status = $1, 
+              status = $2
+          WHERE user_id = $3 AND module_id = $4 AND learning_path_id = $5`;
+        updateValues = [assessmentStatus, moduleStatus, user_id, module_id, learning_path_id];
+      }
 
       // Execute the update query for module progress
       await pool.query(updateQuery, updateValues);
@@ -560,20 +565,33 @@ const learningPathsController = {
         lockedModules.length === 0 &&
         completedModules.length === totalModules
       ) {
-        // If no locked modules and all modules are completed, set learning path as completed
+        // Log interaction
         await pool.query(
-          `UPDATE learning_path_progress
-           SET status = 'completed'
-           WHERE user_id = $1 AND learning_path_id = $2`,
+          `INSERT INTO user_interactions (user_id, learning_path_id, interaction_type)
+     VALUES ($1, $2, 'completed_learning_path')`,
           [user_id, learning_path_id]
         );
 
-        // Log the interaction in the user_interactions table
-        await pool.query(
-          `INSERT INTO user_interactions (user_id, learning_path_id, interaction_type)
-          VALUES ($1, $2, 'completed_learning_path')`,
+        // Time spent
+        const timeSpentResult = await pool.query(
+          `SELECT started_at FROM learning_path_progress WHERE user_id = $1 AND learning_path_id = $2`,
           [user_id, learning_path_id]
         );
+
+        if (timeSpentResult.rows[0].started_at) {
+          const startedAt = new Date(timeSpentResult.rows[0].started_at);
+          const completedAt = new Date();
+          const timeSpent = Math.floor((completedAt - startedAt) / 1000 / 60);
+
+          await pool.query(
+            `UPDATE learning_path_progress 
+            SET status = 'completed',
+            completed_at = NOW(),
+            time_spent = $1
+            WHERE user_id = $2 AND learning_path_id = $3`,
+            [timeSpent, user_id, learning_path_id]
+          );
+        }
       } else {
         // If there are still locked modules, update the status as in-progress
         currentModuleId =
