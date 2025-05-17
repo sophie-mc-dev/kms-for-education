@@ -373,12 +373,6 @@ const learningPathsController = {
         [user_id]
       );
 
-      if (result.rows.length === 0) {
-        return res
-          .status(404)
-          .json({ error: "No learning paths found for this user" });
-      }
-
       res.json(result.rows);
     } catch (err) {
       console.error("Error fetching started learning paths:", err);
@@ -654,12 +648,6 @@ const learningPathsController = {
          ORDER BY lpp.started_at DESC`,
         [user_id]
       );
-
-      if (result.rows.length === 0) {
-        return res
-          .status(404)
-          .json({ error: "No learning paths found for this user" });
-      }
 
       res.json(result.rows);
     } catch (err) {

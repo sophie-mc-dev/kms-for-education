@@ -1,5 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Input, Card, CardBody, Typography, Spinner } from "@material-tailwind/react";
+import {
+  Input,
+  Card,
+  CardBody,
+  Typography,
+  Spinner,
+} from "@material-tailwind/react";
 import { useUser } from "@/context/UserContext";
 import { ResourceCard } from "@/widgets/cards/";
 import { LearningLPCard } from "@/widgets/cards/";
@@ -52,21 +58,54 @@ export function StudentResources() {
         modules: true,
         recommended: true,
       }));
-  
-      const allResources = await fetch("http://localhost:8080/api/resources").then((res) => res.json());
-      const bookmarks = await fetch(`http://localhost:8080/api/bookmarks/${userId}`).then((res) => res.json());
-      const lpInProgress = await fetch(`http://localhost:8080/api/learning-paths/in-progress/${userId}`).then((res) => res.json());
-      const lpCompleted = await fetch(`http://localhost:8080/api/learning-paths/completed/${userId}`).then((res) => res.json());
-      const mdInProgress = await fetch(`http://localhost:8080/api/modules/in-progress/${userId}`).then((res) => res.json());
-      const mdCompleted = await fetch(`http://localhost:8080/api/modules/completed/${userId}`).then((res) => res.json());
-      const stdPaths = await fetch(`http://localhost:8080/api/learning-paths/student/${userId}`).then((res) => res.json());
-      const recommendedR = await fetch(`http://localhost:8080/api/recommendations/${userId}/resources`).then((res) => res.json());
-      const recentlyViewedData = JSON.parse(localStorage.getItem(`recentlyViewed-${userId}`)) || [];
-  
+
+      const [
+        allResources,
+        bookmarks,
+        lpInProgress,
+        lpCompleted,
+        mdInProgress,
+        mdCompleted,
+        stdPaths,
+        recommendedR,
+      ] = await Promise.all([
+        fetch("http://localhost:8080/api/resources").then((res) => res.json()),
+        fetch(`http://localhost:8080/api/bookmarks/${userId}`).then((res) =>
+          res.json()
+        ),
+        fetch(
+          `http://localhost:8080/api/learning-paths/in-progress/${userId}`
+        ).then((res) => (res.ok ? res.json() : [])),
+        fetch(
+          `http://localhost:8080/api/learning-paths/completed/${userId}`
+        ).then((res) => (res.ok ? res.json() : [])),
+        fetch(`http://localhost:8080/api/modules/in-progress/${userId}`).then(
+          (res) => (res.ok ? res.json() : [])
+        ),
+        fetch(`http://localhost:8080/api/modules/completed/${userId}`).then(
+          (res) => (res.ok ? res.json() : [])
+        ),
+        fetch(
+          `http://localhost:8080/api/learning-paths/student/${userId}`
+        ).then((res) => res.json()),
+        fetch(
+          `http://localhost:8080/api/recommendations/${userId}/resources`
+        ).then((res) => res.json()),
+      ]);
+
+      const recentlyViewedData =
+        JSON.parse(localStorage.getItem(`recentlyViewed-${userId}`)) || [];
+
       // Set the resources and other data
       setResources(allResources);
-      setBookmarkedResources(allResources.filter((res) => bookmarks.some((b) => b.id === res.id)));
-      setRecentlyViewed(recentlyViewedData.map((recent) => allResources.find((res) => res.id === recent.id)).filter(Boolean));
+      setBookmarkedResources(
+        allResources.filter((res) => bookmarks.some((b) => b.id === res.id))
+      );
+      setRecentlyViewed(
+        recentlyViewedData
+          .map((recent) => allResources.find((res) => res.id === recent.id))
+          .filter(Boolean)
+      );
       setLearningPathsInProgress(lpInProgress);
       setLearningPathsCompleted(lpCompleted);
       setModulesInProgress(mdInProgress);
@@ -88,7 +127,6 @@ export function StudentResources() {
       }));
     }
   };
-  
 
   useEffect(() => {
     if (userId) fetchData();
@@ -97,8 +135,9 @@ export function StudentResources() {
   const scrollCollection = (direction, category) => {
     const collection = collectionRefs.current[category];
     if (collection) {
+      const scrollAmount = collection.offsetWidth;
       collection.scrollBy({
-        left: direction === "left" ? -500 : 500,
+        left: direction === "left" ? -scrollAmount : scrollAmount,
         behavior: "smooth",
       });
     }
@@ -227,7 +266,7 @@ export function StudentResources() {
                   })
                 ) : (
                   <Typography variant="small" color="gray">
-                    No items found.
+                    No learning content found.
                   </Typography>
                 )}
               </div>

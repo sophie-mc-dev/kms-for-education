@@ -613,6 +613,67 @@ const recommendationsController = {
     }
   },
 
+  getModuleRecommendationForStudyPathCreation: async (req, res) => {
+    const { categories, user_id } = req.body;
+    const session = driver.session();
+
+    try {
+      const cypherQuery = `
+        WITH $categories AS categories, $user_id AS userId
+
+        // Find all modules completed by the user
+        MATCH (u:User {id: userId})-[:PERFORMED]->(interaction:Interaction)-[:TARGET]->(completedModule:Module)
+        WHERE interaction.type = "COMPLETED_MODULE"
+        WITH categories, collect(completedModule.id) AS completedIds
+
+        // Match modules related to the selected categories
+        MATCH (r:Resource)-[:HAS_CATEGORY]->(cat:Category)
+        WHERE cat.name IN categories
+
+        MATCH (m:Module)-[:HAS_RESOURCE]->(r)
+
+        // Exclude completed modules
+        WHERE NOT m.id IN completedIds
+
+        WITH m, COUNT(DISTINCT r) AS matchingResourceCount
+
+        RETURN m {
+          .id,
+          .title,
+          .summary,
+          .estimated_duration
+        } AS modRec, matchingResourceCount
+        ORDER BY matchingResourceCount DESC
+        LIMIT 10
+      `;
+
+      const result = await session.run(cypherQuery, {
+        categories: categories,
+        user_id: user_id,
+      });
+
+      const recommendations = result.records.map((record) => {
+        const rec = record.get("modRec");
+        return {
+          id: rec.id,
+          title: rec.title,
+          summary: rec.summary,
+          estimated_duration: rec.estimated_duration,
+        };
+      });
+
+      res.status(200).json(recommendations);
+    } catch (err) {
+      console.error("Recommendation Error:", err);
+      res.status(500).json({
+        message:
+          "Failed to get module recommendations for learning path creation.",
+      });
+    } finally {
+      await session.close();
+    }
+  },
+
   getResourceRecommendationForModuleCreation: async (req, res) => {
     const categories = req.body.categories;
     const session = driver.session();
@@ -656,8 +717,7 @@ const recommendationsController = {
     } catch (err) {
       console.error("Recommendation Error:", err);
       res.status(500).json({
-        message:
-          "Failed to get resource recommendations for module creation.",
+        message: "Failed to get resource recommendations for module creation.",
       });
     } finally {
       await session.close();

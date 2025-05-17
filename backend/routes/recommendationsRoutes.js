@@ -4,6 +4,8 @@ const recommendationsController = require("../controllers/recommendationsControl
 
 router.post("/resources", recommendationsController.getResourceRecommendationForModuleCreation);
 router.post("/modules", recommendationsController.getModuleRecommendationForLPathCreation);
+router.post("/:user_id/modules", recommendationsController.getModuleRecommendationForStudyPathCreation);
+
 router.get("/:user_id/resources", recommendationsController.getResourceRecommendations);
 router.get("/resources/:resource_id", recommendationsController.getRecommendationBasedOnResource);
 router.get("/:user_id/learning-paths/:learning_path_id/resources", recommendationsController.getResourceRecommendationBasedOnLearningPath);

@@ -8,6 +8,7 @@ import {
   Button,
   Input,
   Typography,
+  Radio,
 } from "@material-tailwind/react";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
@@ -15,6 +16,8 @@ import { LearningMDCard } from "@/widgets/cards";
 import { DragDropContext, Draggable } from "react-beautiful-dnd";
 import { StrictModeDroppable as Droppable } from "@/helpers/StrictModeDroppable";
 import { useUser } from "@/context/UserContext";
+import Select from "react-select";
+import { resourceCategories } from "@/data/resource-categories";
 
 export function CreateStudyPath() {
   const { userId } = useUser();
@@ -26,6 +29,13 @@ export function CreateStudyPath() {
   const [selectedModules, setSelectedModules] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+
+  const [selectedCategories, setSelectedCategories] = useState([]);
+  const [recommendedModules, setRecommendedModules] = useState([]);
+  const [activeTab, setActiveTab] = useState("recommended");
+  const modulesToShow =
+    activeTab === "recommended" ? recommendedModules : modules;
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -43,6 +53,10 @@ export function CreateStudyPath() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (selectedModules.length === 0) {
+      alert("Please select at least one module.");
+      return;
+    }
     setIsSubmitting(true);
 
     const modulesWithOrder = selectedModules.map((module, index) => ({
@@ -58,64 +72,88 @@ export function CreateStudyPath() {
       objectives: objectives,
     };
 
-    console.log("Submitting Learning Path Data:", learningPathData);
-
     try {
-      const response = await fetch("http://localhost:8080/api/learning-paths/study-path", {
+      const response = await fetch("http://localhost:8080/api/learning-paths", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(learningPathData),
       });
 
-      if (response.ok) {
-        navigate("/learning-paths");
-      } else {
-        console.error("Error saving learning path:", await response.text());
-      }
+      if (response.ok) navigate("/dashboard/learning");
+      alert("Error creating learning path");
     } catch (error) {
-      console.error("Failed to save:", error);
+      console.error(error);
+      alert("Error creating learning path");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleModuleToggle = (module) => {
-    setSelectedModules(
-      (prevSelected) =>
-        prevSelected.some((mod) => mod.id === module.id)
-          ? prevSelected.filter((mod) => mod.id !== module.id) 
-          : [...prevSelected, module] 
+    setSelectedModules((prevSelected) =>
+      prevSelected.some((mod) => mod.id === module.id)
+        ? prevSelected.filter((mod) => mod.id !== module.id)
+        : [...prevSelected, module]
     );
   };
 
   const handleDragEnd = (result) => {
     if (!result.destination) return;
 
-    console.log(
-      "Dragging from:",
-      result.source.index,
-      "to:",
-      result.destination.index
-    );
-
     const updatedModules = Array.from(selectedModules);
     const [movedItem] = updatedModules.splice(result.source.index, 1);
     updatedModules.splice(result.destination.index, 0, movedItem);
 
-    // Save new order in state
     setSelectedModules(updatedModules);
+  };
 
-    console.log(
-      "Updated order:",
-      updatedModules.map((mod, index) => ({ id: mod.id, order: index }))
-    );
+  const handleNextStep = async () => {
+    if (step === 1) {
+      if (!title || !summary || !objectives) {
+        alert("Please fill in all required fields before proceeding.");
+        return;
+      }
+
+      try {
+        const response = await fetch(
+          `http://localhost:8080/api/recommendations/${userId}/modules`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              categories: selectedCategories.map((cat) => cat.label),
+              user_id: userId.toString(),
+            }),
+          }
+        );
+
+        if (response.ok) {
+          const recommended = await response.json();
+          const cleaned = recommended.map((mod) => ({
+            ...mod,
+            id: parseInt(mod.id, 10),
+          }));
+          setRecommendedModules(cleaned);
+          setStep(2);
+        } else {
+          console.error(
+            "Error fetching recommended modules:",
+            await response.text()
+          );
+        }
+      } catch (error) {
+        console.error("Failed to fetch recommended modules:", error);
+      }
+    } else {
+      setStep(step + 1);
+    }
   };
 
   return (
     <div className="mt-12 flex justify-center">
-      <Card className="w-full h-full border border-gray-300 shadow-md rounded-lg">
+      <Card className="w-full h-full border border-gray-300 rounded-lg">
         <CardHeader
           floated={false}
           shadow={false}
@@ -123,7 +161,7 @@ export function CreateStudyPath() {
           className="m-0 flex items-center justify-between p-6"
         >
           <Typography variant="h6" color="blue-gray">
-            {step === 1 ? "Learning Path Details" : "Add Modules"}
+            {step === 1 ? "Study Path Details" : "Add Modules"}
           </Typography>
         </CardHeader>
 
@@ -139,13 +177,28 @@ export function CreateStudyPath() {
               <ReactQuill
                 value={summary}
                 onChange={setSummary}
-                placeholder="Overview of the learning paths"
+                placeholder="Describe the study path"
               />
               <ReactQuill
                 value={objectives}
                 onChange={setObjectives}
-                placeholder="Describe the learning path objectives"
+                placeholder="Describe the objectives of the study path"
               />
+
+              <div className="flex-1">
+                <Typography className="text-xs font-semibold uppercase text-blue-gray-500">
+                  Categories:
+                </Typography>
+                <Select
+                  name="categories"
+                  value={selectedCategories}
+                  onChange={(selected) => setSelectedCategories(selected)}
+                  options={resourceCategories}
+                  isMulti
+                  className="basic-multi-select"
+                  classNamePrefix="select"
+                />
+              </div>
             </div>
           )}
 
@@ -158,101 +211,154 @@ export function CreateStudyPath() {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
 
-              {/* Filtered Modules in Grid Layout */}
-              <div className="grid grid-cols-4 gap-4">
-                {modules
-                  .filter((mod) =>
-                    mod.title.toLowerCase().includes(searchTerm.toLowerCase())
-                  )
-                  .map((module) => {
-                    const isSelected = selectedModules.some(
-                      (mod) => mod.id === module.id
-                    );
-
-                    return (
-                      <div
-                        key={module.id}
-                        className=" p-2 bg-white grid items-center"
-                      >
-                        <LearningMDCard moduleItem={module} />
-
-                        {/* Add / Remove Button */}
-                        {isSelected ? (
-                          <Button
-                            color="gray"
-                            size="sm"
-                            className="mt-2"
-                            disabled
-                          >
-                            Added
-                          </Button>
-                        ) : (
-                          <Button
-                            color="blue"
-                            size="sm"
-                            className="mt-2"
-                            onClick={() => handleModuleToggle(module)}
-                          >
-                            Add
-                          </Button>
-                        )}
-                      </div>
-                    );
-                  })}
-              </div>
-
-              {/* Display Selected Modules */}
-              {selectedModules.length > 0 && (
-                <div className="mt-6">
-                  <Typography variant="h6" color="blue-gray">
-                    Selected Modules:
-                  </Typography>
-
-                  <DragDropContext onDragEnd={handleDragEnd}>
-                    <Droppable
-                      droppableId="modules-list"
-                      direction="horizontal"
+              {/* Side-by-side layout: Modules (left) + Selected Modules (right) */}
+              <div className="flex gap-6">
+                <div className="flex-1">
+                  {/* TABS */}
+                  <div className="flex gap-4 border-b border-gray-200">
+                    <button
+                      onClick={() => setActiveTab("recommended")}
+                      className={`pb-2 text-sm font-medium border-b-2  ${
+                        activeTab === "recommended"
+                          ? "border-blue-600 text-blue-600"
+                          : "border-transparent text-gray-500 "
+                      }`}
                     >
-                      {(provided) => (
-                        <div
-                          {...provided.droppableProps}
-                          ref={provided.innerRef}
-                          // grid aspect is here:
-                          className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-2"
-                        >
-                          {selectedModules.map((module, index) => (
-                            <Draggable
-                              key={module.id}
-                              draggableId={String(module.id)}
-                              index={index}
-                            >
-                              {(provided) => (
-                                <div
-                                  {...provided.draggableProps}
-                                  {...provided.dragHandleProps}
-                                  ref={provided.innerRef}
-                                  className="relative bg-white p-2"
-                                >
-                                  <LearningMDCard moduleItem={module} />
+                      Recommended Modules
+                    </button>
+                    <button
+                      onClick={() => setActiveTab("all")}
+                      className={`pb-2 text-sm font-medium border-b-2 ${
+                        activeTab === "all"
+                          ? "border-blue-600 text-blue-600"
+                          : "border-transparent text-gray-500"
+                      }`}
+                    >
+                      All Modules
+                    </button>
+                  </div>
+
+                  {/* Modules Grid */}
+                  <div className="mt-4 w-full">
+                    {modulesToShow.filter((mod) =>
+                      mod.title.toLowerCase().includes(searchTerm.toLowerCase())
+                    ).length === 0 ? (
+                      <Typography
+                        variant="paragraph"
+                        color="gray"
+                        className="text-gray-500"
+                      >
+                        {activeTab === "recommended"
+                          ? "No recommended modules available."
+                          : "No modules match your search."}
+                      </Typography>
+                    ) : (
+                      <div className="grid grid-cols-[repeat(auto-fit,minmax(250px,1fr))] gap-4">
+                        {modulesToShow
+                          .filter((mod) =>
+                            mod.title
+                              .toLowerCase()
+                              .includes(searchTerm.toLowerCase())
+                          )
+                          .map((module) => {
+                            const isSelected = selectedModules.some(
+                              (mod) => mod.id === module.id
+                            );
+
+                            return (
+                              <div
+                                key={module.id}
+                                className="p-2 bg-white rounded grid items-center"
+                              >
+                                <LearningMDCard moduleItem={module} />
+                                {isSelected ? (
                                   <Button
-                                    color="red"
+                                    color="gray"
                                     size="sm"
-                                    className="mt-2 w-full"
+                                    className="mt-2"
+                                    disabled
+                                  >
+                                    Added
+                                  </Button>
+                                ) : (
+                                  <Button
+                                    color="blue"
+                                    size="sm"
+                                    className="mt-2"
                                     onClick={() => handleModuleToggle(module)}
                                   >
-                                    Remove
+                                    Add
                                   </Button>
-                                </div>
-                              )}
-                            </Draggable>
-                          ))}
-                          {provided.placeholder}
-                        </div>
-                      )}
-                    </Droppable>
-                  </DragDropContext>
+                                )}
+                              </div>
+                            );
+                          })}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              )}
+
+                {/* Selected Modules Section */}
+                <div className="w-[320px] min-w-[320px]">
+                  <div className="border-b border-gray-200 mb-4">
+                    <Typography
+                      variant="h6"
+                      color="gray"
+                      className="pb-2 text-gray-500 text-sm font-medium"
+                    >
+                      Selected Modules
+                    </Typography>
+                  </div>
+
+                  {/* Display even if no modules are selected */}
+                  <div
+                    className={selectedModules.length === 0 ? "opacity-50" : ""}
+                  >
+                    <DragDropContext onDragEnd={handleDragEnd}>
+                      <Droppable
+                        droppableId="modules-list"
+                        direction="vertical"
+                      >
+                        {(provided) => (
+                          <div
+                            {...provided.droppableProps}
+                            ref={provided.innerRef}
+                            className="space-y-4"
+                          >
+                            {selectedModules.map((module, index) => (
+                              <Draggable
+                                key={module.id}
+                                draggableId={String(module.id)}
+                                index={index}
+                              >
+                                {(provided) => (
+                                  <div
+                                    {...provided.draggableProps}
+                                    {...provided.dragHandleProps}
+                                    ref={provided.innerRef}
+                                    className="bg-white p-2 rounded"
+                                  >
+                                    <LearningMDCard moduleItem={module} />
+                                    <Button
+                                      color="red"
+                                      size="sm"
+                                      className="mt-2 w-full"
+                                      onClick={() => handleModuleToggle(module)}
+                                    >
+                                      Remove
+                                    </Button>
+                                  </div>
+                                )}
+                              </Draggable>
+                            ))}
+                            {provided.placeholder}
+                          </div>
+                        )}
+                      </Droppable>
+                    </DragDropContext>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </CardBody>
@@ -264,7 +370,16 @@ export function CreateStudyPath() {
             </Button>
           )}
           {step < 2 ? (
-            <Button variant="filled" onClick={() => setStep(step + 1)}>
+            <Button
+              variant="filled"
+              onClick={() => {
+                if (step === 1) {
+                  handleNextStep();
+                } else {
+                  setStep(step + 1);
+                }
+              }}
+            >
               Next
             </Button>
           ) : (

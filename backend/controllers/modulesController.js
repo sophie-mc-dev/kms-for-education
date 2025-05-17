@@ -774,12 +774,6 @@ const modulesController = {
         [user_id]
       );
 
-      if (result.rows.length === 0) {
-        return res
-          .status(404)
-          .json({ error: "No modules found for this user" });
-      }
-
       res.status(200).json(result.rows);
     } catch (err) {
       console.error("Error fetching completed standalone modules:", err);
