@@ -169,9 +169,14 @@ export function Search() {
 
       <Card className="col-span-3 border border-blue-gray-100 flex flex-col min-h-screen">
         <CardBody>
-          <Typography variant="h6" color="blue-gray" className="mb-2">
-            Results
-          </Typography>
+          <div className="flex justify-between items-center mb-2">
+            <Typography variant="h6" color="blue-gray" className="mb-2">
+              Results
+            </Typography>
+                  <Typography className="text-xs font-semibold uppercase text-blue-gray-500">
+              {displayedResults.length} resources
+            </Typography>
+          </div>
 
           {loading ? (
             <div className="w-full flex justify-center items-center py-8">

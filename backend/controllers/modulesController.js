@@ -413,7 +413,7 @@ const modulesController = {
         return res.status(404).json({ error: "Assessment result not found" });
       }
 
-      res.json(result.rows[0]); // Return the updated result
+      res.json(result.rows[0]);
     } catch (error) {
       console.error("Error updating assessment attempts:", error);
       res.status(500).json({ error: "Internal Server Error" });
@@ -421,7 +421,7 @@ const modulesController = {
   },
 
   updateAssessmentStatus: async (req, res) => {
-    const { assessment_status, learning_path_id } = req.body; // Get learning_path_id from the body
+    const { assessment_status, learning_path_id } = req.body;
     const { user_id, module_id } = req.params;
 
     if (!user_id || !module_id) {

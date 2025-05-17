@@ -18,7 +18,7 @@ const searchController = {
         knn: {
           field: "embedding",
           query_vector: queryEmbedding,
-          k: 10,
+          k: 15,
           num_candidates: 100,
         },
         query: {
@@ -28,11 +28,17 @@ const searchController = {
         },
       });
 
+      // Filter based on vector similarity threshold
       const hits = results.hits.hits.map((hit) => ({
         id: hit._id,
         score: hit._score,
         ...hit._source,
       }));
+
+      console.log(
+        "Scores:",
+        results.hits.hits.map((hit) => hit._score)
+      );
 
       res.json(hits);
     } catch (error) {

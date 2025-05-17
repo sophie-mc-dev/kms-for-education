@@ -612,6 +612,57 @@ const recommendationsController = {
       await session.close();
     }
   },
+
+  getResourceRecommendationForModuleCreation: async (req, res) => {
+    const categories = req.body.categories;
+    const session = driver.session();
+
+    try {
+      const cypherQuery = `
+        WITH $categories AS categories
+
+        MATCH (r:Resource)-[:HAS_CATEGORY]->(cat:Category)
+        WHERE cat.name IN categories
+
+        RETURN r {
+          .id,
+          .title,
+          .description,
+          .type,
+          .category,
+          .tags
+        } AS recRes
+        ORDER BY r.title
+        LIMIT 10
+      `;
+
+      const result = await session.run(cypherQuery, {
+        categories: categories,
+      });
+
+      const recommendations = result.records.map((record) => {
+        const rec = record.get("recRes");
+        return {
+          id: rec.id,
+          title: rec.title,
+          description: rec.description,
+          type: rec.type,
+          category: rec.category,
+          tags: rec.tags,
+        };
+      });
+
+      res.status(200).json(recommendations);
+    } catch (err) {
+      console.error("Recommendation Error:", err);
+      res.status(500).json({
+        message:
+          "Failed to get resource recommendations for module creation.",
+      });
+    } finally {
+      await session.close();
+    }
+  },
 };
 
 module.exports = recommendationsController;

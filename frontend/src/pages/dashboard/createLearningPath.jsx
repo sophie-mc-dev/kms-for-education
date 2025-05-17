@@ -26,7 +26,6 @@ export function CreateLearningPath() {
   const [summary, setSummary] = useState("");
   const [objectives, setObjectives] = useState("");
   const [visibility, setVisibility] = useState("public");
-  const [estimatedDuration, setEstimatedDuration] = useState("");
   const [difficultyLevel, setDifficultyLevel] = useState("");
   const [modules, setModules] = useState([]);
   const [selectedModules, setSelectedModules] = useState([]);
@@ -36,7 +35,8 @@ export function CreateLearningPath() {
   const [selectedCategories, setSelectedCategories] = useState([]);
   const [recommendedModules, setRecommendedModules] = useState([]);
   const [activeTab, setActiveTab] = useState("recommended");
-  const modulesToShow = activeTab === "recommended" ? recommendedModules : modules;
+  const modulesToShow =
+    activeTab === "recommended" ? recommendedModules : modules;
 
   const navigate = useNavigate();
 
@@ -61,6 +61,10 @@ export function CreateLearningPath() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (selectedModules.length === 0) {
+      alert("Please select at least one module.");
+      return;
+    }
     setIsSubmitting(true);
 
     const modulesWithOrder = selectedModules.map((module, index) => ({
@@ -72,7 +76,6 @@ export function CreateLearningPath() {
       title,
       summary,
       visibility,
-      estimatedDuration: parseInt(estimatedDuration, 10),
       modules: modulesWithOrder,
       user_id: userId,
       objectives: objectives,
@@ -82,19 +85,15 @@ export function CreateLearningPath() {
     try {
       const response = await fetch("http://localhost:8080/api/learning-paths", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(learningPathData),
       });
 
-      if (response.ok) {
-        navigate("/learning-paths");
-      } else {
-        console.error("Error saving learning path:", await response.text());
-      }
+      if (response.ok) navigate("/dashboard/learning");
+      alert("Error creating learning path");
     } catch (error) {
-      console.error("Failed to save:", error);
+      console.error(error);
+      alert("Error creating learning path");
     } finally {
       setIsSubmitting(false);
     }
@@ -120,6 +119,11 @@ export function CreateLearningPath() {
 
   const handleNextStep = async () => {
     if (step === 1) {
+      if (!title || !summary || !objectives || !difficultyLevel) {
+        alert("Please fill in all required fields before proceeding.");
+        return;
+      }
+
       try {
         const response = await fetch(
           "http://localhost:8080/api/recommendations/modules",
@@ -138,7 +142,7 @@ export function CreateLearningPath() {
           const recommended = await response.json();
           const cleaned = recommended.map((mod) => ({
             ...mod,
-            id: parseInt(mod.id, 10), 
+            id: parseInt(mod.id, 10),
           }));
           setRecommendedModules(cleaned);
           setStep(2);
@@ -284,7 +288,7 @@ export function CreateLearningPath() {
                     </button>
                   </div>
 
-                  {/* Filtered Modules Grid */}
+                  {/* Modules Grid */}
                   <div className="mt-4 w-full">
                     {modulesToShow.filter((mod) =>
                       mod.title.toLowerCase().includes(searchTerm.toLowerCase())
@@ -344,7 +348,7 @@ export function CreateLearningPath() {
                   </div>
                 </div>
 
-                {/* Selected Modules Section (visible even if no modules are selected) */}
+                {/* Selected Modules Section */}
                 <div className="w-[320px] min-w-[320px]">
                   <div className="border-b border-gray-200 mb-4">
                     <Typography
