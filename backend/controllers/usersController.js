@@ -20,14 +20,15 @@ const usersController = {
     }
   },
 
-  updateProfile: async (req, res) => {
-    const { user_id } = req.params;
+  updateUser: async (req, res) => {
+    const user_id = req.params.id;
+
     const {
-      educationLevel,
-      fieldOfStudy,
-      topicInterests,
-      preferredContentTypes,
-      languagePreference,
+      education_level,
+      field_of_study,
+      topic_interests,
+      preferred_content_types,
+      language_preference,
     } = req.body;
 
     try {
@@ -39,15 +40,15 @@ const usersController = {
            field_of_study = $2,
            topic_interests = $3,
            preferred_content_types = $4,
-           language_preference = $5,
-         WHERE id = $6
+           language_preference = $5
+         WHERE user_id = $6
          RETURNING *`,
         [
-          educationLevel,
-          fieldOfStudy,
-          topicInterests,
-          preferredContentTypes,
-          languagePreference,
+          education_level,
+          field_of_study,
+          topic_interests,
+          preferred_content_types,
+          language_preference,
           user_id,
         ]
       );
@@ -66,7 +67,7 @@ const usersController = {
 
     try {
       const result = await pool.query(
-        `SELECT user_id, email, first_name, last_name, user_role, language_preference 
+        `SELECT user_id, email, first_name, last_name, user_role, education_level, field_of_study, preferred_content_types, topic_interests, language_preference
         FROM users 
         WHERE user_id = $1`,
         [userId]
@@ -85,7 +86,7 @@ const usersController = {
   },
 
   // Update user info
-  updateUser: async (req, res) => {
+  updateUser1: async (req, res) => {
     const userId = req.params.id;
     const { email, first_name, last_name, user_role, password } = req.body;
 

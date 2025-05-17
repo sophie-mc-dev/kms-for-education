@@ -4,7 +4,7 @@ import {
   CardBody,
   Typography,
   Input,
-  Button,
+  Spinner,
 } from "@material-tailwind/react";
 import { useUser } from "@/context/userContext";
 import UserPreferencesForm from "@/widgets/layout/userPreferencesForm";
@@ -16,7 +16,6 @@ export function Profile() {
     last_name: "",
     email: "",
     user_role: "",
-    language_preference: "",
   });
   const [isLoading, setIsLoading] = useState(true);
 
@@ -30,10 +29,7 @@ export function Profile() {
 
   useEffect(() => {
     const fetchUserProfile = async () => {
-      if (!userId) {
-        console.warn("No userId available, skipping fetch.");
-        return;
-      }
+      if (!userId) return;
 
       try {
         const response = await fetch(
@@ -43,6 +39,14 @@ export function Profile() {
 
         const data = await response.json();
         setUser(data);
+
+        setFormData({
+          educationLevel: data.education_level || "",
+          fieldOfStudy: data.field_of_study || "",
+          topicInterests: data.topic_interests || [],
+          preferredContentTypes: data.preferred_content_types || [],
+          languagePreference: data.language_preference || "",
+        });
       } catch (error) {
         console.error("Error fetching user profile:", error);
       } finally {
@@ -59,6 +63,18 @@ export function Profile() {
   };
 
   const handleSave = async () => {
+    const updatedData = {
+      first_name: user.first_name,
+      last_name: user.last_name,
+      email: user.email,
+      user_role: user.user_role,
+      education_level: formData.educationLevel,
+      field_of_study: formData.fieldOfStudy,
+      topic_interests: formData.topicInterests,
+      preferred_content_types: formData.preferredContentTypes,
+      language_preference: formData.languagePreference,
+    };
+
     try {
       const response = await fetch(
         `http://localhost:8080/api/users/${userId}`,
@@ -67,9 +83,11 @@ export function Profile() {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(user),
+          body: JSON.stringify(updatedData),
         }
       );
+
+      console.log(updatedData);
 
       if (!response.ok) throw new Error("Failed to update user profile");
       alert("Profile updated successfully");
@@ -78,42 +96,94 @@ export function Profile() {
       alert("Failed to update profile");
     }
   };
+
+  // Helper: get initials for avatar
+  const getInitials = () => {
+    const first = user.first_name?.charAt(0) || "";
+    const last = user.last_name?.charAt(0) || "";
+    return (first + last).toUpperCase();
+  };
+
   return (
     <>
+      {/* Background header with overlay and user initials */}
       <div className="relative mt-8 h-72 w-full overflow-hidden rounded-xl bg-[url('/img/background-image.png')] bg-cover bg-center">
-        <div className="absolute inset-0 h-full w-full bg-gray-900/75" />
+        {" "}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/60 to-transparent rounded-b-xl" />
+        <div className="absolute bottom-4 left-6 flex items-center space-x-4">
+          {/* Custom circle with initials */}
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-600 text-white font-bold text-xl uppercase shadow-md select-none">
+            {getInitials()}
+          </div>
+          <div>
+            <Typography variant="h5" color="white" className="font-semibold">
+              {user.first_name} {user.last_name}
+            </Typography>
+            <Typography
+              variant="small"
+              color="white"
+              className="uppercase tracking-widest"
+            >
+              {user.user_role || "User"}
+            </Typography>
+          </div>
+        </div>
       </div>
 
-      <Card className="mx-8 -mt-16 mb-6 lg:mx-4 border border-blue-gray-100">
-        <CardBody className="flex flex-col items-center">
+      {/* Main card container */}
+      <Card className="max-w-3xl mx-auto -mt-12 mb-10 border border-blue-gray-100 shadow-md">
+        <CardBody className="p-8">
           {isLoading ? (
-            <Typography variant="small">Loading...</Typography>
+            <Spinner className="text-center w-full" />
           ) : (
-            <form className="flex flex-col items-center space-y-4 w-64">
-              <Input
-                label="First Name"
-                name="first_name"
-                value={user.first_name}
-                onChange={handleChange}
-              />
-              <Input
-                label="Last Name"
-                name="last_name"
-                value={user.last_name}
-                onChange={handleChange}
-              />
-              <Input
-                label="Email"
-                name="email"
-                value={user.email}
-                onChange={handleChange}
-                disabled
-              />
-              <UserPreferencesForm
-                formData={formData}
-                setFormData={setFormData}
-                onSubmit={handleSave}
-              />
+            <form
+              className="flex flex-col space-y-6"
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleSave();
+              }}
+            >
+              {/* Personal info section */}
+              <section>
+                <Typography className="text-xs font-semibold uppercase text-black mb-4">
+                  Personal Information
+                </Typography>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <Input
+                    label="First Name"
+                    name="first_name"
+                    value={user.first_name}
+                    onChange={handleChange}
+                    required
+                  />
+                  <Input
+                    label="Last Name"
+                    name="last_name"
+                    value={user.last_name}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+                <Input
+                  label="Email"
+                  name="email"
+                  value={user.email}
+                  disabled
+                  className="mt-6"
+                />
+              </section>
+
+              {/* User Preferences form */}
+              <section>
+                <Typography className="text-xs font-semibold uppercase text-black mb-2 mt-6">
+                  Preferences
+                </Typography>
+                <UserPreferencesForm
+                  formData={formData}
+                  setFormData={setFormData}
+                  onSubmit={handleSave}
+                />
+              </section>
             </form>
           )}
         </CardBody>

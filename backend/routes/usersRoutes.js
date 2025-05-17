@@ -7,8 +7,6 @@ const usersController = require("../controllers/usersController");
 // Get all users
 router.get("/", usersController.getAllUsers);
 
-router.get("/:id/profile", usersController.updateProfile);
-
 // Get user by ID
 router.get("/:id", usersController.getUserById);
 
