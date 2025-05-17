@@ -138,6 +138,8 @@ export function Assessment({
       }
     } catch (err) {
       console.error("Error saving results:", err.message);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -157,7 +159,7 @@ export function Assessment({
               return (
                 <div key={qIndex} className="mb-4 p-4 rounded-md">
                   <Typography className="mb-2 font-medium">
-                  {`Question ${qIndex + 1}: ${questionObj.question_text}`}
+                  {`Question ${qIndex + 1}: ${questionObj}`}
                   </Typography>
 
                   {assessment?.answers?.[qIndex]?.length > 0 ? (

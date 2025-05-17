@@ -269,9 +269,17 @@ export function ModuleCard({
 
           {isOpen && (
             <div className="mt-4 p-4 rounded-lg w-full">
-              <Typography className="text-blue-gray-700">
-                {module.summary}
-              </Typography>
+              <div
+                className="
+                  [&_ol]:list-decimal [&_ul]:list-disc 
+                  [&_li]:ml-4
+                  [&_ol_ol]:list-decimal [&_ul_ul]:list-disc 
+                  [&_ol_ol]:ml-2 [&_ul_ul]:ml-4 
+                  mt-2 text-blue-gray-500
+                  text-sm
+                "
+                dangerouslySetInnerHTML={{ __html: module.summary }}
+              ></div>
 
               <Typography variant="h6" className="mt-4">
                 Resources

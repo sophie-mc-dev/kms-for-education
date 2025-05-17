@@ -1,5 +1,6 @@
 const { pool } = require("../scripts/postgres");
 const { driver } = require("../scripts/neo4j");
+const { getUserProfile } = require("../utils/getUserById");
 
 const recommendationsController = {
   /**
@@ -18,41 +19,102 @@ const recommendationsController = {
     const user_id = req.params.user_id;
     const session = driver.session();
 
+    const userProfile = await getUserProfile(user_id);
+
+    if (!userProfile) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const {
+      education_level,
+      field_of_study,
+      topic_interests,
+      preferred_content_types,
+      language_preference,
+    } = userProfile;
+
     try {
       const cypherQuery = `
-        MATCH (u:User {id: $user_id})-[:PERFORMED]->(i:Interaction)-[:TARGET]->(r:Resource)
-        WITH u, r, i.weight AS weight
-        OPTIONAL MATCH (r)-[:HAS_CATEGORY]->(cat:Category)
-        OPTIONAL MATCH (r)-[:HAS_TAG]->(tag:Tag)
-        WITH u, COLLECT(DISTINCT cat) AS categories, COLLECT(DISTINCT tag) AS tags, SUM(weight) AS userAffinityScore
+        MATCH (u:User {id: $user_id})
 
-        MATCH (rec:Resource)
-        OPTIONAL MATCH (rec)-[:HAS_CATEGORY]->(cat2:Category)
-        OPTIONAL MATCH (rec)-[:HAS_TAG]->(tag2:Tag)
-        WHERE cat2 IN categories OR tag2 IN tags
-        AND NOT EXISTS {
-          MATCH (u)-[:PERFORMED]->(:Interaction)-[:TARGET]->(rec)
-        }
-        OPTIONAL MATCH (otherInt:Interaction)-[:TARGET]->(rec)
-        WITH rec, COLLECT(DISTINCT cat2.name) AS categoryNames, COLLECT(DISTINCT tag2.name) AS tagNames,
-            SUM(otherInt.weight) AS popularityScore, userAffinityScore
-        WITH rec, categoryNames, tagNames,
-            (popularityScore * 0.2 + userAffinityScore * 0.8) AS hybridScore
-        RETURN rec {
-            .id, .title, .description, .type, 
-            category: categoryNames,
-            tags: tagNames,
-            score: hybridScore
-        }
-        ORDER BY hybridScore DESC
-        LIMIT 10
+// Aggregate user affinity scores by resource interacted with
+MATCH (u)-[:PERFORMED]->(i:Interaction)-[:TARGET]->(r:Resource)
+WITH u, r, SUM(i.weight) AS userAffinityScore,
+     $education_level AS eduLvl,
+     $field_of_study AS field,
+     $topic_interests AS topics,
+     $preferred_content_types AS preferredTypes,
+     $language_preference AS lang
+
+// Collect categories and tags for interacted resources (if you want)
+OPTIONAL MATCH (r)-[:HAS_CATEGORY]->(cat:Category)
+OPTIONAL MATCH (r)-[:HAS_TAG]->(tag:Tag)
+WITH u, r, userAffinityScore, eduLvl, field, topics, preferredTypes, lang,
+     COLLECT(DISTINCT cat.name) AS categories,
+     COLLECT(DISTINCT tag.name) AS tags
+
+// Match candidate resources
+MATCH (rec:Resource)
+
+// Exclude already interacted resources
+WHERE NOT EXISTS {
+  MATCH (u)-[:PERFORMED]->(:Interaction)-[:TARGET]->(rec)
+}
+
+// Collect candidate resource categories and tags
+OPTIONAL MATCH (rec)-[:HAS_CATEGORY]->(cat2:Category)
+OPTIONAL MATCH (rec)-[:HAS_TAG]->(tag2:Tag)
+WITH u, rec, userAffinityScore, eduLvl, field, topics, preferredTypes, lang,
+     categories, tags,
+     COLLECT(DISTINCT cat2.name) AS recCategories,
+     COLLECT(DISTINCT tag2.name) AS recTags
+
+// Calculate profile match score
+WITH u, rec, userAffinityScore, eduLvl, field, topics, preferredTypes, lang,
+     recCategories, recTags,
+     ( (CASE WHEN eduLvl IN recCategories THEN 1 ELSE 0 END) +
+       (CASE WHEN field IN recCategories THEN 1 ELSE 0 END) +
+       size([t IN topics WHERE t IN recTags]) * 0.5 +
+       (CASE WHEN rec.type IN preferredTypes THEN 1 ELSE 0 END) +
+       (CASE WHEN rec.language = lang THEN 1 ELSE 0 END)
+     ) AS profileMatchScore
+
+// Calculate popularity score
+OPTIONAL MATCH (otherInt:Interaction)-[:TARGET]->(rec)
+WITH rec, userAffinityScore, profileMatchScore, SUM(otherInt.weight) AS popularityScore, recCategories, recTags
+
+WITH rec,
+     (COALESCE(userAffinityScore, 0) * 0.5 + COALESCE(popularityScore, 0) * 0.2 + profileMatchScore * 0.3) AS hybridScore,
+     recCategories,
+     recTags
+
+WITH DISTINCT rec, hybridScore, recCategories, recTags
+
+RETURN rec {
+  .id,
+  .title,
+  .description,
+  .type,
+  category: recCategories,
+  tags: recTags,
+  score: hybridScore
+}
+ORDER BY hybridScore DESC
+LIMIT 10
+
       `;
 
-      const result = await session.run(cypherQuery, { user_id });
+      const result = await session.run(cypherQuery, {
+        user_id,
+        education_level,
+        field_of_study,
+        topic_interests,
+        preferred_content_types,
+        language_preference,
+      });
 
       const recommendations = result.records.map((record) => {
         const rec = record.get("rec");
-
         return {
           id: rec.id,
           title: rec.title,
@@ -60,6 +122,7 @@ const recommendationsController = {
           type: rec.type,
           category: rec.category,
           tags: rec.tags,
+          score: rec.score,
         };
       });
 

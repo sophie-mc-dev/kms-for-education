@@ -1,7 +1,6 @@
 const { pool } = require("../scripts/postgres");
 const { uploadToR2 } = require("../utils/r2Upload");
 const { deleteFromR2 } = require("../utils/r2Delete");
-const { searchResources } = require("../ontology/ontologyService");
 const { indexResource } = require("../services/elasticSearchService");
 
 const resourcesController = {
@@ -316,22 +315,6 @@ const resourcesController = {
     } catch (error) {
       console.error("Error fetching resource:", error);
       res.status(500).json({ error: "Internal Server Error" });
-    }
-  },
-
-  searchResources: async (req, res) => {
-    const { query } = req.query;
-    if (!query) {
-      return res.status(400).json({ error: "Query parameter is required" });
-    }
-
-    try {
-      const results = await searchResources(query);
-      res.json(results);
-    } catch (err) {
-      res
-        .status(500)
-        .json({ error: "Error searching resources: " + err.message });
     }
   },
 };

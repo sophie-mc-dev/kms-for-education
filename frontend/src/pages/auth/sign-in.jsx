@@ -15,6 +15,7 @@ export function SignIn() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const { setUserRole } = useUser();
+  const { setUser } = useUser();
 
   // Handle form submission
   const handleSubmit = async (e) => {
@@ -31,7 +32,10 @@ export function SignIn() {
 
       if (response.data.user) {
         const userData = response.data.user;
+
         localStorage.setItem("user", JSON.stringify(userData));
+
+        setUser(userData)
         setUserRole(userData.user_role); 
         navigate("/dashboard/search");
       }

@@ -13,7 +13,7 @@ import { LearningMDCard } from "@/widgets/cards/";
 import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
 
 export function StudentResources() {
-  const { userId } = useUser();
+  const { user, userId } = useUser();
   const [resources, setResources] = useState([]);
   const [bookmarkedResources, setBookmarkedResources] = useState([]);
   const [recentlyViewed, setRecentlyViewed] = useState([]);
@@ -43,6 +43,15 @@ export function StudentResources() {
     "Completed",
     "Bookmarked",
   ];
+
+  const loadingKeys = {
+    "Recently Viewed": "resources",
+    "Recommended Resources": "recommended",
+    "My Study Paths": "studyPaths",
+    "In Progress": "inProgress",
+    Completed: "completed",
+    Bookmarked: "bookmarks",
+  };
 
   const collectionRefs = useRef({});
 
@@ -96,7 +105,6 @@ export function StudentResources() {
       const recentlyViewedData =
         JSON.parse(localStorage.getItem(`recentlyViewed-${userId}`)) || [];
 
-      // Set the resources and other data
       setResources(allResources);
       setBookmarkedResources(
         allResources.filter((res) => bookmarks.some((b) => b.id === res.id))
@@ -183,7 +191,7 @@ export function StudentResources() {
             ? recentlyViewed
             : filteredResources(category);
 
-        const isLoading = loading[category.toLowerCase().replace(" ", "")];
+        const isLoading = loading[loadingKeys[category]];
         return (
           <Card
             key={category}

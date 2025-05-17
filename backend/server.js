@@ -16,7 +16,6 @@ const searchRoutes = require("./routes/searchRoutes");
 const cors = require("cors");
 
 const path = require("path");
-const { loadOntology } = require("./ontology/ontologyService");
 
 const app = express();
 const port = process.env.PORT;
@@ -45,17 +44,6 @@ async function startServer() {
     }
   } else {
     console.warn("⚠️ Neo4j not connected. Continuing without Neo4j features.");
-  }
-
-  // Load the ontology
-  const ontologyFilePath = path.join(__dirname, "ontology", "ontology.owl");
-
-  try {
-    await loadOntology(ontologyFilePath);
-    console.log("✅ Ontology loaded successfully.");
-  } catch (err) {
-    console.error("❌ Error loading ontology: ", err);
-    process.exit(1);
   }
 
   // CORS Configuration

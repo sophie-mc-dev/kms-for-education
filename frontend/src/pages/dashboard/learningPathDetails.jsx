@@ -198,17 +198,23 @@ export function LearningPathDetails() {
               )}
             </div>
 
-            <div className="mb-6 font-normal text-blue-gray-900 mt-4">
-              <Typography variant="h6" color="blue-gray" className="mb-3">
+            <div className="mb-6 font-normal text-blue-gray-500 text-sm">
+              <Typography variant="h6" color="blue-gray">
                 Summary
               </Typography>
               <div
-                className="[&>ul]:list-disc [&>ul]:pl-5 [&>ol]:list-decimal mt-2 text-blue-gray-700"
-                dangerouslySetInnerHTML={{ __html: learningPath.summary }}
+                className="
+                  [&_ol]:list-decimal [&_ul]:list-disc 
+                  [&_li]:ml-4
+                  [&_ol_ol]:list-decimal [&_ul_ul]:list-disc 
+                  [&_ol_ol]:ml-2 [&_ul_ul]:ml-4 
+                  mt-2 text-blue-gray-500 text-sm
+                "
+                dangerouslySetInnerHTML={{ __html: learningPath.objectives }}
               ></div>
             </div>
-            <div className="mb-6 font-normal text-blue-gray-900">
-              <Typography variant="h6" color="blue-gray" className="mb-3">
+            <div className="mb-6 font-normal text-blue-gray-500 text-sm">
+              <Typography variant="h6" color="blue-gray">
                 Objectives
               </Typography>
               <div
@@ -217,7 +223,7 @@ export function LearningPathDetails() {
                   [&_li]:ml-4
                   [&_ol_ol]:list-decimal [&_ul_ul]:list-disc 
                   [&_ol_ol]:ml-2 [&_ul_ul]:ml-4 
-                  mt-2 text-blue-gray-700
+                  mt-2 text-blue-gray-500 text-sm
                 "
                 dangerouslySetInnerHTML={{ __html: learningPath.objectives }}
               ></div>

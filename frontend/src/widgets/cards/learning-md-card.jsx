@@ -45,42 +45,45 @@ export function LearningMDCard({ moduleItem }) {
     }
   };
 
-    useEffect(() => {
-      if (userRole === "educator" || !moduleItem.id || !userId) {
-        return;
-      }
-      
-      const getModuleStatus = async () => {
-        try {
-          const response = await fetch(
-            `http://localhost:8080/api/modules/${moduleItem.id}/standalone-status?user_id=${userId}`
-          );
-  
-          if (!response.ok) {
-            throw new Error("Failed to fetch learning path status");
-          }
-  
-          const data = await response.json();
-          setModuleStatus(data.status);
-        } catch (err) {
-          console.error("Error fetching module status:", err);
+  useEffect(() => {
+    if (userRole === "educator" || !moduleItem.id || !userId) {
+      return;
+    }
+
+    const getModuleStatus = async () => {
+      try {
+        const response = await fetch(
+          `http://localhost:8080/api/modules/${moduleItem.id}/standalone-status?user_id=${userId}`
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch module status");
         }
-      };
-  
-      if (moduleItem.id && userId) {
-        getModuleStatus();
+
+        const data = await response.json();
+        setModuleStatus(data.status);
+      } catch (err) {
+        console.error("Error fetching module status:", err);
+        setModuleStatus("error");
       }
-    }, [moduleItem.id, userId]);
+    };
+
+    if (moduleItem.id && userId) {
+      getModuleStatus();
+    }
+  }, [moduleItem.id, userId]);
 
   return (
     <Card
       className="border border-blue-gray-100 shadow-sm cursor-pointer hover:shadow-md transition h-full min-h-[250px] flex flex-col"
       onClick={handleModuleClick}
     >
-
       {/* Completed Badge */}
       {moduleStatus === "completed" && (
-        <div className="absolute top-2 right-2 flex items-center justify-center bg-green-500 text-white rounded-full p-2 shadow-md">
+        <div
+          className="absolute top-2 right-2 flex items-center justify-center bg-green-600 text-white rounded-full p-1.5 shadow-md"
+          title="Completed"
+        >
           <CheckCircleIcon className="h-5 w-5" />
         </div>
       )}

@@ -1,5 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { Card, CardBody, Typography, Progress, Chip } from "@material-tailwind/react";
+import {
+  Card,
+  CardBody,
+  Typography,
+  Progress,
+  Chip,
+} from "@material-tailwind/react";
 import { ClockIcon, CheckCircleIcon } from "@heroicons/react/24/outline";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "@/context/UserContext";
@@ -79,7 +85,10 @@ export function LearningLPCard({ learningItem }) {
     >
       {/* Completed Badge */}
       {learningPathStatus === "completed" && (
-        <div className="absolute top-2 right-2 flex items-center justify-center bg-green-500 text-white rounded-full p-2 shadow-md">
+        <div
+          className="absolute top-2 right-2 flex items-center justify-center bg-green-600 text-white rounded-full p-1.5 shadow-md"
+          title="Completed"
+        >
           <CheckCircleIcon className="h-5 w-5" />
         </div>
       )}

@@ -25,6 +25,8 @@ const colorMap = {
 };
 
 export function ResourceCard({ resource, userId }) {
+  const resourceId = Number(resource.id);
+
   const { userRole } = useUser();
   const navigate = useNavigate();
   const [bookmarked, setBookmarked] = useState(false);
@@ -39,7 +41,7 @@ export function ResourceCard({ resource, userId }) {
 
   // Check if the resource is already bookmarked when the component mounts
   useEffect(() => {
-    if (!userId || !resource.id) return;
+    if (!userId || !resourceId) return;
 
     if (userRole === "educator") {
       return;
@@ -55,7 +57,7 @@ export function ResourceCard({ resource, userId }) {
         const data = await res.json();
 
         // Check if the resource is in the fetched bookmarks
-        const isBookmarked = data.some((item) => item.id === resource.id);
+        const isBookmarked = data.some((item) => item.id === resourceId);
         setBookmarked(isBookmarked);
       } catch (error) {
         console.error("Error fetching bookmarks:", error);
@@ -63,7 +65,7 @@ export function ResourceCard({ resource, userId }) {
     };
 
     fetchBookmarks();
-  }, [userId, resource.id]);
+  }, [userId, resourceId]);
 
   const handleBookmarkClick = async (e) => {
     e.stopPropagation();
@@ -74,7 +76,7 @@ export function ResourceCard({ resource, userId }) {
       if (bookmarked) {
         // Send DELETE request to remove the bookmark and interaction
         response = await fetch(
-          `http://localhost:8080/api/bookmarks/${userId}/${resource.id}`,
+          `http://localhost:8080/api/bookmarks/${userId}/${resourceId}`,
           {
             method: "DELETE",
             headers: { "Content-Type": "application/json" },
@@ -83,11 +85,11 @@ export function ResourceCard({ resource, userId }) {
       } else {
         // Send POST request to add the bookmark and interaction
         response = await fetch(
-          `http://localhost:8080/api/bookmarks/${userId}/${resource.id}`,
+          `http://localhost:8080/api/bookmarks/${userId}/${resourceId}`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ user_id: userId, resource_id: resource.id }),
+            body: JSON.stringify({ user_id: userId, resource_id: resourceId }),
           }
         );
       }
@@ -104,23 +106,23 @@ export function ResourceCard({ resource, userId }) {
     const key = `recentlyViewed-${userId}`;
     const viewedResources = JSON.parse(localStorage.getItem(key)) || [];
 
-    // Prevent duplicates, keep max 3 recently viewed
+    // Prevent duplicates, keep max 6 recently viewed
     const updatedResources = [
-      { id: resource.id, title: resource.title },
-      ...viewedResources.filter((r) => r.id !== resource.id),
-    ].slice(0, 3);
+      { id: resourceId, title: resource.title },
+      ...viewedResources.filter((r) => r.id !== resourceId),
+    ].slice(0, 6);
 
     // Save updated recently viewed resources in localStorage
     localStorage.setItem(key, JSON.stringify(updatedResources));
 
     try {
-      await registerResourceView(userId, resource.id);
+      await registerResourceView(userId, resourceId);
     } catch (error) {
       console.error("Error registering resource view:", error);
     }
 
     // Navigate to the resource detail page
-    navigate(`resources/${resource.id}`);
+    navigate(`resources/${resourceId}`);
   };
 
   const registerResourceView = async (userId, resourceId) => {

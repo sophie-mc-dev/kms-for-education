@@ -73,17 +73,17 @@ export function CreateStudyPath() {
     };
 
     try {
-      const response = await fetch("http://localhost:8080/api/learning-paths", {
+      const response = await fetch("http://localhost:8080/api/learning-paths/study-path", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(learningPathData),
       });
 
       if (response.ok) navigate("/dashboard/learning");
-      alert("Error creating learning path");
+      alert("Study Path successfully created!");
     } catch (error) {
       console.error(error);
-      alert("Error creating learning path");
+      alert("Error creating study path");
     } finally {
       setIsSubmitting(false);
     }

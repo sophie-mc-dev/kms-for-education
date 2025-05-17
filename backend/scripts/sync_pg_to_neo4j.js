@@ -14,16 +14,29 @@ const syncData = async () => {
 
     // Sync Users
     const users = await pgClient.query(
-      "SELECT user_id, first_name, last_name, user_role FROM users"
+      "SELECT user_id, first_name, last_name, user_role, education_level, field_of_study, topic_interests, preferred_content_types, language_preference FROM users"
     );
     for (let user of users.rows) {
       await neoSession.run(
-        "MERGE (u:User {id: $id}) SET u.first_name = $first_name, u.last_name = $last_name, u.user_role = $user_role",
+        `MERGE (u:User {id: $id}) 
+        SET u.first_name = $first_name, u.last_name = $last_name, 
+        u.user_role = $user_role, 
+        u.education_level = $education_level,
+        u.field_of_study = $field_of_study,
+        u.topic_interests = $topic_interests,
+        u.preferred_content_types = $preferred_content_types,
+        u.language_preference = $language_preference
+        `,
         {
           id: user.user_id.toString(),
           first_name: user.first_name,
           last_name: user.last_name,
           user_role: user.user_role,
+          education_level: user.education_level,
+          field_of_study: user.field_of_study,
+          topic_interests: user.topic_interests,
+          preferred_content_types: user.preferred_content_types,
+          language_preference: user.language_preference,
         }
       );
     }
