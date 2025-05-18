@@ -13,9 +13,11 @@ const modulesController = {
     try {
       await client.query("BEGIN");
 
+      const resourceIds = resources.map((r) => r.resource_id);
+
       const resourceQuery = await client.query(
         `SELECT estimated_time FROM resources WHERE id = ANY($1::int[])`,
-        [resources]
+        [resourceIds]
       );
 
       const estimated_duration = resourceQuery.rows.reduce(
@@ -34,9 +36,13 @@ const modulesController = {
       const module = moduleResult.rows[0];
 
       // Insert selected resources into module_resources table
-      const values = resources.map((_, i) => `($1, $${i + 2})`).join(", ");
-      const query = `INSERT INTO module_resources (module_id, resource_id) VALUES ${values}`;
-      await client.query(query, [module.id, ...resources]);
+      const query = `
+      INSERT INTO module_resources (module_id, resource_id, resource_order) 
+      VALUES ($1, $2, $3)`;
+
+      for (const { resource_id, resource_order } of resources) {
+        await client.query(query, [module.id, resource_id, resource_order]);
+      }
 
       // If an assessment is included, check if one exists for this module
       if (
