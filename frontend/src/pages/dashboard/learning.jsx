@@ -25,6 +25,8 @@ export function LearningPage() {
   const [loading, setLoading] = useState(false);
   const [filterLP, setFilterLP] = useState(false);
   const [filterMD, setFilterMD] = useState(false);
+  const [selectedDifficulty, setSelectedDifficulty] = useState("");
+  const [durationRange, setDurationRange] = useState([0, 600]);
   const { userRole } = useUser();
 
   useEffect(() => {
@@ -112,11 +114,21 @@ export function LearningPage() {
   };
 
   const filteredResults = results.filter((item) => {
-    if ((filterLP && filterMD) || (!filterLP && !filterMD)) return true;
+    const isTypeMatch =
+      (filterLP && item.type === "learning_path") ||
+      (filterMD && item.type === "module") ||
+      (!filterLP && !filterMD);
 
-    if (filterLP && item.type === "learning_path") return true;
-    if (filterMD && item.type === "module") return true;
-    return false;
+    const isDifficultyMatch =
+      item.type !== "learning_path" ||
+      selectedDifficulty === "" ||
+      item.difficulty_level === selectedDifficulty;
+
+    const duration = item.estimated_duration || 0;
+    const isDurationMatch =
+      duration >= durationRange[0] && duration <= durationRange[1];
+
+    return isTypeMatch && isDifficultyMatch && isDurationMatch;
   });
 
   return (
@@ -234,6 +246,8 @@ export function LearningPage() {
           <Typography variant="h6" color="blue-gray" className="mb-4">
             Filters
           </Typography>
+
+          {/* Type Filter */}
           <div className="mb-4">
             <Typography
               variant="small"
@@ -255,6 +269,76 @@ export function LearningPage() {
             </div>
           </div>
 
+          {/* Difficulty Filter */}
+          <div className="mb-4">
+            <Typography
+              variant="small"
+              className="text-xs font-semibold uppercase text-blue-gray-500"
+            >
+              Difficulty (Learning Paths):
+            </Typography>
+            <select
+              className="w-full mt-1 p-2 border border-gray-300 rounded-md"
+              value={selectedDifficulty}
+              onChange={(e) => setSelectedDifficulty(e.target.value)}
+            >
+              <option value="">All</option>
+              <option value="beginner">Beginner</option>
+              <option value="intermediate">Intermediate</option>
+              <option value="advanced">Advanced</option>
+            </select>
+          </div>
+
+          {/* Duration Slider */}
+          <div className="mb-4">
+            <Typography
+              variant="small"
+              className="text-xs font-semibold uppercase text-blue-gray-500"
+            >
+              Estimated Duration (minutes):
+            </Typography>
+
+            <div className="flex flex-col gap-2 mt-2">
+              <div className="flex justify-between text-xs text-blue-gray-300">
+                <span>MIN</span>
+                <span>MAX</span>
+              </div>
+
+              <div className="flex gap-2 items-center">
+                <input
+                  type="range"
+                  min={0}
+                  max={600}
+                  value={durationRange[0]}
+                  onChange={(e) =>
+                    setDurationRange([
+                      Math.min(Number(e.target.value), durationRange[1] - 1),
+                      durationRange[1],
+                    ])
+                  }
+                  className="w-full"
+                />
+                <input
+                  type="range"
+                  min={0}
+                  max={600}
+                  value={durationRange[1]}
+                  onChange={(e) =>
+                    setDurationRange([
+                      durationRange[0],
+                      Math.max(Number(e.target.value), durationRange[0] + 1),
+                    ])
+                  }
+                  className="w-full"
+                />
+              </div>
+
+              <div className="flex justify-between text-sm text-gray-600">
+                <span>{durationRange[0]} min</span>
+                <span>{durationRange[1]} min</span>
+              </div>
+            </div>
+          </div>
         </CardBody>
       </Card>
     </div>
