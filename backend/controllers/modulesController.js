@@ -319,45 +319,6 @@ const modulesController = {
     }
   },
 
-  // Create new assessment results
-  createAssessmentResults: async (req, res) => {
-    const { user_id, assessment_id, module_id, score, passed, answers } =
-      req.body;
-
-    try {
-      // Get the current number of attempts for this assessment
-      const previousAttempts = await pool.query(
-        `SELECT COUNT(*) AS attempt_count FROM public.assessment_results 
-         WHERE user_id = $1 AND assessment_id = $2 AND module_id = $3`,
-        [user_id, assessment_id, module_id]
-      );
-
-      // Calculate new attempt number (previous attempts + 1)
-      const newAttemptNumber =
-        parseInt(previousAttempts.rows[0].attempt_count) + 1;
-
-      // Insert a new record with incremented attempt number
-      const result = await pool.query(
-        `INSERT INTO public.assessment_results (user_id, assessment_id, module_id, score, passed, answers, num_attempts)
-         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-        [
-          user_id,
-          assessment_id,
-          module_id,
-          score,
-          passed,
-          JSON.stringify(answers),
-          newAttemptNumber,
-        ]
-      );
-
-      res.status(201).json(result.rows[0]);
-    } catch (error) {
-      console.error("Error saving assessment results:", error);
-      res.status(500).json({ error: "Internal Server Error" });
-    }
-  },
-
   // Get assessment results by user_id, assessment_id, and module_id
   getAssessmentResults: async (req, res) => {
     const { user_id, assessment_id, module_id } = req.params;
@@ -427,13 +388,14 @@ const modulesController = {
   },
 
   updateAssessmentStatus: async (req, res) => {
-    const { assessment_status, learning_path_id } = req.body;
+    const { assessment_status, learning_path_id, assessment_id } = req.body;
     const { user_id, module_id } = req.params;
 
-    if (!user_id || !module_id) {
-      return res
-        .status(400)
-        .json({ error: "Missing required parameters (user_id, module_id)" });
+    if (!user_id || !module_id || !assessment_id) {
+      return res.status(400).json({
+        error:
+          "Missing required parameters (user_id, module_id, assessment_id)",
+      });
     }
 
     const validStatuses = ["not_started", "in_progress", "passed", "failed"];
@@ -444,33 +406,31 @@ const modulesController = {
     }
 
     try {
-      // Construct query and params based on learning_path_id
+      // First: Handle user_module_progress (insert or update)
       let query, queryParams;
 
       if (learning_path_id) {
-        // Check if user progress exists for a specific learning path
         query = `
-          SELECT * FROM user_module_progress 
-          WHERE user_id = $1 AND module_id = $2 AND learning_path_id = $3
-        `;
+        SELECT * FROM user_module_progress 
+        WHERE user_id = $1 AND module_id = $2 AND learning_path_id = $3
+      `;
         queryParams = [user_id, module_id, learning_path_id];
       } else {
-        // Check if user progress exists for standalone module
         query = `
-          SELECT * FROM user_module_progress 
-          WHERE user_id = $1 AND module_id = $2 AND learning_path_id IS NULL
-        `;
+        SELECT * FROM user_module_progress 
+        WHERE user_id = $1 AND module_id = $2 AND learning_path_id IS NULL
+      `;
         queryParams = [user_id, module_id];
       }
 
       const result = await pool.query(query, queryParams);
 
       if (result.rows.length === 0) {
-        // If no entry exists, insert a new progress entry
+        // Insert new progress entry
         query = `
-          INSERT INTO user_module_progress (user_id, module_id, learning_path_id, status, assessment_status)
-          VALUES ($1, $2, $3, 'in_progress', $4)
-        `;
+        INSERT INTO user_module_progress (user_id, module_id, learning_path_id, status, assessment_status)
+        VALUES ($1, $2, $3, 'in_progress', $4)
+      `;
         queryParams = [
           user_id,
           module_id,
@@ -478,31 +438,15 @@ const modulesController = {
           assessment_status,
         ];
         await pool.query(query, queryParams);
-
-        // If assessment_status is "in_progress", update start_time
-        if (assessment_status === "in_progress") {
-          const startTimeQuery = `
-            INSERT INTO assessment_results (user_id, module_id, learning_path_id, started_time)
-            VALUES ($1, $2, $3, NOW())
-            ON CONFLICT (user_id, module_id, learning_path_id)
-            DO UPDATE SET start_time = NOW()
-          `;
-          const startTimeParams = [
-            user_id,
-            module_id,
-            learning_path_id || null,
-          ];
-          await pool.query(startTimeQuery, startTimeParams);
-        }
       } else {
-        // Otherwise, update the existing progress entry's assessment_status
+        // Update existing progress entry
         query = `
-          UPDATE user_module_progress 
-          SET assessment_status = $1 
-          WHERE user_id = $2 AND module_id = $3 AND learning_path_id ${
-            learning_path_id ? "= $4" : "IS NULL"
-          }
-        `;
+        UPDATE user_module_progress 
+        SET assessment_status = $1 
+        WHERE user_id = $2 AND module_id = $3 AND learning_path_id ${
+          learning_path_id ? "= $4" : "IS NULL"
+        }
+      `;
         queryParams = learning_path_id
           ? [assessment_status, user_id, module_id, learning_path_id]
           : [assessment_status, user_id, module_id];
@@ -510,9 +454,46 @@ const modulesController = {
         await pool.query(query, queryParams);
       }
 
+      // Second: If status is "in_progress", create new entry in assessment_results
+      if (assessment_status === "in_progress") {
+        const attemptCountResult = await pool.query(
+          `
+        SELECT COUNT(*) AS attempt_count
+        FROM assessment_results
+        WHERE user_id = $1 AND module_id = $2 AND assessment_id = $3
+      `,
+          [user_id, module_id, assessment_id]
+        );
+
+        const newAttemptNumber =
+          parseInt(attemptCountResult.rows[0].attempt_count) + 1;
+
+        const insertAssessmentResult = `
+        INSERT INTO assessment_results (user_id, assessment_id, module_id, started_time, num_attempts)
+        VALUES ($1, $2, $3, NOW(), $4)
+        RETURNING id, started_time
+      `;
+        const insertResult = await pool.query(insertAssessmentResult, [
+          user_id,
+          assessment_id,
+          module_id,
+          newAttemptNumber,
+        ]);
+
+        return res.json({
+          message: "Assessment status updated and attempt started successfully",
+          result_id: insertResult.rows[0].id,
+          started_time: insertResult.rows[0].started_time,
+          num_attempts: newAttemptNumber,
+        });
+      }
+
       res.json({ message: "Assessment status updated successfully" });
     } catch (error) {
-      console.error("Error updating assessment status:", error);
+      console.error(
+        "Error updating assessment status and starting attempt:",
+        error
+      );
       res.status(500).json({ error: "Internal Server Error" });
     }
   },
@@ -860,42 +841,62 @@ const modulesController = {
     const { assessment_id, score, passed, answers } = req.body;
 
     try {
-      const previousAttemptsResult = await pool.query(
-        `SELECT COUNT(*) AS attempt_count
+      // Find the latest in-progress attempt (submission_time IS NULL)
+      const attemptResult = await pool.query(
+        `SELECT id, num_attempts, started_time
        FROM assessment_results
-       WHERE user_id = $1 AND module_id = $2 AND assessment_id = $3`,
+       WHERE user_id = $1 AND module_id = $2 AND assessment_id = $3 AND submission_time IS NULL
+       ORDER BY started_time DESC
+       LIMIT 1`,
         [user_id, module_id, assessment_id]
       );
 
-      const newAttemptNumber =
-        parseInt(previousAttemptsResult.rows[0].attempt_count) + 1;
+      if (attemptResult.rows.length === 0) {
+        return res
+          .status(400)
+          .json({ error: "No in-progress assessment attempt found to update" });
+      }
 
-      // Step 1: Store the assessment results
-      const result = await pool.query(
-        `INSERT INTO assessment_results (user_id, assessment_id, module_id, score, passed, submission_time, answers, num_attempts) 
-             VALUES ($1, $2, $3, $4, $5, NOW(), $6, $7) 
-             RETURNING *`,
+      const attempt = attemptResult.rows[0];
+      const attemptId = attempt.id;
+      const attemptNumber = attempt.num_attempts;
+      const startedTime = attempt.started_time;
+
+      const submissionTime = new Date();
+
+      // Calculate time_spent in minutes as difference between submission_time and started_time
+      const timeSpentMs = submissionTime - startedTime;
+      const timeSpentMinutes = Math.floor(timeSpentMs / 1000 / 60);
+
+      // Update the existing assessment_results row with score, passed, submission_time, answers, time_spent
+      await pool.query(
+        `UPDATE assessment_results 
+       SET score = $1,
+           passed = $2,
+           submission_time = $3,
+           answers = $4,
+           time_spent = $5
+       WHERE id = $6`,
         [
-          user_id,
-          assessment_id,
-          module_id,
           score,
           passed,
+          submissionTime,
           JSON.stringify(answers),
-          newAttemptNumber,
+          timeSpentMinutes,
+          attemptId,
         ]
       );
 
-      // Step 2: Define the status based on the assessment result
+      // Set assessment and module status
       const assessmentStatus = passed ? "passed" : "failed";
       const moduleStatus = passed ? "completed" : "in_progress";
 
-      // Step 3: Calculate the time spent
+      // Update user_module_progress similarly (you already have this)
       const timeSpentQuery = `
-        SELECT started_at
-        FROM user_module_progress
-        WHERE user_id = $1 AND module_id = $2 AND learning_path_id IS NULL
-      `;
+      SELECT started_at
+      FROM user_module_progress
+      WHERE user_id = $1 AND module_id = $2 AND learning_path_id IS NULL
+    `;
       const timeSpentResult = await pool.query(timeSpentQuery, [
         user_id,
         module_id,
@@ -904,45 +905,40 @@ const modulesController = {
       if (timeSpentResult.rows.length > 0) {
         const startedAt = timeSpentResult.rows[0].started_at;
         const completedAt = new Date();
-        const timeSpent = completedAt - startedAt;
+        const moduleTimeSpent = completedAt - startedAt;
+        const moduleTimeSpentMinutes = Math.floor(moduleTimeSpent / 1000 / 60);
 
-        // Convert milliseconds to seconds (or minutes, as needed)
-        const timeSpentInMinutes = Math.floor(timeSpent / 1000 / 60);
-
-        // Step 4: Update the user progress with status, completed_at, and time_spent
         const updateQuery = `
-          UPDATE user_module_progress 
-          SET assessment_status = $1, 
-              status = $2, 
-              completed_at = NOW(),
-              time_spent = $3
-          WHERE user_id = $4 AND module_id = $5 AND learning_path_id IS NULL
-        `;
-        const updateValues = [
+        UPDATE user_module_progress 
+        SET assessment_status = $1, 
+            status = $2, 
+            completed_at = NOW(),
+            time_spent = $3
+        WHERE user_id = $4 AND module_id = $5 AND learning_path_id IS NULL
+      `;
+        await pool.query(updateQuery, [
           assessmentStatus,
           moduleStatus,
-          timeSpentInMinutes,
+          moduleTimeSpentMinutes,
           user_id,
           module_id,
-        ];
-
-        // Execute the update query
-        await pool.query(updateQuery, updateValues);
+        ]);
       }
 
-      // Step 5: Log the interaction in the user_interactions table
+      // Log user interaction
       await pool.query(
         `INSERT INTO user_interactions (user_id, module_id, interaction_type)
        VALUES ($1, $2, 'completed_module')`,
         [user_id, module_id]
       );
 
-      // Step 6: Send back the response with updated attempt count
+      // Return success with attempt number
       res.json({
         message: "Assessment submitted successfully",
         score,
         passed,
-        num_attempts: newAttemptNumber,
+        num_attempts: attemptNumber,
+        time_spent: timeSpentMinutes,
       });
     } catch (err) {
       console.error("Error submitting assessment:", err);

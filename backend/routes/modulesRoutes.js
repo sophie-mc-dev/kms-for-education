@@ -29,7 +29,7 @@ router.get("/assessment/results", modulesController.getAllAssessmentResults);
 
 router.put("/:module_id/assessment/results/:user_id", modulesController.updateAssessmentAttempts);
 router.get("/:module_id/assessment/attempts/:user_id", modulesController.getAssessmentTotalAttemptNumber);
-router.put("/:module_id/assessment/status/:user_id", modulesController.updateAssessmentStatus);
+router.post("/:module_id/assessment/status/:user_id", modulesController.updateAssessmentStatus);
 router.get("/:module_id/assessment/status/:user_id", modulesController.getAssessmentStatus);
 
 router.delete("/:module_id/assessment/results/:user_id", modulesController.deleteAssessmentResults);

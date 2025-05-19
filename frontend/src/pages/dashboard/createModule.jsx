@@ -126,7 +126,7 @@ export function CreateModule() {
         body: JSON.stringify(moduleData),
       });
 
-      if (response.ok) navigate("/learning");
+      if (response.ok) navigate("/dashboard/learning");
       else alert("Error creating module");
     } catch (error) {
       console.error(error);
@@ -683,7 +683,7 @@ export function CreateModule() {
             <Button
               variant="filled"
               onClick={async () => {
-                if (!canGoToNextStep()) {
+                if (canGoToNextStep()) {
                   if (step === 1) {
                     await fetchRecommendedResources();
                   }
