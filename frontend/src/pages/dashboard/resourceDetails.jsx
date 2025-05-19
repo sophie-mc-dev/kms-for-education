@@ -97,7 +97,7 @@ export function ResourceDetails() {
 
   const handleRefresh = () => {
     const totalPages = Math.ceil(recommendedResources.length / cardsPerRow);
-    if (totalPages <= 1) return; 
+    if (totalPages <= 1) return;
     setCurrentPage((prev) => (prev + 1) % totalPages);
   };
 
@@ -157,12 +157,14 @@ export function ResourceDetails() {
       ) : null;
     }
 
-    if (/\.(jpg|jpeg|png|gif)$/i.test(url)) {
+    const imageFormats = ["jpg", "jpeg", "png", "gif"];
+
+    if (resource.format && imageFormats.includes(resource.format.toLowerCase())) {
       return (
         <img
           src={url}
           alt={resource.title}
-          className="max-w-full h-auto rounded-md shadow-md"
+          className="max-w-full h-auto"
         />
       );
     }

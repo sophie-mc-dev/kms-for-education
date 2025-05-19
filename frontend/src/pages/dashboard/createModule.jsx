@@ -273,7 +273,8 @@ export function CreateModule() {
   const canGoToNextStep = () => {
     if (step === 1) {
       return (
-        title.trim() !== "" && summary.trim() !== "" && objectives.trim() !== ""
+        title.trim() !== "" && summary.trim() !== "" && objectives.trim() !== "" &&
+        selectedCategories.length > 0
       );
     }
     if (step === 2) {

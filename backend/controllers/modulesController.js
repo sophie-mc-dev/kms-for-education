@@ -482,7 +482,7 @@ const modulesController = {
         // If assessment_status is "in_progress", update start_time
         if (assessment_status === "in_progress") {
           const startTimeQuery = `
-            INSERT INTO assessment_results (user_id, module_id, learning_path_id, start_time)
+            INSERT INTO assessment_results (user_id, module_id, learning_path_id, started_time)
             VALUES ($1, $2, $3, NOW())
             ON CONFLICT (user_id, module_id, learning_path_id)
             DO UPDATE SET start_time = NOW()
