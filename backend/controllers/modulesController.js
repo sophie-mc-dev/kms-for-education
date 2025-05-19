@@ -566,6 +566,31 @@ const modulesController = {
     }
   },
 
+  getAssessmentTotalAttemptNumber: async (req, res) => {
+    const { user_id, module_id } = req.params;
+
+    try {
+      const result = await pool.query(
+        `SELECT MAX(num_attempts) AS latest_attempt
+       FROM assessment_results
+       WHERE user_id = $1 AND module_id = $2`,
+        [user_id, module_id]
+      );
+
+      // If no attempts, default to 0
+      const latestAttempt = result.rows[0].latest_attempt || 0;
+
+      res.json({
+        user_id,
+        module_id,
+        latest_attempt: latestAttempt,
+      });
+    } catch (error) {
+      console.error("Error fetching latest attempt number:", error);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  },
+
   // Delete assessment results for a user, assessment, and module
   deleteAssessmentResults: async (req, res) => {
     const { user_id, assessment_id, module_id } = req.params;

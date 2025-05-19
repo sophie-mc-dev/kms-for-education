@@ -19,19 +19,18 @@ export function Assessment({
     const fetchAttempts = async () => {
       try {
         const response = await fetch(
-          `http://localhost:8080/api/modules/${moduleId}/assessment/results/${userId}`
+          `http://localhost:8080/api/modules/${moduleId}/assessment/attempts/${userId}`
         );
         if (!response.ok) {
           throw new Error("Failed to fetch attempt count");
         }
         const data = await response.json();
-        setAttempts(data.num_attempts || 0);
+        setAttempts(data.latest_attempt);
       } catch (err) {
         console.error("Error fetching attempt count:", err.message);
         setAttempts(0);
       }
     };
-
     if (assessment) {
       fetchAttempts();
     }
@@ -126,12 +125,12 @@ export function Assessment({
 
       // Fetch the updated number of attempts
       const updatedAttemptsResponse = await fetch(
-        `http://localhost:8080/api/modules/${moduleId}/assessment/results/${userId}`
+        `http://localhost:8080/api/modules/${moduleId}/assessment/attempts/${userId}`
       );
 
       if (updatedAttemptsResponse.ok) {
         const updatedData = await updatedAttemptsResponse.json();
-        setAttempts(updatedData.num_attempts || 0);
+        setAttempts(updatedData.latest_attempt);
       } else {
         console.error("Failed to fetch updated attempts.");
       }
@@ -158,7 +157,7 @@ export function Assessment({
               return (
                 <div key={qIndex} className="mb-4 p-4 rounded-md">
                   <Typography className="mb-2 font-medium">
-                  {`Question ${qIndex + 1}: ${questionObj}`}
+                    {`Question ${qIndex + 1}: ${questionObj}`}
                   </Typography>
 
                   {assessment?.answers?.[qIndex]?.length > 0 ? (
@@ -167,7 +166,10 @@ export function Assessment({
                       const isSelected = aIndex === userSelectedIndex;
 
                       return (
-                        <label key={`${assessment?.id}-${qIndex}-${aIndex}`} className="block">
+                        <label
+                          key={`${assessment?.id}-${qIndex}-${aIndex}`}
+                          className="block"
+                        >
                           <div
                             className={`p-2 rounded-md cursor-pointer flex items-center gap-2 border 
                               ${isSelected ? "border-2" : "border"}
@@ -215,6 +217,8 @@ export function Assessment({
           {isSubmitting ? "Checking..." : "Check Answers"}
         </Button>
       )}
+
+      <div className="mt-4 text-sm text-blue-gray-700">Current number of attempts: {attempts}</div>
 
       {/* Score Display */}
       {score !== null && (
