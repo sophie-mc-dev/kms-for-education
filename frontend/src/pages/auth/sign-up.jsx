@@ -53,7 +53,6 @@ export function SignUp() {
     firstName: "",
     lastName: "",
     userRole: "student",
-    termsAccepted: false,
     educationLevel: "",
     fieldOfStudy: "",
     topicInterests: [],
@@ -86,7 +85,6 @@ export function SignUp() {
 
   const handleNextButton = (e) => {
     e.preventDefault();
-    if (!formData.termsAccepted) return alert("You must accept the Terms.");
     if (formData.password !== formData.confirmPassword) return alert("Passwords do not match.");
   
     setStep(2); // move to next step without sending anything to backend
@@ -95,7 +93,6 @@ export function SignUp() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!formData.termsAccepted) return alert("You must accept the Terms.");
     if (formData.password !== formData.confirmPassword) return alert("Passwords do not match.");
 
     try {
@@ -183,8 +180,6 @@ export function SignUp() {
                 className="basic-multi-select text-sm"
                 classNamePrefix="select"
               />
-              <Checkbox name="termsAccepted" checked={formData.termsAccepted} onChange={handleChange}
-                label={<Typography variant="small" color="gray">I agree to the <span className="underline">Terms</span>.</Typography>} />
               <Button type="submit" fullWidth>Next</Button>
             </div>
           ) : (

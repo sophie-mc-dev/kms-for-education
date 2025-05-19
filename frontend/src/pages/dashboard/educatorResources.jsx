@@ -77,10 +77,10 @@ export function EducatorResources() {
         );
       case "My Modules":
         return "";
-        // todo: add modules by creator
+      // todo: add modules by creator
       case "My Learning Paths":
         return "";
-        // todo: add lps by creator
+      // todo: add lps by creator
       default:
         return [];
     }
@@ -97,6 +97,10 @@ export function EducatorResources() {
 
       {collections.map((category) => {
         const filtered = filteredResources(category);
+
+        if (!filtered || filtered.length === 0) {
+          return null; 
+        }
 
         return (
           <Card
