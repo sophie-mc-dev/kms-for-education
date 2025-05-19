@@ -90,7 +90,6 @@ export function Assessment({
       module_id: parseInt(moduleId, 10),
       score: scorePercentage,
       passed: passed,
-      num_attempts: attempts + 1,
       answers: JSON.stringify(answers),
       learning_path_id: parseInt(learningPathId, 10),
     };

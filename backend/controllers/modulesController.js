@@ -478,6 +478,22 @@ const modulesController = {
           assessment_status,
         ];
         await pool.query(query, queryParams);
+
+        // If assessment_status is "in_progress", update start_time
+        if (assessment_status === "in_progress") {
+          const startTimeQuery = `
+            INSERT INTO assessment_results (user_id, module_id, learning_path_id, start_time)
+            VALUES ($1, $2, $3, NOW())
+            ON CONFLICT (user_id, module_id, learning_path_id)
+            DO UPDATE SET start_time = NOW()
+          `;
+          const startTimeParams = [
+            user_id,
+            module_id,
+            learning_path_id || null,
+          ];
+          await pool.query(startTimeQuery, startTimeParams);
+        }
       } else {
         // Otherwise, update the existing progress entry's assessment_status
         query = `
@@ -816,9 +832,19 @@ const modulesController = {
   // Complete
   updateStandaloneModuleCompletion: async (req, res) => {
     const { user_id, module_id } = req.params;
-    const { assessment_id, score, passed, answers, num_attempts } = req.body;
+    const { assessment_id, score, passed, answers } = req.body;
 
     try {
+      const previousAttemptsResult = await pool.query(
+        `SELECT COUNT(*) AS attempt_count
+       FROM assessment_results
+       WHERE user_id = $1 AND module_id = $2 AND assessment_id = $3`,
+        [user_id, module_id, assessment_id]
+      );
+
+      const newAttemptNumber =
+        parseInt(previousAttemptsResult.rows[0].attempt_count) + 1;
+
       // Step 1: Store the assessment results
       const result = await pool.query(
         `INSERT INTO assessment_results (user_id, assessment_id, module_id, score, passed, submission_time, answers, num_attempts) 
@@ -831,7 +857,7 @@ const modulesController = {
           score,
           passed,
           JSON.stringify(answers),
-          num_attempts + 1,
+          newAttemptNumber,
         ]
       );
 
@@ -891,7 +917,7 @@ const modulesController = {
         message: "Assessment submitted successfully",
         score,
         passed,
-        num_attempts: num_attempts + 1,
+        num_attempts: newAttemptNumber,
       });
     } catch (err) {
       console.error("Error submitting assessment:", err);
