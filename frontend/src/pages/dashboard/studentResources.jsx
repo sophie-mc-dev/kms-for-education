@@ -191,10 +191,6 @@ export function StudentResources() {
             ? recentlyViewed
             : filteredResources(category);
 
-        if (!filtered || filtered.length === 0) {
-          return null;
-        }
-
         const isLoading = loading[loadingKeys[category]];
         return (
           <Card

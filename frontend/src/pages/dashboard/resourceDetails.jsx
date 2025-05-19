@@ -60,6 +60,7 @@ export function ResourceDetails() {
     fetchRecommendedModules();
   }, []);
 
+  // Modify fetchRecommendedResources effect to replace, not append:
   useEffect(() => {
     const fetchRecommendedResources = async () => {
       try {
@@ -67,20 +68,25 @@ export function ResourceDetails() {
           `http://localhost:8080/api/recommendations/resources/${resourceId}`
         );
         const data = await response.json();
-        setRecommendedResources((prev) => [...prev, ...data]);
+        setRecommendedResources(data); // replace, not append
+        setCurrentPage(0); // reset page on new data
       } catch (error) {
         console.error("Error fetching recommended resources:", error);
       }
     };
     fetchRecommendedResources();
-  }, []);
+  }, [resourceId]); // add resourceId as dependency
 
   useEffect(() => {
     const calculateCardsPerRow = () => {
       if (containerRef.current) {
         const containerWidth = containerRef.current.offsetWidth;
-        const maxCards = Math.floor(containerWidth / 250);
-        setCardsPerRow(maxCards || 1);
+        const cardWidth = 350;
+        const gap = 16;
+
+        const maxCards = Math.floor((containerWidth + gap) / (cardWidth + gap));
+        setCardsPerRow(maxCards > 0 ? maxCards : 1);
+        setCurrentPage(0);
       }
     };
 
@@ -91,6 +97,7 @@ export function ResourceDetails() {
 
   const handleRefresh = () => {
     const totalPages = Math.ceil(recommendedResources.length / cardsPerRow);
+    if (totalPages <= 1) return; 
     setCurrentPage((prev) => (prev + 1) % totalPages);
   };
 

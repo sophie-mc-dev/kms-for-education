@@ -98,10 +98,6 @@ export function EducatorResources() {
       {collections.map((category) => {
         const filtered = filteredResources(category);
 
-        if (!filtered || filtered.length === 0) {
-          return null; 
-        }
-
         return (
           <Card
             key={category}
