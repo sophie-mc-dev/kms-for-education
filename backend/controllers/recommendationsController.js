@@ -20,7 +20,6 @@ const recommendationsController = {
     const session = driver.session();
 
     const userProfile = await getUserProfile(user_id);
-
     if (!userProfile) {
       return res.status(404).json({ message: "User not found" });
     }
@@ -34,85 +33,40 @@ const recommendationsController = {
     } = userProfile;
 
     try {
-      const cypherQuery = `
-        // Get user
-        MATCH (u:User {id: $user_id})
+      // Interaction-Based Recommendations
+      const interactionQuery = `
+      MATCH (u:User {id: $user_id})
+      OPTIONAL MATCH (u)-[:PERFORMED]->(:Interaction)-[:TARGET]->(iRes:Resource)
+      WITH u, COLLECT(DISTINCT iRes.id) AS interactedIds
 
-        // Optional user interactions
-        OPTIONAL MATCH (u)-[:PERFORMED]->(i:Interaction)-[:TARGET]->(r:Resource)
-        WITH u, r, SUM(i.weight) AS userAffinityScore,
-            $education_level AS eduLvl,
-            $field_of_study AS field,
-            $topic_interests AS topics,
-            $preferred_content_types AS preferredTypes,
-            $language_preference AS lang
+      MATCH (rec:Resource)
+      WHERE NOT rec.id IN interactedIds
 
-        // Collect categories and tags for interacted resources
-        OPTIONAL MATCH (r)-[:HAS_CATEGORY]->(cat:Category)
-        OPTIONAL MATCH (r)-[:HAS_TAG]->(tag:Tag)
-        WITH u, r, COALESCE(userAffinityScore, 0) AS userAffinityScore, eduLvl, field, topics, preferredTypes, lang,
-            COLLECT(DISTINCT cat.name) AS categories,
-            COLLECT(DISTINCT tag.name) AS tags
+      OPTIONAL MATCH (rec)-[:HAS_CATEGORY]->(cat:Category)
+      OPTIONAL MATCH (rec)-[:HAS_TAG]->(tag:Tag)
+      WITH rec, COLLECT(DISTINCT cat.name) AS recCategories,
+           COLLECT(DISTINCT tag.name) AS recTags
 
-        // Match candidate resources
-        MATCH (rec:Resource)
-        WHERE NOT EXISTS {
-          MATCH (u)-[:PERFORMED]->(:Interaction)-[:TARGET]->(rec)
-        }
+      OPTIONAL MATCH (:Interaction)-[:TARGET]->(rec)
+      WITH rec, recCategories, recTags,
+           COUNT(*) AS popularity
 
-        // Collect candidate resource categories and tags
-        OPTIONAL MATCH (rec)-[:HAS_CATEGORY]->(cat2:Category)
-        OPTIONAL MATCH (rec)-[:HAS_TAG]->(tag2:Tag)
-        WITH u, rec, userAffinityScore, eduLvl, field, topics, preferredTypes, lang,
-            COLLECT(DISTINCT cat2.name) AS recCategories,
-            COLLECT(DISTINCT tag2.name) AS recTags
+      RETURN rec {
+        .id,
+        .title,
+        .description,
+        .type,
+        category: recCategories,
+        tags: recTags,
+        score: popularity
+      }
+      ORDER BY popularity DESC
+      LIMIT 6
+    `;
 
-        // Calculate profile match score
-        WITH u, rec, userAffinityScore, eduLvl, field, topics, preferredTypes, lang,
-            recCategories, recTags,
-            ( (CASE WHEN eduLvl IN recCategories THEN 1 ELSE 0 END) +
-              (CASE WHEN field IN recCategories THEN 1 ELSE 0 END) +
-              size([t IN topics WHERE t IN recTags]) * 0.5 +
-              (CASE WHEN rec.type IN preferredTypes THEN 1 ELSE 0 END) +
-              (CASE WHEN rec.language = lang THEN 1 ELSE 0 END)
-            ) AS profileMatchScore
+      let result = await session.run(interactionQuery, { user_id });
 
-        // Calculate popularity score
-        OPTIONAL MATCH (otherInt:Interaction)-[:TARGET]->(rec)
-        WITH rec, userAffinityScore, profileMatchScore,
-            COALESCE(SUM(otherInt.weight), 0) AS popularityScore,
-            recCategories,
-            recTags
-
-        WITH rec,
-            (userAffinityScore * 0.5 + popularityScore * 0.2 + profileMatchScore * 0.3) AS hybridScore,
-            recCategories,
-            recTags
-
-        RETURN rec {
-          .id,
-          .title,
-          .description,
-          .type,
-          category: recCategories,
-          tags: recTags,
-          score: hybridScore
-        }
-        ORDER BY hybridScore DESC
-        LIMIT 6
-
-      `;
-
-      const result = await session.run(cypherQuery, {
-        user_id,
-        education_level,
-        field_of_study,
-        topic_interests,
-        preferred_content_types,
-        language_preference,
-      });
-
-      const recommendations = result.records.map((record) => {
+      let recommendations = result.records.map((record) => {
         const rec = record.get("rec");
         return {
           id: rec.id,
@@ -125,12 +79,85 @@ const recommendationsController = {
         };
       });
 
+      // Fallback: Profile-Based if no interaction-based recommendations
+      if (recommendations.length === 0) {
+        const profileQuery = `
+        MATCH (rec:Resource)
+        OPTIONAL MATCH (rec)-[:HAS_CATEGORY]->(cat:Category)
+        OPTIONAL MATCH (rec)-[:HAS_TAG]->(tag:Tag)
+        WITH rec,
+             COLLECT(DISTINCT cat.name) AS recCategories,
+             COLLECT(DISTINCT tag.name) AS recTags
+
+        WITH rec, recCategories, recTags,
+             (
+               (CASE WHEN $education_level IN recCategories THEN 1 ELSE 0 END) +
+               (CASE WHEN $topic_interests IN recCategories THEN 1 ELSE 0 END) +
+               (CASE WHEN rec.type IN $preferred_content_types THEN 1 ELSE 0 END)
+             ) AS profileScore
+
+        RETURN rec {
+          .id,
+          .title,
+          .description,
+          .type,
+          category: recCategories,
+          tags: recTags,
+          score: profileScore
+        }
+        ORDER BY profileScore DESC
+        LIMIT 6
+      `;
+
+        result = await session.run(profileQuery, {
+          education_level,
+          field_of_study,
+          topic_interests,
+          preferred_content_types,
+          language_preference,
+        });
+
+        recommendations = result.records.map((record) => {
+          const rec = record.get("rec");
+          return {
+            id: rec.id,
+            title: rec.title,
+            description: rec.description,
+            type: rec.type,
+            category: rec.category,
+            tags: rec.tags,
+            score: rec.score,
+          };
+        });
+      }
+
+      // Fallback: Popular Resources if profile-based also returns nothing
+      if (recommendations.length === 0) {
+        const popularQuery = `
+        MATCH (r:Resource)
+        OPTIONAL MATCH (:Interaction)-[:TARGET]->(r)
+        WITH r, COUNT(*) AS popularity
+        RETURN r {
+          .id,
+          .title,
+          .description,
+          .type
+        } AS resource
+        ORDER BY popularity DESC
+        LIMIT 6
+      `;
+
+        const fallbackResult = await session.run(popularQuery);
+        recommendations = fallbackResult.records.map((record) =>
+          record.get("resource")
+        );
+      }
+
       res.json(recommendations);
     } catch (error) {
       console.error("Error getting recommendations:", error);
       res.status(500).json({
-        message:
-          "Failed to get resource recommendations based on user interactions.",
+        message: "Failed to get resource recommendations.",
       });
     } finally {
       await session.close();
@@ -222,6 +249,7 @@ const recommendationsController = {
    */
   getRecommendationBasedOnResource: async (req, res) => {
     const resource_id = req.params.resource_id;
+    const user_id = req.query.user_id;
     const session = driver.session();
 
     try {
@@ -236,17 +264,25 @@ const recommendationsController = {
         WHERE other.id <> r.id
         OPTIONAL MATCH (other)-[:HAS_CATEGORY]->(cat2:Category)
         OPTIONAL MATCH (other)-[:HAS_TAG]->(tag2:Tag)
-        WITH r, resourceCategories, resourceTags, rTitle, rDesc, other,
-            COLLECT(DISTINCT cat2) AS otherCategories, COLLECT(DISTINCT tag2) AS otherTags,
-            toLower(other.title) AS oTitle, toLower(other.description) AS oDesc
 
-        WITH other, otherCategories, otherTags, 
+        // interaction boost: separate match to count interactions
+        OPTIONAL MATCH (u:User {id: $user_id})-[:PERFORMED]->(:Interaction)-[:TARGET]->(other)
+        WITH r, resourceCategories, resourceTags, rTitle, rDesc,
+            other, COLLECT(DISTINCT cat2) AS otherCategories,
+            COLLECT(DISTINCT tag2) AS otherTags,
+            toLower(other.title) AS oTitle, toLower(other.description) AS oDesc,
+            COUNT(DISTINCT u) AS interactionBoost
+
+        WITH other, otherCategories, otherTags,
             SIZE([c IN otherCategories WHERE c IN resourceCategories]) AS categoryScore,
             SIZE([t IN otherTags WHERE t IN resourceTags]) AS tagScore,
             apoc.text.sorensenDiceSimilarity(oTitle, rTitle) AS titleScore,
-            apoc.text.sorensenDiceSimilarity(oDesc, rDesc) AS descScore
+            apoc.text.sorensenDiceSimilarity(oDesc, rDesc) AS descScore,
+            interactionBoost
 
-        WITH other, otherCategories, otherTags, (categoryScore * 2 + tagScore * 2 + titleScore + descScore) AS totalScore
+        WITH other, otherCategories, otherTags,
+            (categoryScore * 2 + tagScore * 2 + titleScore + descScore + interactionBoost * 3) AS totalScore
+
         ORDER BY totalScore DESC
         RETURN other {
           .id, .title, .description, .type,
@@ -255,18 +291,15 @@ const recommendationsController = {
           score: totalScore
         }
         LIMIT 12
-    `;
+      `;
 
-      const result = await session.run(cypherQuery, { resource_id });
-
-      if (!result.records.length) {
-        res.status(200).json([]);
-        return;
-      }
+      const result = await session.run(cypherQuery, {
+        resource_id,
+        user_id,
+      });
 
       const recommendations = result.records.map((record) => {
         const rec = record.get("other");
-
         return {
           id: rec.id,
           title: rec.title,
@@ -276,6 +309,7 @@ const recommendationsController = {
           tags: rec.tags,
         };
       });
+
       res.status(200).json(recommendations);
     } catch (err) {
       console.error("Recommendation Error:", err);
@@ -301,52 +335,57 @@ const recommendationsController = {
 
     try {
       const cypherQuery = `
-        WITH $module_id AS moduleId, $user_id AS userId 
-
-        // Step 1: Get the input module and its resources
+        WITH $module_id AS moduleId, $user_id AS userId
         MATCH (mod:Module {id: moduleId})-[:HAS_RESOURCE]->(res:Resource)
         WITH mod, COLLECT(res) AS modResources, userId
 
-        // Step 2: Find learning paths that include this module directly
         OPTIONAL MATCH (lp:LearningPath)-[:HAS_MODULE]->(mod)
         WITH mod, modResources, COLLECT(DISTINCT lp) AS directLPs, userId
 
-        // Step 3: Find other modules that share resources with the current one
         OPTIONAL MATCH (otherMod:Module)-[:HAS_RESOURCE]->(sharedRes:Resource)
         WHERE otherMod.id <> mod.id AND sharedRes IN modResources
-        WITH mod, modResources, directLPs, COLLECT(DISTINCT otherMod) AS relatedModules, userId
+        WITH modResources, directLPs, COLLECT(DISTINCT otherMod) AS relatedModules, userId
 
-        // Step 4: Find learning paths that include those related modules
         OPTIONAL MATCH (fallbackLP:LearningPath)-[:HAS_MODULE]->(relatedMod:Module)
         WHERE relatedMod IN relatedModules
         WITH modResources, directLPs, COLLECT(DISTINCT fallbackLP) AS fallbackLPs, userId
 
-        // Step 5: Consider user interactions with resources
-        OPTIONAL MATCH (user:User {id: userId})-[:PERFORMED]->(:Interaction {type: "VIEWED_RESOURCE"})-[:TARGET]->(viewedRes:Resource)
+        OPTIONAL MATCH (user:User {id: userId})-[:PERFORMED]->(interaction:Interaction {type: "VIEWED_RESOURCE"})-[:TARGET]->(viewedRes:Resource)
         WHERE viewedRes IN modResources
-        WITH directLPs, fallbackLPs, COUNT(viewedRes) AS viewedCount
+        WITH directLPs, fallbackLPs, COUNT(DISTINCT interaction) AS viewedCount
 
-        // Step 6: Score direct and fallback learning paths separately inside a subquery
         CALL {
-            WITH directLPs, viewedCount
-            UNWIND directLPs AS directLP
-            RETURN directLP AS learningPath, (10 + viewedCount * 3) AS score, 'direct' AS source
-            UNION
-            WITH fallbackLPs, viewedCount
-            UNWIND fallbackLPs AS fallbackLP
-            RETURN fallbackLP AS learningPath, (5 + viewedCount * 2) AS score, 'fallback' AS source
+          WITH directLPs, viewedCount
+          UNWIND directLPs AS directLP
+          RETURN directLP AS learningPath, (10 + viewedCount * 3) AS score, 'direct' AS source
+          UNION
+          WITH fallbackLPs, viewedCount
+          UNWIND fallbackLPs AS fallbackLP
+          RETURN fallbackLP AS learningPath, (5 + viewedCount * 2) AS score, 'fallback' AS source
         }
-        WITH DISTINCT learningPath, score, source  // Ensure unique learning paths in the final result
+
+        WITH DISTINCT learningPath, score, source
         RETURN learningPath { .id, .title, .summary, .estimated_duration } AS recommendedPath, score, source
         ORDER BY score DESC
         LIMIT 5
-
       `;
 
       const result = await session.run(cypherQuery, {
         user_id: user_id,
         module_id: module_id,
       });
+
+      if (result.records.length === 0) {
+        // Fallback query if no results from main query
+        const fallbackQuery = `
+        MATCH (lp:LearningPath)
+        RETURN lp { .id, .title, .summary, .estimated_duration } AS recommendedPath, 1 AS score, 'popular' AS source
+        ORDER BY lp.popularity DESC  
+        LIMIT 5
+      `;
+
+        result = await session.run(fallbackQuery);
+      }
 
       const recommendations = result.records.map((record) => {
         const rec = record.get("recommendedPath");
@@ -467,42 +506,49 @@ const recommendationsController = {
       const cypherQuery = `
         WITH $learning_path_id AS currentLearningPathId, $user_id AS userId
 
-        // Step 1: Get the current learning path and its modules/resources
-        MATCH (lp:LearningPath {id: currentLearningPathId})-[:HAS_MODULE]->(mod:Module)-[:HAS_RESOURCE]->(res:Resource)
-        WITH currentLearningPathId, COLLECT(DISTINCT mod) AS currentModules, COLLECT(DISTINCT res) AS currentResources
+        // Step 1: Get current learning path title, objectives, modules, and their resources
+        MATCH (lp:LearningPath {id: currentLearningPathId})
+        WITH lp.title AS lpTitle, lp.objectives AS lpObjectives
 
-        // Step 2: Find other resources that share modules/resources (but not already in the current learning path)
-        MATCH (otherMod:Module)-[:HAS_RESOURCE]->(otherRes:Resource)
-        WHERE NOT otherRes IN currentResources // Exclude resources already part of the current learning path
-        AND otherMod <> ALL(mod IN currentModules WHERE otherMod.id = mod.id) // Ensure it's from a different module
-        WITH currentLearningPathId, COLLECT(DISTINCT otherRes) AS recommendedResources
+        MATCH (lp)-[:HAS_MODULE]->(mod:Module)-[:HAS_RESOURCE]->(res:Resource)
+        WITH lpTitle, lpObjectives, COLLECT(DISTINCT mod) AS currentModules, COLLECT(DISTINCT res) AS currentResources
 
-        // Step 3: Consider resources based on the user's previous interactions (e.g., viewed or saved resources)
-        OPTIONAL MATCH (user:User {id: $user_id})-[:PERFORMED]->(:Interaction {type: "VIEWED_RESOURCE"})-[:TARGET]->(viewedRes:Resource)
-        WHERE viewedRes IN recommendedResources
-        WITH recommendedResources, COUNT(viewedRes) AS viewCount
+        // Step 2: Find resources NOT in current learning path modules/resources
+        MATCH (otherMod:Module)-[:HAS_RESOURCE]->(recommendedRes:Resource)
+        WHERE NOT recommendedRes IN currentResources
+        AND ALL(m IN currentModules WHERE m.id <> otherMod.id)
+        WITH DISTINCT recommendedRes, lpTitle, lpObjectives
 
-        // Step 4: Rank the recommended resources based on their similarity to current resources and view count
-        WITH recommendedResources, viewCount
-        ORDER BY viewCount DESC
+        // Step 3: Get categories, tags, and count user views on each recommended resource
+        OPTIONAL MATCH (recommendedRes)-[:HAS_CATEGORY]->(cat:Category)
+        OPTIONAL MATCH (recommendedRes)-[:HAS_TAG]->(tag:Tag)
+        OPTIONAL MATCH (user:User {id: userId})-[:PERFORMED]->(interaction:Interaction {type: "VIEWED_RESOURCE"})-[:TARGET]->(recommendedRes)
+        WITH recommendedRes, 
+            COLLECT(DISTINCT cat.name) AS categories,
+            COLLECT(DISTINCT tag.name) AS tags,
+            COUNT(DISTINCT interaction) AS viewCount,
+            lpTitle,
+            lpObjectives
 
-        // Step 5: Unwind the resources and return the recommended resources with categories, tags, and score
-        UNWIND recommendedResources AS recommendedRes
-        MATCH (recommendedRes)-[:HAS_CATEGORY]->(cat:Category)
-        MATCH (recommendedRes)-[:HAS_TAG]->(tag:Tag)
-        WITH recommendedRes, COLLECT(DISTINCT cat) AS otherCategories, COLLECT(DISTINCT tag) AS otherTags, viewCount
+        // Step 4: Calculate similarity scores with learning path title and objectives
+        WITH recommendedRes, categories, tags, viewCount,
+            apoc.text.sorensenDiceSimilarity(toLower(recommendedRes.title), toLower(lpTitle)) AS titleSim,
+            apoc.text.sorensenDiceSimilarity(toLower(recommendedRes.description), toLower(lpObjectives)) AS descSim
 
-        // Step 6: Calculate the total score (you can adjust how the score is calculated)
-        WITH recommendedRes, otherCategories, otherTags, viewCount, (viewCount * 1) + 0 AS totalScore // Adjust scoring formula
+        // Step 5: Combine scores - weight can be adjusted
+        WITH recommendedRes, categories, tags, viewCount,
+            (viewCount * 1.0) + (titleSim * 2.0) + (descSim * 1.5) AS totalScore
 
-        // Step 7: Return the recommended resources with all the required fields
-        RETURN recommendedRes { 
-            .id, 
-            .title, 
-            .description, 
-            .type, 
-            category: [cat IN otherCategories | cat.name], 
-            tags: [tag IN otherTags | tag.name], 
+        ORDER BY totalScore DESC
+
+        // Step 6: Return final recommendations
+        RETURN recommendedRes {
+            .id,
+            .title,
+            .description,
+            .type,
+            category: categories,
+            tags: tags,
             score: totalScore
         } AS recommendedResource
         LIMIT 6

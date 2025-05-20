@@ -9,15 +9,14 @@ router.post("/:user_id/modules", recommendationsController.getModuleRecommendati
 
 // Resources
 router.get("/:user_id/resources", recommendationsController.getResourceRecommendations);
-router.get("/resources/:resource_id", recommendationsController.getRecommendationBasedOnResource);
+router.get("/resources/:resource_id", recommendationsController.getRecommendationBasedOnResource); 
 router.get("/:user_id/learning-paths/:learning_path_id/resources", recommendationsController.getResourceRecommendationBasedOnLearningPath);
 
 // Modules
-router.get("/modules/:resource_id", recommendationsController.getModulesRecommendationBasedOnResource); // improved
-router.get("/:user_id/modules/:module_id", recommendationsController.getModuleRecommendationBasedOnModule);
+router.get("/modules/:resource_id", recommendationsController.getModulesRecommendationBasedOnResource); 
+router.get("/:user_id/modules/:module_id", recommendationsController.getModuleRecommendationBasedOnModule); 
 
 // Learning Paths
 router.get("/:user_id/learning-paths/:module_id", recommendationsController.getLearningPathRecommendationBasedOnModules);
-router.get("/:user_id/learning-paths/:learning_path_id", recommendationsController.getLPRecommendationBasedOnLearningPath);
 
 module.exports = router;

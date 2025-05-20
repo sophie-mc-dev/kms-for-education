@@ -10,8 +10,10 @@ import {
 import ReactMarkdown from "react-markdown";
 import { LearningMDCard, ResourceCard } from "@/widgets/cards";
 import { ArrowPathIcon } from "@heroicons/react/24/outline";
+import { useUser } from "@/context/UserContext";
 
 export function ResourceDetails() {
+  const { userId } = useUser();
   const { resourceId } = useParams();
   const [resource, setResource] = useState(null);
   const [recommendedModules, setRecommendedModules] = useState([]);
@@ -65,17 +67,17 @@ export function ResourceDetails() {
     const fetchRecommendedResources = async () => {
       try {
         const response = await fetch(
-          `http://localhost:8080/api/recommendations/resources/${resourceId}`
+          `http://localhost:8080/api/recommendations/resources/${resourceId}?user_id=${userId}`
         );
         const data = await response.json();
-        setRecommendedResources(data); // replace, not append
-        setCurrentPage(0); // reset page on new data
+        setRecommendedResources(data); 
+        setCurrentPage(0); 
       } catch (error) {
         console.error("Error fetching recommended resources:", error);
       }
     };
     fetchRecommendedResources();
-  }, [resourceId]); // add resourceId as dependency
+  }, [resourceId]);
 
   useEffect(() => {
     const calculateCardsPerRow = () => {
