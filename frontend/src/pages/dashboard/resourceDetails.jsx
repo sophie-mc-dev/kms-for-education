@@ -159,13 +159,12 @@ export function ResourceDetails() {
 
     const imageFormats = ["jpg", "jpeg", "png", "gif"];
 
-    if (resource.format && imageFormats.includes(resource.format.toLowerCase())) {
+    if (
+      resource.format &&
+      imageFormats.includes(resource.format.toLowerCase())
+    ) {
       return (
-        <img
-          src={url}
-          alt={resource.title}
-          className="max-w-full h-auto"
-        />
+        <img src={url} alt={resource.title} className="max-w-full h-auto" />
       );
     }
 
@@ -297,21 +296,23 @@ export function ResourceDetails() {
               </Typography>
             </div>
 
-            <div className="mb-6">
-              <Typography
-                variant="small"
-                color="blue-gray"
-                className="font-semibold capitalize"
-              >
-                Estimated Time:
-              </Typography>
-              <Typography
-                variant="small"
-                className="font-normal text-blue-gray-500"
-              >
-                {resource.estimated_time} min
-              </Typography>
-            </div>
+            {resource.estimated_time > 0 && (
+              <div className="mb-6">
+                <Typography
+                  variant="small"
+                  color="blue-gray"
+                  className="font-semibold capitalize"
+                >
+                  Estimated Time:
+                </Typography>
+                <Typography
+                  variant="small"
+                  className="font-normal text-blue-gray-500"
+                >
+                  {resource.estimated_time} min
+                </Typography>
+              </div>
+            )}
 
             <div className="mb-6">
               <Typography

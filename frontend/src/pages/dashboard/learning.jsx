@@ -205,9 +205,14 @@ export function LearningPage() {
       {/* Results Section */}
       <Card className="col-span-3 border border-gray-300 shadow-md">
         <CardBody>
-          <Typography variant="h6" color="blue-gray" className="mb-4">
-            Results
-          </Typography>
+          <div className="flex justify-between items-center mb-2">
+            <Typography variant="h6" color="blue-gray" className="mb-2">
+              Results
+            </Typography>
+            <Typography className="text-xs font-semibold uppercase text-blue-gray-500">
+              {filteredResults.length} resources
+            </Typography>
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             {loading ? (
               <div className="col-span-full flex justify-center items-center">

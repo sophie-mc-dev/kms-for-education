@@ -10,16 +10,12 @@ export function HomePage() {
         <Typography variant="h2" className="font-bold mb-4">
           Welcome to Knowmia
         </Typography>
-        <Typography color="blue-gray" className="text-lg font-normal">
-          Enter your user credentials to Sign In.
-        </Typography>
 
         <div className="mt-8 mb-2 mx-auto w-40 max-w-screen-lg lg:w-1/2">
           <Button
             onClick={() => navigate("/auth/sign-in")}
             type="button"
             className="mt-6 w-60"
-            
           >
             Sign In
           </Button>
