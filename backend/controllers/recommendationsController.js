@@ -150,53 +150,55 @@ const recommendationsController = {
     const session = driver.session();
 
     try {
-      const cypherQuery = `
-        MATCH (r:Resource {id: $resource_id})
-        OPTIONAL MATCH (r)-[:HAS_CATEGORY]->(cat:Category)
-        WITH r, COLLECT(cat) AS resourceCategories
+      let recommendations = [];
 
-        // Step 1: collect direct modules
-        CALL {
-          WITH r
-          MATCH (m:Module)-[:HAS_RESOURCE]->(r)
-          RETURN COLLECT(DISTINCT m) AS directModules
-        }
+      // Step 1: Modules directly linked to the resource
+      const directQuery = `
+      MATCH (m:Module)-[:HAS_RESOURCE]->(r:Resource {id: $resource_id})
+      RETURN DISTINCT m { .id, .title, .summary, .estimated_duration }
+      LIMIT 5
+    `;
+      const directResult = await session.run(directQuery, { resource_id });
+      recommendations = directResult.records.map((r) => r.get("m"));
 
-        // Step 2: collect fallback modules
-        CALL {
-          WITH r, resourceCategories
-          MATCH (other:Resource)-[:HAS_CATEGORY]->(cat)
-          WHERE other.id <> r.id AND cat IN resourceCategories
-          MATCH (mod:Module)-[:HAS_RESOURCE]->(other)
-          RETURN COLLECT(DISTINCT mod) AS fallbackModules
-        }
-
-        // Combine the two sets
-        WITH directModules, fallbackModules,
-            CASE WHEN SIZE(directModules) > 0 THEN directModules ELSE fallbackModules END AS finalModules
-        UNWIND finalModules AS mod
-        RETURN DISTINCT mod { .id, .title, .summary, .estimated_duration }
+      if (recommendations.length === 0) {
+        // Step 2: Modules linked to similar category resources
+        const categoryQuery = `
+        MATCH (r1:Resource {id: $resource_id})-[:HAS_CATEGORY]->(c:Category)
+        MATCH (r2:Resource)-[:HAS_CATEGORY]->(c)
+        WHERE r2.id <> r1.id
+        MATCH (m:Module)-[:HAS_RESOURCE]->(r2)
+        RETURN DISTINCT m { .id, .title, .summary, .estimated_duration }
         LIMIT 5
       `;
-
-      const result = await session.run(cypherQuery, { resource_id });
-
-      if (!result.records.length) {
-        res.status(200).json([]);
-        return;
+        const categoryResult = await session.run(categoryQuery, {
+          resource_id,
+        });
+        recommendations = categoryResult.records.map((r) => r.get("m"));
       }
 
-      const recommendations = result.records.map((record) => {
-        const rec = record.get("mod");
-        return {
-          id: rec.id,
-          title: rec.title,
-          summary: rec.summary,
-          estimated_duration: rec.estimated_duration,
-        };
-      });
+      if (recommendations.length === 0) {
+        // Step 3: Random fallback
+        const fallbackQuery = `
+        MATCH (m:Module)<-[:TARGET]-(i:Interaction)
+        WITH m, SUM(
+          CASE i.type
+            WHEN 'viewed_module' THEN 2
+            WHEN 'started_module' THEN 3
+            WHEN 'bookmarked' THEN 4
+            WHEN 'completed_module' THEN 5
+            ELSE 1
+          END
+        ) AS score
+        RETURN m { .id, .title, .summary, .estimated_duration } 
+        ORDER BY score DESC
+        LIMIT 5
+      `;
+        const fallbackResult = await session.run(fallbackQuery);
+        recommendations = fallbackResult.records.map((r) => r.get("m"));
+      }
 
-      res.json(recommendations);
+      res.status(200).json(recommendations);
     } catch (error) {
       console.error(
         "Error getting module recommendations based on resource:",
@@ -554,49 +556,64 @@ const recommendationsController = {
 
     try {
       const cypherQuery = `
-        WITH $user_id AS userId, $module_id AS currentModuleId
-  
-        MATCH (current:Module {id: currentModuleId})-[:HAS_RESOURCE]->(res:Resource)
-        WITH current, COLLECT(res) AS currentResources, userId, currentModuleId
-  
-        OPTIONAL MATCH (lp:LearningPath)-[:HAS_MODULE]->(current)
-        WITH current, currentResources, COLLECT(lp) AS lps, userId, currentModuleId
-  
-        MATCH (user:User {id: userId})-[:PERFORMED]->(:Interaction {type: "COMPLETED_MODULE"})-[:TARGET]->(completed)
-        WHERE completed:Module
-        WITH current, currentResources, lps, COLLECT(completed.id) AS completedModuleIds, userId, currentModuleId
-  
-        MATCH (modRec:Module)
-        WHERE modRec.id <> currentModuleId AND NOT modRec.id IN completedModuleIds
-  
-        OPTIONAL MATCH (lp:LearningPath)-[:HAS_MODULE]->(modRec)
-        WHERE lp IN lps
-  
-        WITH current, modRec, completedModuleIds, 
-            SIZE([r IN currentResources WHERE (modRec)-[:HAS_RESOURCE]->(r)]) AS sharedResourceCount,
-            COUNT(lp) > 0 AS sameLearningPath
-  
-        WITH modRec,
-            CASE WHEN sameLearningPath THEN 7 ELSE 0 END +
-            (CASE WHEN abs(modRec.estimated_duration - current.estimated_duration) < 10 THEN 2 ELSE 0 END) +
-            sharedResourceCount * 5 AS score
-  
-        RETURN modRec {
-          .id,
-          .title,
-          .summary,
-          .estimated_duration
-        } AS modRec, score
-        ORDER BY score DESC
-        LIMIT 6
-      `;
+      WITH $user_id AS userId, $module_id AS currentModuleId
+
+      // Get current module and its resources/categories
+      MATCH (current:Module {id: currentModuleId})-[:HAS_RESOURCE]->(res:Resource)
+      OPTIONAL MATCH (res)-[:HAS_CATEGORY]->(cat:Category)
+      WITH current, COLLECT(DISTINCT res) AS currentResources, COLLECT(DISTINCT cat.name) AS currentCategories, userId
+
+      // Get learning paths containing current module
+      OPTIONAL MATCH (lp:LearningPath)-[:HAS_MODULE]->(current)
+      WITH current, currentResources, currentCategories, COLLECT(lp) AS lps, userId
+
+      // Get modules user has completed
+      MATCH (user:User {id: userId})-[:PERFORMED]->(:Interaction {type: "COMPLETED_MODULE"})-[:TARGET]->(completed)
+      WHERE completed:Module
+      WITH current, currentResources, currentCategories, lps, COLLECT(completed.id) AS completedModuleIds
+
+      // Find other modules not completed or current
+      MATCH (modRec:Module)
+      WHERE modRec.id <> current.id AND NOT modRec.id IN completedModuleIds
+
+      // Get candidate module's resources and categories
+      OPTIONAL MATCH (modRec)-[:HAS_RESOURCE]->(res2:Resource)
+      OPTIONAL MATCH (res2)-[:HAS_CATEGORY]->(cat2:Category)
+      WITH current, currentResources, currentCategories, modRec, lps,
+          COLLECT(DISTINCT res2) AS recResources,
+          COLLECT(DISTINCT cat2.name) AS recCategories
+
+      // Check if modRec is in any of the same learning paths
+      OPTIONAL MATCH (lp:LearningPath)-[:HAS_MODULE]->(modRec)
+      WHERE lp IN lps
+      WITH current, currentResources, currentCategories, modRec,
+          SIZE([r IN currentResources WHERE r IN recResources]) AS sharedResourceCount,
+          SIZE(apoc.coll.intersection(currentCategories, recCategories)) AS sharedCategoryCount,
+          COUNT(lp) > 0 AS sameLearningPath
+
+      // Score modules
+      WITH modRec,
+          CASE WHEN sameLearningPath THEN 2 ELSE 0 END +
+          (CASE WHEN abs(modRec.estimated_duration - current.estimated_duration) < current.estimated_duration * 0.2 THEN 2 ELSE 0 END) +
+          sharedResourceCount * 5 +
+          sharedCategoryCount * 3 AS score
+
+      RETURN modRec {
+        .id,
+        .title,
+        .summary,
+        .estimated_duration
+      } AS modRec, score
+      ORDER BY score DESC
+      LIMIT 6
+    `;
 
       const result = await session.run(cypherQuery, {
         user_id: user_id,
         module_id: module_id,
       });
 
-      const recommendations = result.records.map((record) => {
+      let recommendations = result.records.map((record) => {
         const rec = record.get("modRec");
         return {
           id: rec.id,
@@ -605,6 +622,36 @@ const recommendationsController = {
           estimated_duration: rec.estimated_duration,
         };
       });
+
+      // Fallback: most popular modules overall
+      if (recommendations.length === 0) {
+        const fallbackQuery = `
+        MATCH (m:Module)<-[:TARGET]-(i:Interaction)
+        WITH m, SUM(
+          CASE i.type
+            WHEN 'viewed_module' THEN 2
+            WHEN 'started_module' THEN 3
+            WHEN 'bookmarked' THEN 4
+            WHEN 'completed_module' THEN 5
+            ELSE 1
+          END
+        ) AS score
+        RETURN m { .id, .title, .summary, .estimated_duration }
+        ORDER BY score DESC
+        LIMIT 6
+      `;
+
+        const fallbackResult = await session.run(fallbackQuery);
+        recommendations = fallbackResult.records.map((record) => {
+          const rec = record.get("m");
+          return {
+            id: rec.id,
+            title: rec.title,
+            summary: rec.summary,
+            estimated_duration: rec.estimated_duration,
+          };
+        });
+      }
 
       res.status(200).json(recommendations);
     } catch (err) {

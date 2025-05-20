@@ -11,6 +11,8 @@ const syncData = async () => {
 
   try {
     console.log("🔄 Starting data synchronization...");
+    await neoSession.run(`MATCH (n) DETACH DELETE n`);
+    console.log("🔥 Cleared existing Neo4j data.");
 
     // Sync Users
     const users = await pgClient.query(
@@ -51,9 +53,7 @@ const syncData = async () => {
       const category = Array.isArray(resource.category)
         ? resource.category
         : [];
-      const tags = Array.isArray(resource.tags)
-        ? resource.tags
-        : [];
+      const tags = Array.isArray(resource.tags) ? resource.tags : [];
 
       // Merge Resource node
       await neoSession.run(
