@@ -179,7 +179,7 @@ export function ModuleDetails() {
           },
           body: JSON.stringify({
             assessment_status: "in_progress",
-            assessment_id: assessment.id
+            assessment_id: assessment.id,
           }),
         }
       );
@@ -337,20 +337,24 @@ export function ModuleDetails() {
               Recommended Learning Paths
             </Typography>
             <div className="flex flex-col gap-3">
-              {recommendedLearningPaths.length === 0 ? (
+              {recommendedLearningPaths.filter(
+                (lp) => lp.creator_type !== "student"
+              ).length === 0 ? (
                 <p className="text-gray-500 text-sm">
                   {loading
                     ? "Loading recommended learning paths..."
                     : "Couldn't recommend learning paths."}
                 </p>
               ) : (
-                recommendedLearningPaths.map((item) => (
-                  <LearningLPCard
-                    key={item.id}
-                    learningItem={item}
-                    className="p-3 bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-200"
-                  />
-                ))
+                recommendedLearningPaths
+                  .filter((lp) => lp.creator_type !== "student")
+                  .map((item) => (
+                    <LearningLPCard
+                      key={item.id}
+                      learningItem={item}
+                      className="p-3 bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-200"
+                    />
+                  ))
               )}
             </div>
           </CardBody>

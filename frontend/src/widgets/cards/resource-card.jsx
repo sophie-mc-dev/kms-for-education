@@ -22,6 +22,12 @@ const colorMap = {
   red: { bg: "bg-red-100", text: "text-red-600" },
   yellow: { bg: "bg-yellow-100", text: "text-yellow-600" },
   teal: { bg: "bg-teal-100", text: "text-teal-600" },
+  sky: { bg: "bg-sky-100", text: "text-sky-600" },
+  violet: { bg: "bg-violet-100", text: "text-violet-600" },
+  cyan: { bg: "bg-cyan-100", text: "text-cyan-600" },
+  amber: { bg: "bg-amber-100", text: "text-amber-600" },
+  lime: { bg: "bg-lime-100", text: "text-lime-600" },
+  fuchsia: { bg: "bg-fuchsia-100", text: "text-fuchsia-600" },
 };
 
 export function ResourceCard({ resource, userId }) {
@@ -37,7 +43,7 @@ export function ResourceCard({ resource, userId }) {
   const resourceData =
     resourceTypes.find((r) => r.value === resource.type) || {};
   const { color = "gray" } = resourceData;
-  const { bg, text } = colorMap[color];
+  const { bg, text } = colorMap[color] || colorMap["gray"];
 
   // Check if the resource is already bookmarked when the component mounts
   useEffect(() => {

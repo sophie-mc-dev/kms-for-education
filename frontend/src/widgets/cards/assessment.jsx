@@ -90,13 +90,17 @@ export function Assessment({
       score: scorePercentage,
       passed: passed,
       answers: JSON.stringify(answers),
-      learning_path_id: parseInt(learningPathId, 10),
     };
 
+    if (learningPathId !== null) {
+      assessmentResults.learning_path_id = parseInt(learningPathId, 10);
+    }
+    
     // Change the API endpoint dynamically (for standalone modules or modules in a LP)
-    const endpoint = learningPathId
-      ? `http://localhost:8080/api/learning-paths/${learningPathId}/modules/${moduleId}/complete/${userId}`
-      : `http://localhost:8080/api/modules/${moduleId}/complete/${userId}?learning_path_id=${learningPathId}`;
+    const endpoint =
+      learningPathId !== null
+        ? `http://localhost:8080/api/learning-paths/${learningPathId}/modules/${moduleId}/complete/${userId}`
+        : `http://localhost:8080/api/modules/${moduleId}/complete/${userId}`;
 
     setIsSubmitting(true);
 
@@ -218,7 +222,9 @@ export function Assessment({
         </Button>
       )}
 
-      <div className="mt-4 text-sm text-blue-gray-700">Current number of attempts: {attempts}</div>
+      <div className="mt-4 text-sm text-blue-gray-700">
+        Current number of attempts: {attempts}
+      </div>
 
       {/* Score Display */}
       {score !== null && (

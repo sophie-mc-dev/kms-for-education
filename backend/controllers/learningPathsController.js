@@ -3,11 +3,25 @@ const { indexLearningPath } = require("../services/elasticSearchService");
 
 const learningPathsController = {
   addLearningPath: async (req, res) => {
-    const { title, summary, visibility, modules, objectives, user_id } =
-      req.body;
+    const {
+      title,
+      summary,
+      visibility,
+      modules,
+      objectives,
+      user_id,
+      difficulty_level,
+    } = req.body;
 
     // Validate required fields
-    if (!title || !summary || !visibility || !objectives || !user_id) {
+    if (
+      !title ||
+      !summary ||
+      !visibility ||
+      !objectives ||
+      !user_id ||
+      !difficulty_level
+    ) {
       return res.status(400).json({ error: "All fields are required" });
     }
 
@@ -29,9 +43,17 @@ const learningPathsController = {
 
       // Insert Learning Path
       const learningPathResult = await client.query(
-        `INSERT INTO learning_paths (title, summary, user_id, visibility, estimated_duration, objectives, creator_type, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, 'educator', NOW(), NOW()) RETURNING id`,
-        [title, summary, user_id, visibility, estimatedDuration, objectives]
+        `INSERT INTO learning_paths (title, summary, user_id, visibility, estimated_duration, objectives, creator_type, created_at, updated_at, difficulty_level)
+         VALUES ($1, $2, $3, $4, $5, $6, 'educator', NOW(), NOW(), $7) RETURNING id`,
+        [
+          title,
+          summary,
+          user_id,
+          visibility,
+          estimatedDuration,
+          objectives,
+          difficulty_level,
+        ]
       );
 
       const learningPath = learningPathResult.rows[0];
@@ -58,9 +80,9 @@ const learningPathsController = {
         estimated_duration: parseInt(estimatedDuration),
         difficulty_level,
         objectives,
-        creator_type,
-        first_name,
-        last_name,
+        creator_type: learningPath.creator_type,
+        first_name: learningPath.first_name,
+        last_name: learningPath.last_name,
       });
 
       await client.query("COMMIT");
@@ -468,22 +490,52 @@ const learningPathsController = {
   // Mark Module as Complete
   updateLearningPathModuleCompletion: async (req, res) => {
     const { learning_path_id, module_id, user_id } = req.params;
-    const { assessment_id, score, passed, answers, num_attempts } = req.body;
+    const { assessment_id, score, passed, answers } = req.body;
 
     try {
       // Step 1: Store the assessment results
-      const result = await pool.query(
-        `INSERT INTO assessment_results (user_id, assessment_id, module_id, score, passed, submission_time, answers, num_attempts) 
-             VALUES ($1, $2, $3, $4, $5, NOW(), $6, $7) 
-             RETURNING *`,
+      const attemptResult = await pool.query(
+        `SELECT id, num_attempts, started_time
+             FROM assessment_results
+             WHERE user_id = $1 AND module_id = $2 AND assessment_id = $3 AND submission_time IS NULL
+             ORDER BY started_time DESC
+             LIMIT 1`,
+        [user_id, module_id, assessment_id]
+      );
+
+      if (attemptResult.rows.length === 0) {
+        return res
+          .status(400)
+          .json({ error: "No in-progress assessment attempt found to update" });
+      }
+
+      const attempt = attemptResult.rows[0];
+      const attemptId = attempt.id;
+      const attemptNumber = attempt.num_attempts;
+      const startedTime = attempt.started_time;
+
+      const submissionTime = new Date();
+
+      // Calculate time_spent in minutes as difference between submission_time and started_time
+      const timeSpentMs = submissionTime - startedTime;
+      const timeSpentMinutes = Math.floor(timeSpentMs / 1000 / 60);
+
+      // Update the existing assessment_results row with score, passed, submission_time, answers, time_spent
+      await pool.query(
+        `UPDATE assessment_results 
+             SET score = $1,
+                 passed = $2,
+                 submission_time = $3,
+                 answers = $4,
+                 time_spent = $5
+             WHERE id = $6`,
         [
-          user_id,
-          assessment_id,
-          module_id,
           score,
           passed,
+          submissionTime,
           JSON.stringify(answers),
-          num_attempts + 1,
+          timeSpentMinutes,
+          attemptId,
         ]
       );
 
@@ -495,21 +547,33 @@ const learningPathsController = {
       let updateQuery;
       let updateValues;
 
-      if (moduleStatus === 'completed') {
+      if (moduleStatus === "completed") {
         updateQuery = `
           UPDATE user_module_progress 
           SET assessment_status = $1, 
               status = $2,
               completed_at = NOW()
           WHERE user_id = $3 AND module_id = $4 AND learning_path_id = $5`;
-        updateValues = [assessmentStatus, moduleStatus, user_id, module_id, learning_path_id];
+        updateValues = [
+          assessmentStatus,
+          moduleStatus,
+          user_id,
+          module_id,
+          learning_path_id,
+        ];
       } else {
         updateQuery = `
           UPDATE user_module_progress 
           SET assessment_status = $1, 
               status = $2
           WHERE user_id = $3 AND module_id = $4 AND learning_path_id = $5`;
-        updateValues = [assessmentStatus, moduleStatus, user_id, module_id, learning_path_id];
+        updateValues = [
+          assessmentStatus,
+          moduleStatus,
+          user_id,
+          module_id,
+          learning_path_id,
+        ];
       }
 
       // Execute the update query for module progress

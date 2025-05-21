@@ -365,12 +365,12 @@ const recommendationsController = {
         }
 
         WITH DISTINCT learningPath, score, source
-        RETURN learningPath { .id, .title, .summary, .estimated_duration } AS recommendedPath, score, source
+        RETURN learningPath { .id, .title, .summary, .estimated_duration, .creator_type } AS recommendedPath, score, source
         ORDER BY score DESC
         LIMIT 5
       `;
 
-      const result = await session.run(cypherQuery, {
+      let result = await session.run(cypherQuery, {
         user_id: user_id,
         module_id: module_id,
       });
@@ -379,7 +379,7 @@ const recommendationsController = {
         // Fallback query if no results from main query
         const fallbackQuery = `
         MATCH (lp:LearningPath)
-        RETURN lp { .id, .title, .summary, .estimated_duration } AS recommendedPath, 1 AS score, 'popular' AS source
+        RETURN lp { .id, .title, .summary, .estimated_duration, .creator_type } AS recommendedPath, 1 AS score, 'popular' AS source
         ORDER BY lp.popularity DESC  
         LIMIT 5
       `;
@@ -394,6 +394,7 @@ const recommendationsController = {
           title: rec.title,
           summary: rec.summary,
           estimated_duration: rec.estimated_duration,
+          creator_type: rec.creator_type
         };
       });
 
@@ -508,16 +509,16 @@ const recommendationsController = {
 
         // Step 1: Get current learning path title, objectives, modules, and their resources
         MATCH (lp:LearningPath {id: currentLearningPathId})
-        WITH lp.title AS lpTitle, lp.objectives AS lpObjectives
+        WITH lp.title AS lpTitle, lp.objectives AS lpObjectives, userId
 
         MATCH (lp)-[:HAS_MODULE]->(mod:Module)-[:HAS_RESOURCE]->(res:Resource)
-        WITH lpTitle, lpObjectives, COLLECT(DISTINCT mod) AS currentModules, COLLECT(DISTINCT res) AS currentResources
+        WITH lpTitle, lpObjectives, COLLECT(DISTINCT mod) AS currentModules, COLLECT(DISTINCT res) AS currentResources, userId
 
         // Step 2: Find resources NOT in current learning path modules/resources
         MATCH (otherMod:Module)-[:HAS_RESOURCE]->(recommendedRes:Resource)
         WHERE NOT recommendedRes IN currentResources
         AND ALL(m IN currentModules WHERE m.id <> otherMod.id)
-        WITH DISTINCT recommendedRes, lpTitle, lpObjectives
+        WITH DISTINCT recommendedRes, lpTitle, lpObjectives, userId
 
         // Step 3: Get categories, tags, and count user views on each recommended resource
         OPTIONAL MATCH (recommendedRes)-[:HAS_CATEGORY]->(cat:Category)
@@ -535,7 +536,7 @@ const recommendationsController = {
             apoc.text.sorensenDiceSimilarity(toLower(recommendedRes.title), toLower(lpTitle)) AS titleSim,
             apoc.text.sorensenDiceSimilarity(toLower(recommendedRes.description), toLower(lpObjectives)) AS descSim
 
-        // Step 5: Combine scores - weight can be adjusted
+        // Step 5: Combine scores
         WITH recommendedRes, categories, tags, viewCount,
             (viewCount * 1.0) + (titleSim * 2.0) + (descSim * 1.5) AS totalScore
 

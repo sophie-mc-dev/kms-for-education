@@ -129,11 +129,11 @@ const syncData = async () => {
 
     // Sync Learning Paths
     const learningPaths = await pgClient.query(
-      "SELECT id, title, summary, objectives, difficulty_level, estimated_duration FROM learning_paths"
+      "SELECT id, title, summary, objectives, difficulty_level, estimated_duration, creator_type FROM learning_paths"
     );
     for (let lp of learningPaths.rows) {
       await neoSession.run(
-        "MERGE (lp:LearningPath {id: $id}) SET lp.title = $title, lp.summary = $summary, lp.objectives = $objectives, lp.difficulty_level = $difficulty_level, lp.estimated_duration = $estimated_duration",
+        "MERGE (lp:LearningPath {id: $id}) SET lp.title = $title, lp.summary = $summary, lp.objectives = $objectives, lp.difficulty_level = $difficulty_level, lp.estimated_duration = $estimated_duration, lp.creator_type = $creator_type",
         {
           id: lp.id.toString(),
           title: lp.title,
@@ -141,6 +141,7 @@ const syncData = async () => {
           objectives: lp.objectives,
           difficulty_level: lp.difficulty_level,
           estimated_duration: lp.estimated_duration,
+          creator_type: lp.creator_type
         }
       );
     }

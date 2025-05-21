@@ -90,7 +90,7 @@ export function CreateLearningPath() {
       });
 
       if (response.ok) navigate("/dashboard/learning");
-      alert("Error creating learning path");
+      alert("Learning path successfully created!");
     } catch (error) {
       console.error(error);
       alert("Error creating learning path");

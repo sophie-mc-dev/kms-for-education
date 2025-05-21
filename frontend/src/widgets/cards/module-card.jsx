@@ -139,12 +139,13 @@ export function ModuleCard({
       const response = await fetch(
         `http://localhost:8080/api/modules/${module.id}/assessment/status/${userId}`,
         {
-          method: "PUT",
+          method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
             assessment_status: "in_progress",
+            assessment_id: assessment.id,
             learning_path_id: learningPathId,
           }),
         }
@@ -300,7 +301,9 @@ export function ModuleCard({
                 <Typography variant="h6" className="mb-3">
                   Test Your Knowledge
                 </Typography>
-                {assessmentStatus === "not_started" ? (
+                {assessmentStatus === "not_started" ||
+                assessmentStatus === "passed" ||
+                assessmentStatus === "failed" ? (
                   <Button
                     onClick={handleStartAssessment}
                     color="blue"
