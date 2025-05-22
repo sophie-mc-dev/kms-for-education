@@ -1,5 +1,6 @@
 const { esClient } = require("../scripts/elasticsearch");
 const { generateEmbedding } = require("../scripts/embeddingHelper");
+const { pool } = require("../scripts/postgres");
 
 const searchController = {
   /**
@@ -9,8 +10,13 @@ const searchController = {
    */
   searchResources: async (req, res) => {
     const { q } = req.query;
+    const userId = req.user?.id || null;
+
+    const startTime = Date.now();
+    let client;
 
     try {
+      client = await pool.connect();
       const queryEmbedding = await generateEmbedding(q);
 
       const results = await esClient.search({
@@ -18,9 +24,10 @@ const searchController = {
         knn: {
           field: "embedding",
           query_vector: queryEmbedding,
-          k: 15,
+          k: 10,
           num_candidates: 100,
         },
+        size: 10,
         query: {
           bool: {
             should: [{ match: { title: q } }, { match: { description: q } }],
@@ -29,15 +36,51 @@ const searchController = {
       });
 
       // Filter based on vector similarity threshold
-      const hits = results.hits.hits.map((hit) => ({
+      const hits = results.hits.hits.map((hit, i) => ({
         id: hit._id,
         score: hit._score,
+        rank: i + 1,
         ...hit._source,
       }));
+      console.log("HITS: ", hits);
 
-      console.log(
-        "Scores:",
-        results.hits.hits.map((hit) => hit._score)
+      // Compute stats
+      const topScore = hits[0]?.score || 0;
+      const avgScore =
+        hits.reduce((acc, h) => acc + h.score, 0) / hits.length || 0;
+      const duration = Date.now() - startTime;
+
+      // Save to DB
+      const searchInsertQuery = `
+      INSERT INTO user_searches (
+        user_id, query_text, created_at, query_embedding,
+        result_count, top_score, average_score, search_duration_ms
+      ) VALUES ($1, $2, now(), $3, $4, $5, $6, $7)
+      RETURNING id
+    `;
+
+      const { rows } = await client.query(searchInsertQuery, [
+        userId,
+        q,
+        JSON.stringify(queryEmbedding),
+        hits.length,
+        topScore,
+        avgScore,
+        duration,
+      ]);
+
+      const searchId = rows[0].id;
+      console.log("SearchID: ", searchId);
+
+      // Insert each result
+      const resultInserts = hits.map((hit) => ({
+        text: `INSERT INTO user_search_results (search_id, resource_id, rank, score) VALUES ($1, $2, $3, $4)`,
+        values: [searchId, hit.id, hit.rank, hit.score],
+      }));
+
+      // Run inserts in parallel
+      await Promise.all(
+        resultInserts.map((q) => client.query(q.text, q.values))
       );
 
       res.json(hits);
@@ -49,8 +92,12 @@ const searchController = {
 
   searchLearningContent: async (req, res) => {
     const { q } = req.query;
+    const userId = req.user?.id || null;
+    const startTime = Date.now();
+    let client;
 
     try {
+      client = await pool.connect();
       const queryEmbedding = await generateEmbedding(q);
 
       const results = await esClient.search({
@@ -61,6 +108,7 @@ const searchController = {
           k: 10,
           num_candidates: 100,
         },
+        size: 10,
         query: {
           bool: {
             should: [
@@ -72,11 +120,49 @@ const searchController = {
         },
       });
 
-      const hits = results.hits.hits.map((hit) => ({
+      const hits = results.hits.hits.map((hit, i) => ({
         id: hit._id,
         score: hit._score,
+        rank: i + 1,
         ...hit._source,
       }));
+
+      // Compute stats
+      const topScore = hits[0]?.score || 0;
+      const avgScore =
+        hits.length > 0
+          ? hits.reduce((sum, h) => sum + h.score, 0) / hits.length
+          : 0;
+      const duration = Date.now() - startTime;
+
+      // Insert into user_searches
+      const searchInsertQuery = `
+      INSERT INTO user_searches (
+        user_id, query_text, created_at, query_embedding,
+        result_count, top_score, average_score, search_duration_ms
+      ) VALUES ($1, $2, now(), $3, $4, $5, $6, $7)
+      RETURNING id
+    `;
+      const { rows } = await client.query(searchInsertQuery, [
+        userId,
+        q,
+        JSON.stringify(queryEmbedding),
+        hits.length,
+        topScore,
+        avgScore,
+        duration,
+      ]);
+      const searchId = rows[0].id;
+
+      // Insert results
+      const resultInserts = hits.map((hit) => ({
+        text: `INSERT INTO user_learning_content_search_results (search_id, learning_content_id, rank, score) VALUES ($1, $2, $3, $4)`,
+        values: [searchId, hit.id, hit.rank, hit.score],
+      }));
+
+      await Promise.all(
+        resultInserts.map((q) => client.query(q.text, q.values))
+      );
 
       res.json(hits);
     } catch (error) {
@@ -84,6 +170,8 @@ const searchController = {
       res
         .status(500)
         .json({ error: "Semantic search for learning content failed" });
+    } finally {
+      if (client) client.release();
     }
   },
 
