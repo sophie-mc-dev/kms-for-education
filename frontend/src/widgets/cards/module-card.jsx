@@ -22,7 +22,7 @@ export function ModuleCard({
 
   useEffect(() => {
     if (isPassed) {
-      setIsOpen(false);
+      setIsOpen(true);
     }
   }, [isPassed]);
 
@@ -55,7 +55,7 @@ export function ModuleCard({
     if (module.id && userId && learningPathId) {
       fetchModuleStatus();
     }
-  }, [module.id, userId, learningPathId]);
+  }, [module.id, userId, learningPathId, refreshUserProgress]);
 
   useEffect(() => {
     const fetchResources = async () => {

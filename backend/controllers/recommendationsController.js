@@ -394,7 +394,7 @@ const recommendationsController = {
           title: rec.title,
           summary: rec.summary,
           estimated_duration: rec.estimated_duration,
-          creator_type: rec.creator_type
+          creator_type: rec.creator_type,
         };
       });
 
@@ -503,64 +503,71 @@ const recommendationsController = {
     const learning_path_id = req.params.learning_path_id;
     const session = driver.session();
 
+    const mainQuery = `
+    WITH $learning_path_id AS currentLearningPathId, $user_id AS userId
+
+    MATCH (lp:LearningPath {id: currentLearningPathId})
+    WITH lp.title AS lpTitle, lp.objectives AS lpObjectives, userId
+
+    MATCH (lp)-[:HAS_MODULE]->(mod:Module)-[:HAS_RESOURCE]->(res:Resource)
+    WITH lpTitle, lpObjectives, COLLECT(DISTINCT res) AS currentResources, userId
+
+    MATCH (recommendedRes:Resource)
+    WHERE NOT recommendedRes IN currentResources
+
+    OPTIONAL MATCH (recommendedRes)-[:HAS_CATEGORY]->(cat:Category)
+    OPTIONAL MATCH (recommendedRes)-[:HAS_TAG]->(tag:Tag)
+    OPTIONAL MATCH (user:User {id: userId})-[:PERFORMED]->(interaction:Interaction {type: "VIEWED_RESOURCE"})-[:TARGET]->(recommendedRes)
+
+    WITH recommendedRes, 
+        COLLECT(DISTINCT cat.name) AS categories,
+        COLLECT(DISTINCT tag.name) AS tags,
+        COUNT(DISTINCT interaction) AS viewCount,
+        lpTitle,
+        lpObjectives
+
+    WITH recommendedRes, categories, tags, viewCount,
+        apoc.text.sorensenDiceSimilarity(toLower(recommendedRes.title), toLower(lpTitle)) AS titleSim,
+        apoc.text.sorensenDiceSimilarity(toLower(recommendedRes.description), toLower(lpObjectives)) AS descSim
+
+    WITH recommendedRes, categories, tags, viewCount,
+        (viewCount * 1.0) + (titleSim * 2.0) + (descSim * 1.5) AS totalScore
+
+    RETURN recommendedRes {
+        .id, .title, .description, .type,
+        category: categories,
+        tags: tags,
+        score: totalScore
+    } AS recommendedResource
+    ORDER BY totalScore DESC, viewCount DESC
+    LIMIT 6
+  `;
+
+  // Fallback query in terms of popularity of most viewed resources
+    const fallbackQuery = `
+    MATCH (res:Resource)
+    OPTIONAL MATCH (res)<-[:TARGET]-(inter:Interaction {type: "VIEWED_RESOURCE"})
+    WITH res, COUNT(DISTINCT inter) AS views
+    OPTIONAL MATCH (res)-[:HAS_CATEGORY]->(cat:Category)
+    OPTIONAL MATCH (res)-[:HAS_TAG]->(tag:Tag)
+    WITH res, views, COLLECT(DISTINCT cat.name) AS categories, COLLECT(DISTINCT tag.name) AS tags
+    RETURN res {
+        .id, .title, .description, .type,
+        category: categories,
+        tags: tags,
+        score: views * 1.0
+    } AS recommendedResource
+    ORDER BY views DESC
+    LIMIT 6
+  `;
+
     try {
-      const cypherQuery = `
-        WITH $learning_path_id AS currentLearningPathId, $user_id AS userId
-
-        // Step 1: Get current learning path title, objectives, modules, and their resources
-        MATCH (lp:LearningPath {id: currentLearningPathId})
-        WITH lp.title AS lpTitle, lp.objectives AS lpObjectives, userId
-
-        MATCH (lp)-[:HAS_MODULE]->(mod:Module)-[:HAS_RESOURCE]->(res:Resource)
-        WITH lpTitle, lpObjectives, COLLECT(DISTINCT mod) AS currentModules, COLLECT(DISTINCT res) AS currentResources, userId
-
-        // Step 2: Find resources NOT in current learning path modules/resources
-        MATCH (otherMod:Module)-[:HAS_RESOURCE]->(recommendedRes:Resource)
-        WHERE NOT recommendedRes IN currentResources
-        AND ALL(m IN currentModules WHERE m.id <> otherMod.id)
-        WITH DISTINCT recommendedRes, lpTitle, lpObjectives, userId
-
-        // Step 3: Get categories, tags, and count user views on each recommended resource
-        OPTIONAL MATCH (recommendedRes)-[:HAS_CATEGORY]->(cat:Category)
-        OPTIONAL MATCH (recommendedRes)-[:HAS_TAG]->(tag:Tag)
-        OPTIONAL MATCH (user:User {id: userId})-[:PERFORMED]->(interaction:Interaction {type: "VIEWED_RESOURCE"})-[:TARGET]->(recommendedRes)
-        WITH recommendedRes, 
-            COLLECT(DISTINCT cat.name) AS categories,
-            COLLECT(DISTINCT tag.name) AS tags,
-            COUNT(DISTINCT interaction) AS viewCount,
-            lpTitle,
-            lpObjectives
-
-        // Step 4: Calculate similarity scores with learning path title and objectives
-        WITH recommendedRes, categories, tags, viewCount,
-            apoc.text.sorensenDiceSimilarity(toLower(recommendedRes.title), toLower(lpTitle)) AS titleSim,
-            apoc.text.sorensenDiceSimilarity(toLower(recommendedRes.description), toLower(lpObjectives)) AS descSim
-
-        // Step 5: Combine scores
-        WITH recommendedRes, categories, tags, viewCount,
-            (viewCount * 1.0) + (titleSim * 2.0) + (descSim * 1.5) AS totalScore
-
-        ORDER BY totalScore DESC
-
-        // Step 6: Return final recommendations
-        RETURN recommendedRes {
-            .id,
-            .title,
-            .description,
-            .type,
-            category: categories,
-            tags: tags,
-            score: totalScore
-        } AS recommendedResource
-        LIMIT 6
-      `;
-
-      const result = await session.run(cypherQuery, {
+      let result = await session.run(mainQuery, {
         user_id: user_id,
         learning_path_id: learning_path_id,
       });
 
-      const recommendations = result.records.map((record) => {
+      let recommendations = result.records.map((record) => {
         const rec = record.get("recommendedResource");
         return {
           id: rec.id,
@@ -571,6 +578,22 @@ const recommendationsController = {
           tags: rec.tags,
         };
       });
+
+      // Fallback if no recommendations found
+      if (recommendations.length === 0) {
+        const fallbackResult = await session.run(fallbackQuery);
+        recommendations = fallbackResult.records.map((record) => {
+          const rec = record.get("recommendedResource");
+          return {
+            id: rec.id,
+            title: rec.title,
+            description: rec.description,
+            type: rec.type,
+            category: rec.category,
+            tags: rec.tags,
+          };
+        });
+      }
 
       res.status(200).json(recommendations);
     } catch (err) {

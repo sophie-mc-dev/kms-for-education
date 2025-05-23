@@ -293,8 +293,8 @@ export function LearningPathDetails() {
               {recommendedResources.length === 0 ? (
                 <p className="text-gray-500 text-sm">
                   {loading
-                    ? "Loading recommended learning paths..."
-                    : "Couldn't recommend learning paths."}
+                    ? "Loading recommended resources..."
+                    : "Couldn't recommend resources."}
                 </p>
               ) : (
                 recommendedResources.map((item) => (
