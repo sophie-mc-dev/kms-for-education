@@ -131,7 +131,7 @@ export function Profile() {
       </div>
 
       {/* Main card container */}
-      <Card className="max-w-3xl mx-auto -mt-12 mb-10 border border-blue-gray-100 shadow-md">
+      <Card className="max-w-3xl mx-auto -mt-4 mb-10 border border-blue-gray-100 shadow-md">
         <CardBody className="p-8">
           {isLoading ? (
             <Spinner className="text-center w-full" />

@@ -123,8 +123,10 @@ export function LearningPathDetails() {
       );
       if (!response.ok) throw new Error("Failed to start learning path");
 
-      const data = await response.json();
-      setUserProgress(data);
+      // const data = await response.json();
+      // setUserProgress(data);
+
+      await refreshUserProgress();
     } catch (err) {
       setError(err.message);
     }

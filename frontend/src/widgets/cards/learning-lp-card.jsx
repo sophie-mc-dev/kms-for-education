@@ -22,7 +22,8 @@ export function LearningLPCard({ learningItem }) {
     } catch (error) {
       console.error("Error registering learning path view:", error);
     }
-    navigate(`/dashboard/learning/learning-path/${learningItem.id}`);
+    const id = learningItem.learning_path_id ?? learningItem.id;
+    navigate(`/dashboard/learning/learning-path/${id}`);
   };
 
   const registerLearningPathView = async (userId, learningPathId) => {
