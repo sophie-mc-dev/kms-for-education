@@ -6,14 +6,17 @@ import {
   Typography,
   Chip,
   Button,
+  IconButton,
 } from "@material-tailwind/react";
 import ReactMarkdown from "react-markdown";
 import { LearningMDCard, ResourceCard } from "@/widgets/cards";
 import { ArrowPathIcon } from "@heroicons/react/24/outline";
 import { useUser } from "@/context/UserContext";
+import { BookmarkIcon } from "@heroicons/react/24/outline";
+import { BookmarkIcon as SolidBookmarkIcon } from "@heroicons/react/24/solid";
 
 export function ResourceDetails() {
-  const { userId } = useUser();
+  const { userId, userRole } = useUser();
   const { resourceId } = useParams();
   const [resource, setResource] = useState(null);
   const [recommendedModules, setRecommendedModules] = useState([]);
@@ -24,6 +27,73 @@ export function ResourceDetails() {
   const containerRef = useRef(null);
   const [currentPage, setCurrentPage] = useState(0);
   const [cardsPerRow, setCardsPerRow] = useState(1);
+
+  const [bookmarked, setBookmarked] = useState(false);
+
+  // Check if the resource is already bookmarked when the component mounts
+  useEffect(() => {
+    if (!userId || !resourceId) return;
+
+    if (userRole === "educator") {
+      return;
+    }
+
+    const fetchBookmarks = async () => {
+      try {
+        const res = await fetch(
+          `http://localhost:8080/api/bookmarks/${userId}`
+        );
+        if (!res.ok) throw new Error("Failed to fetch bookmarks");
+
+        const data = await res.json();
+
+        // Check if the resource is in the fetched bookmarks
+        const isBookmarked = data.some(
+          (item) => Number(item.id) === Number(resourceId)
+        );
+        setBookmarked(isBookmarked);
+      } catch (error) {
+        console.error("Error fetching bookmarks:", error);
+      }
+    };
+
+    fetchBookmarks();
+  }, [userId, resourceId]);
+
+  const handleBookmarkClick = async (e) => {
+    e.stopPropagation();
+
+    try {
+      let response;
+
+      if (bookmarked) {
+        // Send DELETE request to remove the bookmark and interaction
+        response = await fetch(
+          `http://localhost:8080/api/bookmarks/${userId}/${resourceId}`,
+          {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+          }
+        );
+      } else {
+        // Send POST request to add the bookmark and interaction
+        response = await fetch(
+          `http://localhost:8080/api/bookmarks/${userId}/${resourceId}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ user_id: userId, resource_id: resourceId }),
+          }
+        );
+      }
+
+      if (!response.ok) throw new Error("Failed to update bookmark");
+
+      setBookmarked(!bookmarked);
+    } catch (error) {
+      console.error("Error updating bookmark:", error);
+    }
+  };
 
   useEffect(() => {
     const fetchResourceById = async () => {
@@ -70,8 +140,8 @@ export function ResourceDetails() {
           `http://localhost:8080/api/recommendations/resources/${resourceId}?user_id=${userId}`
         );
         const data = await response.json();
-        setRecommendedResources(data); 
-        setCurrentPage(0); 
+        setRecommendedResources(data);
+        setCurrentPage(0);
       } catch (error) {
         console.error("Error fetching recommended resources:", error);
       }
@@ -238,7 +308,7 @@ export function ResourceDetails() {
       <div className="w-3/4 flex flex-col gap-4">
         <Card className="border border-blue-gray-100 shadow-sm p-4 flex-1">
           <CardBody>
-            <div className="flex items-center mb-2">
+            <div className="flex items-center justify-between mb-2">
               <Typography
                 variant="h4"
                 color="blue-gray"
@@ -246,6 +316,25 @@ export function ResourceDetails() {
               >
                 {resource.title}
               </Typography>
+
+              {userRole !== "educator" && (
+                <div
+                  className=" top-2 right-2"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <IconButton
+                    variant="text"
+                    className="text-blue-gray-500 hover:text-blue-gray-700"
+                    onClick={handleBookmarkClick}
+                  >
+                    {bookmarked ? (
+                      <SolidBookmarkIcon className="h-6 w-6 text-blue-gray-700" />
+                    ) : (
+                      <BookmarkIcon className="h-6 w-6" />
+                    )}
+                  </IconButton>
+                </div>
+              )}
             </div>
 
             <div className="mb-6 flex items-center gap-x-4">
@@ -426,7 +515,7 @@ export function ResourceDetails() {
               ) : (
                 visibleResources.map((item) => (
                   <div key={item.id} className="flex-shrink-0 w-[350px]">
-                    <ResourceCard resource={item} />
+                    <ResourceCard resource={item} userId={userId} />
                   </div>
                 ))
               )}

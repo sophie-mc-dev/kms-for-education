@@ -302,6 +302,7 @@ export function LearningPathDetails() {
                     key={item.id}
                     resource={item}
                     className="p-3 bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-200"
+                    userId={userId}
                   />
                 ))
               )}

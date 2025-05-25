@@ -288,7 +288,7 @@ export function ModuleCard({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {resources.length > 0 ? (
                   resources.map((resource) => (
-                    <ResourceCard key={resource.id} resource={resource} />
+                    <ResourceCard key={resource.id} resource={resource} userId={userId} />
                   ))
                 ) : (
                   <Typography className="text-blue-gray-600">
