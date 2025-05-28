@@ -158,7 +158,7 @@ export function ModuleDetails() {
     const calculateCardsPerRow = () => {
       if (containerRef.current) {
         const containerWidth = containerRef.current.offsetWidth;
-        const maxCards = Math.floor(containerWidth / 250);
+        const maxCards = Math.floor(containerWidth / 360);
         setCardsPerRow(maxCards || 1);
       }
     };

@@ -54,7 +54,7 @@ export default function UserPreferencesForm({
   return (
     <div className="flex flex-col gap-4">
       <Select
-        placeholder="Educational Level"
+        placeholder="Current Educational Level"
         value={educationLevelOptions.find(
           (opt) => opt.value === formData.educationLevel
         )}
@@ -83,6 +83,7 @@ export default function UserPreferencesForm({
         onChange={handleTopicsChange}
         options={resourceCategories}
         isMulti
+        closeMenuOnSelect={false}
       />
 
       <Select
@@ -93,6 +94,7 @@ export default function UserPreferencesForm({
         onChange={handleContentTypesChange}
         options={resourceTypes}
         isMulti
+        closeMenuOnSelect={false}
       />
 
       <Select

@@ -124,7 +124,15 @@ export function LearningMDCard({ moduleItem }) {
           <div className="flex items-center gap-2">
             <ClockIcon className="h-4 w-4 text-blue-gray-500" />
             <Typography variant="small" className="font-medium">
-              {moduleItem.estimated_duration} min
+              {(() => {
+                const totalMinutes = moduleItem.estimated_duration;
+                const hours = Math.floor(totalMinutes / 60);
+                const minutes = totalMinutes % 60;
+
+                if (hours && minutes) return `${hours} hr ${minutes} min`;
+                if (hours) return `${hours} hr`;
+                return `${minutes} min`;
+              })()}
             </Typography>
           </div>
         </div>

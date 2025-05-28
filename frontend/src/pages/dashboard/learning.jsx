@@ -29,6 +29,14 @@ export function LearningPage() {
   const [durationRange, setDurationRange] = useState([0, 600]);
   const { userRole } = useUser();
 
+  const formatDuration = (minutes) => {
+    const hr = Math.floor(minutes / 60);
+    const min = minutes % 60;
+    if (hr && min) return `${hr} hr ${min} min`;
+    if (hr) return `${hr} hr`;
+    return `${min} min`;
+  };
+
   useEffect(() => {
     const fetchLearningPathsAndModules = async () => {
       try {
@@ -309,38 +317,47 @@ export function LearningPage() {
                 <span>MAX</span>
               </div>
 
-              <div className="flex gap-2 items-center">
-                <input
-                  type="range"
-                  min={0}
-                  max={600}
-                  value={durationRange[0]}
-                  onChange={(e) =>
-                    setDurationRange([
-                      Math.min(Number(e.target.value), durationRange[1] - 1),
-                      durationRange[1],
-                    ])
-                  }
-                  className="w-full"
-                />
-                <input
-                  type="range"
-                  min={0}
-                  max={600}
-                  value={durationRange[1]}
-                  onChange={(e) =>
-                    setDurationRange([
-                      durationRange[0],
-                      Math.max(Number(e.target.value), durationRange[0] + 1),
-                    ])
-                  }
-                  className="w-full"
-                />
-              </div>
+              <div className="flex flex-col gap-2">
+                  <div className="flex gap-2 items-center">
+                    <input
+                      type="range"
+                      min={0}
+                      max={600}
+                      value={durationRange[0]}
+                      onChange={(e) =>
+                        setDurationRange([
+                          Math.min(
+                            Number(e.target.value),
+                            durationRange[1] - 1
+                          ),
+                          durationRange[1],
+                        ])
+                      }
+                      className="w-full"
+                    />
+                    <input
+                      type="range"
+                      min={0}
+                      max={600}
+                      value={durationRange[1]}
+                      onChange={(e) =>
+                        setDurationRange([
+                          durationRange[0],
+                          Math.max(
+                            Number(e.target.value),
+                            durationRange[0] + 1
+                          ),
+                        ])
+                      }
+                      className="w-full"
+                    />
+                  </div>
 
-              <div className="flex justify-between text-sm text-gray-600">
-                <span>{durationRange[0]} min</span>
-                <span>{durationRange[1]} min</span>
+                  {/* Display formatted durations below */}
+                  <div className="flex justify-between mt-1 text-sm text-gray-700">
+                    <span>{formatDuration(durationRange[0])}</span>
+                    <span>{formatDuration(durationRange[1])}</span>
+                  </div>
               </div>
             </div>
           </div>

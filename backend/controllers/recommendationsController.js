@@ -19,25 +19,29 @@ const recommendationsController = {
     const user_id = req.params.user_id;
     const session = driver.session();
 
-    const userProfile = await getUserProfile(user_id);
-    if (!userProfile) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    const {
-      education_level,
-      field_of_study,
-      topic_interests,
-      preferred_content_types,
-      language_preference,
-    } = userProfile;
-
     try {
-      // Interaction-Based Recommendations
+      const userProfile = await getUserProfile(user_id);
+      if (!userProfile) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const {
+        topic_interests = [], // default empty array
+        preferred_content_types = [],
+      } = userProfile;
+
+      // Minimum interactions threshold for personalized interaction-based recs
+      const MIN_INTERACTIONS = 3;
+
+      // 1) Interaction-based recommendations
+      // Goal: Recommend new popular resources that align with the user’s past interactions and preferences.
       const interactionQuery = `
       MATCH (u:User {id: $user_id})
       OPTIONAL MATCH (u)-[:PERFORMED]->(:Interaction)-[:TARGET]->(iRes:Resource)
       WITH u, COLLECT(DISTINCT iRes.id) AS interactedIds
+
+      WITH u, interactedIds, SIZE(interactedIds) AS interactionsCount
+      WHERE interactionsCount >= $minInteractions
 
       MATCH (rec:Resource)
       WHERE NOT rec.id IN interactedIds
@@ -45,11 +49,15 @@ const recommendationsController = {
       OPTIONAL MATCH (rec)-[:HAS_CATEGORY]->(cat:Category)
       OPTIONAL MATCH (rec)-[:HAS_TAG]->(tag:Tag)
       WITH rec, COLLECT(DISTINCT cat.name) AS recCategories,
-           COLLECT(DISTINCT tag.name) AS recTags
+          COLLECT(DISTINCT tag.name) AS recTags
+
+      WHERE 
+        (SIZE($topic_interests) = 0 OR ANY(topic IN $topic_interests WHERE topic IN recCategories))
+        AND (SIZE($preferred_content_types) = 0 OR rec.type IN $preferred_content_types)
 
       OPTIONAL MATCH (:Interaction)-[:TARGET]->(rec)
       WITH rec, recCategories, recTags,
-           COUNT(*) AS popularity
+          COUNT(*) AS popularity
 
       RETURN rec {
         .id,
@@ -64,22 +72,17 @@ const recommendationsController = {
       LIMIT 6
     `;
 
-      let result = await session.run(interactionQuery, { user_id });
-
-      let recommendations = result.records.map((record) => {
-        const rec = record.get("rec");
-        return {
-          id: rec.id,
-          title: rec.title,
-          description: rec.description,
-          type: rec.type,
-          category: rec.category,
-          tags: rec.tags,
-          score: rec.score,
-        };
+      result = await session.run(interactionQuery, {
+        user_id,
+        minInteractions: MIN_INTERACTIONS,
+        topic_interests,
+        preferred_content_types,
       });
 
-      // Fallback: Profile-Based if no interaction-based recommendations
+      let recommendations = result.records.map((record) => record.get("rec"));
+
+      // 2) Profile-based fallback if no interaction-based recommendations
+      // Goal: Recommend based purely on the user's interests.
       if (recommendations.length === 0) {
         const profileQuery = `
         MATCH (rec:Resource)
@@ -91,10 +94,11 @@ const recommendationsController = {
 
         WITH rec, recCategories, recTags,
              (
-               (CASE WHEN $education_level IN recCategories THEN 1 ELSE 0 END) +
-               (CASE WHEN $topic_interests IN recCategories THEN 1 ELSE 0 END) +
-               (CASE WHEN rec.type IN $preferred_content_types THEN 1 ELSE 0 END)
+               SIZE([topic IN $topic_interests WHERE topic IN recCategories]) +
+               CASE WHEN rec.type IN $preferred_content_types THEN 1 ELSE 0 END
              ) AS profileScore
+
+        WHERE profileScore > 0  // Only recommend resources matching profile in some way
 
         RETURN rec {
           .id,
@@ -110,28 +114,15 @@ const recommendationsController = {
       `;
 
         result = await session.run(profileQuery, {
-          education_level,
-          field_of_study,
           topic_interests,
           preferred_content_types,
-          language_preference,
         });
 
-        recommendations = result.records.map((record) => {
-          const rec = record.get("rec");
-          return {
-            id: rec.id,
-            title: rec.title,
-            description: rec.description,
-            type: rec.type,
-            category: rec.category,
-            tags: rec.tags,
-            score: rec.score,
-          };
-        });
+        recommendations = result.records.map((record) => record.get("rec"));
       }
 
-      // Fallback: Popular Resources if profile-based also returns nothing
+      // 3) Popular resources fallback if no profile-based recommendations found
+      // Goal: Ensure recommendations never come up empty (cold start strategy).
       if (recommendations.length === 0) {
         const popularQuery = `
         MATCH (r:Resource)
@@ -148,17 +139,18 @@ const recommendationsController = {
       `;
 
         const fallbackResult = await session.run(popularQuery);
+
         recommendations = fallbackResult.records.map((record) =>
           record.get("resource")
         );
       }
 
-      res.json(recommendations);
+      return res.json(recommendations);
     } catch (error) {
       console.error("Error getting recommendations:", error);
-      res.status(500).json({
-        message: "Failed to get resource recommendations.",
-      });
+      res
+        .status(500)
+        .json({ message: "Failed to get resource recommendations." });
     } finally {
       await session.close();
     }
@@ -340,6 +332,7 @@ const recommendationsController = {
         WITH mod, COLLECT(res) AS modResources, userId
 
         OPTIONAL MATCH (lp:LearningPath)-[:HAS_MODULE]->(mod)
+        WHERE lp.creator_type <> 'student'
         WITH mod, modResources, COLLECT(DISTINCT lp) AS directLPs, userId
 
         OPTIONAL MATCH (otherMod:Module)-[:HAS_RESOURCE]->(sharedRes:Resource)
@@ -347,7 +340,7 @@ const recommendationsController = {
         WITH modResources, directLPs, COLLECT(DISTINCT otherMod) AS relatedModules, userId
 
         OPTIONAL MATCH (fallbackLP:LearningPath)-[:HAS_MODULE]->(relatedMod:Module)
-        WHERE relatedMod IN relatedModules
+        WHERE relatedMod IN relatedModules AND fallbackLP.creator_type <> 'student'
         WITH modResources, directLPs, COLLECT(DISTINCT fallbackLP) AS fallbackLPs, userId
 
         OPTIONAL MATCH (user:User {id: userId})-[:PERFORMED]->(interaction:Interaction {type: "VIEWED_RESOURCE"})-[:TARGET]->(viewedRes:Resource)
@@ -379,6 +372,7 @@ const recommendationsController = {
         // Fallback query if no results from main query
         const fallbackQuery = `
         MATCH (lp:LearningPath)
+        WHERE lp.creator_type <> 'student'
         RETURN lp { .id, .title, .summary, .estimated_duration, .creator_type } AS recommendedPath, 1 AS score, 'popular' AS source
         ORDER BY lp.popularity DESC  
         LIMIT 5
@@ -543,7 +537,7 @@ const recommendationsController = {
     LIMIT 6
   `;
 
-  // Fallback query in terms of popularity of most viewed resources
+    // Fallback query in terms of popularity of most viewed resources
     const fallbackQuery = `
     MATCH (res:Resource)
     OPTIONAL MATCH (res)<-[:TARGET]-(inter:Interaction {type: "VIEWED_RESOURCE"})

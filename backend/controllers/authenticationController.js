@@ -7,9 +7,28 @@ async function hashPassword(password) {
   return await bcrypt.hash(password, saltRounds);
 }
 
+function logoutIfAuthenticated(req) {
+  return new Promise((resolve, reject) => {
+    if (req.isAuthenticated()) {
+      req.logout((err) => {
+        if (err) {
+          console.error("Error logging out previous user:", err);
+          return reject(err);
+        }
+        req.session.regenerate((err) => {
+          if (err) return reject(err);
+          resolve();
+        });
+      });
+    } else {
+      resolve();
+    }
+  });
+}
+
 const authenticationController = {
   // Register new user
-  signup: async (req, res) => {
+  signup: async (req, res, next) => {
     const {
       email,
       password,
@@ -24,14 +43,16 @@ const authenticationController = {
     } = req.body;
 
     try {
+      await logoutIfAuthenticated(req); // ✅ Ensure previous session is cleared
+
       const passwordHash = await hashPassword(password);
 
       const result = await pool.query(
         `INSERT INTO users 
-          (email, password_hash, first_name, last_name, user_role, education_level, field_of_study, topic_interests, preferred_content_types, language_preference) 
-          VALUES 
-          ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
-          RETURNING *`,
+      (email, password_hash, first_name, last_name, user_role, education_level, field_of_study, topic_interests, preferred_content_types, language_preference) 
+      VALUES 
+      ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
+      RETURNING *`,
         [
           email,
           passwordHash,
@@ -49,22 +70,21 @@ const authenticationController = {
       const user = result.rows[0];
       delete user.password_hash;
 
-      res.status(201).json({ userId: user.id, user });
+      req.logIn(user, (err) => {
+        if (err) return next(err);
+
+        req.session.save((saveErr) => {
+          if (saveErr) return next(saveErr);
+
+          console.log("User signed up and logged in:", req.user);
+          res.status(201).json({ userId: user.id, user });
+        });
+      });
     } catch (err) {
       console.error(err);
       res.status(500).json({ message: "Error signing up user" });
     }
   },
-
-  // User login
-  // signin: (req, res) => {
-  //   console.log(req.user);
-  //   console.log("Session Object:", req.session);
-  //   const user = { ...req.user };
-  //   delete user.password_hash;
-  //   res.json({ user });
-  //   console.log(req.body);
-  // },
 
   signin: (req, res, next) => {
     passport.authenticate("local", (err, user, info) => {

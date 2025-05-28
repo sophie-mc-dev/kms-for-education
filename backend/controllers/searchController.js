@@ -21,16 +21,29 @@ const searchController = {
 
       const results = await esClient.search({
         index: "resources",
-        knn: {
-          field: "embedding",
-          query_vector: queryEmbedding,
-          k: 10,
-          num_candidates: 100,
-        },
         size: 10,
         query: {
           bool: {
-            should: [{ match: { title: q } }, { match: { description: q } }],
+            should: [
+              {
+                script_score: {
+                  query: { match_all: {} },
+                  script: {
+                    source: `cosineSimilarity(params.query_vector, 'embedding')`,
+                    params: { query_vector: queryEmbedding },
+                  },
+                },
+              },
+              {
+                multi_match: {
+                  query: q,
+                  fields: ["title^5", "description^4", "category^2", "tags^3"],
+                  fuzziness: "AUTO",
+                  boost: 2.0,
+                },
+              },
+            ],
+            minimum_should_match: 1,
           },
         },
       });
@@ -102,20 +115,27 @@ const searchController = {
 
       const results = await esClient.search({
         index: "learning_content",
-        knn: {
-          field: "embedding",
-          query_vector: queryEmbedding,
-          k: 10,
-          num_candidates: 100,
-        },
-        size: 10,
         query: {
           bool: {
             should: [
-              { match: { title: q } },
-              { match: { summary: q } },
-              { match: { objectives: q } },
+              {
+                script_score: {
+                  query: { match_all: {} },
+                  script: {
+                    source: `cosineSimilarity(params.query_vector, 'embedding')`,
+                    params: { query_vector: queryEmbedding },
+                  },
+                },
+              },
+              {
+                multi_match: {
+                  query: q,
+                  fields: ["title^3", "summary^2", "objectives"],
+                  fuzziness: "AUTO",
+                },
+              },
             ],
+            minimum_should_match: 1,
           },
         },
       });
@@ -172,37 +192,6 @@ const searchController = {
         .json({ error: "Semantic search for learning content failed" });
     } finally {
       if (client) client.release();
-    }
-  },
-
-  searchLearningContent2: async (req, res) => {
-    const { q } = req.query;
-
-    try {
-      // Step 1: Get the embedding for the input query
-      const queryEmbedding = await generateEmbedding(q);
-
-      // Step 2: Perform a semantic search using KNN
-      const results = await esClient.search({
-        index: "learning_content",
-        knn: {
-          field: "embedding",
-          query_vector: queryEmbedding,
-          k: 10,
-          num_candidates: 100,
-        },
-      });
-
-      const hits = results.hits.hits.map((hit) => ({
-        id: hit._id,
-        type: hit._source.type,
-        ...hit._source,
-      }));
-
-      res.json(hits);
-    } catch (error) {
-      console.error("Semantic search failed:", error);
-      res.status(500).json({ error: "Semantic search failed" });
     }
   },
 };
