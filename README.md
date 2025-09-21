@@ -1,77 +1,114 @@
-# Knowledge Management System for Engineering Education
+# KnowmIA
 
-## Using Docker Compose to Run the Application
+An intuitive platform designed to streamline educational content management and collaborative learning experiences.
 
-This project uses **Docker Compose** to set up both the frontend and backend services. The following steps will guide you through the process of running the entire application with a single command.
+![Version](https://img.shields.io/badge/version-1.0.0-blue) ![License](https://img.shields.io/badge/license-None-lightgrey) ![Stars](https://img.shields.io/github/stars/sophie-mc-dev/kms-for-education?style=social) ![Forks](https://img.shields.io/github/forks/sophie-mc-dev/kms-for-education?style=social)
 
-### Prerequisites
+![Project Preview Image](/preview_example.png)
 
-- Docker and Docker Compose must be installed on your machine.
-- Ensure that your project code is in the correct directory before proceeding.
+## ✨ Features
+- Semantic search over educational resources
+- Personalized learning paths
+- Knowledge graph–based recommendations
+- User and resource management
 
-### Run the Application Using Docker Compose
+## 🛠️ Tech Stack
+- **Backend:** [Node.js](https://nodejs.org/)  
+- **Frontend:** [React](https://react.dev/)  
+- **Databases:**  
+  - PostgreSQL
+  - Neo4j
+  - Elasticsearch
+- **Storage:** Cloudflare R2
+- **Containerization:** Docker & Docker Compose (optional, project not fully configured to run with Compose)  
 
-1. **Build and start the frontend and backend containers**:
+## 🔧 Prerequisites
 
-   From the project root directory (where `docker-compose.yml` is located), run:
+Before starting, make sure you have the following installed on your system:
 
-   ```bash
-   docker-compose up --build
-   ```
+- [Git](https://git-scm.com/) – for cloning and version control  
+- [Node.js](https://nodejs.org/) & [npm](https://www.npmjs.com/) – for running backend and frontend  
+- [Docker Desktop](https://www.docker.com/products/docker-desktop) – includes Docker Engine & Docker Compose  
+- [PostgreSQL](https://www.postgresql.org/) (with optional [pgAdmin](https://www.pgadmin.org/) for management)  
+- [Neo4j](https://neo4j.com/download/) – Desktop or Docker (⚠️ APOC plugin required)  
+- [Elasticsearch](https://www.elastic.co/elasticsearch/) – easiest via Docker  
+- [Cloudflare R2](https://www.cloudflare.com/developer-platform/products/r2/) – ⚠️ **currently disabled**; must be reconfigured or replaced by the next maintainer  
 
-   This will automatically build both the frontend and backend Docker images, and start the services in the background.
 
-2. **Run the containers in detached mode** (if you prefer to run in the background):
+## ⚙️ Environment Setup
 
-   ```bash
-   docker-compose up --build -d
-   ```
+Follow these steps to get `kms-for-education` up and running on your local machine.
 
-### Accessing the Application
+1.  **Clone the Repository**
 
-- **Frontend**: Once the containers are running, you can access the frontend at [http://localhost:5173](http://localhost:5173).
-- **Backend**: The backend will be available at [http://localhost:8080](http://localhost:8080).
+    First, clone the `kms-for-education` repository to your local machine:
 
-### Reloading Dependencies
+    ```bash
+    git clone https://github.com/sophie-mc-dev/kms-for-education.git
+    cd kms-for-education
+    ```
 
-If you make changes to the dependencies, you'll need to rebuild the Docker images and restart the containers to reflect the changes.
+2.  **Create the Databases**
 
-1. **Reload frontend dependencies**:
+      - **Postgres**: 
+         - Create a local database and add the connection string to .env. 
+         - A `.sql` file is stored in the `/backend/utils` folder with the structure from the PostgreSQL database.
 
-   To reload the frontend dependencies, run:
+      - **Neo4j**:
+         - Either run locally and enable the APOC plugin, OR
+         - Run with Docker (requires plugin configuration).
 
-   ```bash
-   docker-compose up --build frontend
-   ```
+      - **Elasticsearch**
+         - Create Docker container:
 
-   This will rebuild the frontend service and install any new dependencies.
+         ```
+         docker run -d \
+         --name elasticsearch \
+         -e "discovery.type=single-node" \
+         -p 9200:9200 \
+         docker.elastic.co/elasticsearch/elasticsearch:8.10.2
+         ```
 
-2. **Reload backend dependencies**:
+3.  **Configure the Repository**
 
-   Similarly, to reload the backend dependencies, run:
+      The project uses a `.env` file for configuration.  
+      Each developer should create their own `.env` file in the `backend/` directory.
 
-   ```bash
-   docker-compose up --build backend
-   ```
+      Key variables include:
+      - `POSTGRES_HOST=...`
+      - `NEO4J_URI=...`
+      - `R2_ACCESS_KEY_ID=...` (⚠️ R2 disabled, update or replace)
 
-3. **Rebuild both frontend and backend**:
+      ⚠️ **Important:**  
+      With the correct `.env` variables, the backend will automatically connect to the databases. The database configuration files are stored in the `/backend/scripts` folder.
 
-   If you want to rebuild both frontend and backend dependencies, run:
+4.  **Run frontend and backend services**
 
-   ```bash
-   docker-compose up --build
-   ```
+      To run the frontend and backend services independently for development purposes run the following commands:
 
-   This will rebuild both services and install the updated dependencies.
+      #### Frontend Setup
 
-### Stopping the Containers
+      ```bash
+      # From the project root
+      cd frontend
+      npm install 
+      npm run dev
+      ```
 
-To stop the containers, run the following command from the project root directory:
+      #### Backend Setup
 
-```bash
-docker-compose down
-```
+      ```bash
+      # From the project root
+      cd backend
+      npm install 
+      npm run dev
+      ```
+
+
+## 🚀 Usage
+Once the application is running, open the platform in your browser.
+You can create different users (student and educator) to view distinct role-based screens and functionalities.
 
 ---
 
-With this setup, Docker Compose will manage both your frontend and backend containers, simplifying the process of building, running, and stopping the application. The reload section ensures that any changes to the dependencies are properly reflected without needing to manually rebuild each container.
+*Copyright © 2025 sophie-mc-dev. All rights reserved.*
